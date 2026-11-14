@@ -1,144 +1,69 @@
 package com.mitrasis.tarot
 
 import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.random.Random
 
 /**
- * Схема типизированных вопросов — ровно то, что ест GLiNER2.5-Decide
- * (или её мультиязычный вариант multi-Decide). UI ничего не знает о том,
- * кто именно отвечает: заглушка сейчас, ONNX-модель потом.
+ * Один вопрос — одна карта. Это single-label классификация по 78 меткам.
+ *
+ * Контракт ровно как у GLiNER2.5-Decide:
+ *   вход  — текст вопроса + список меток (названия карт);
+ *   выход — вероятности по меткам, ответ = argmax.
+ *
+ * Реализация подменяется целиком: заглушка сейчас, ONNX-граф потом.
  */
-data class Question(
-    val id: String,
-    val prompt: String,
-    val options: List<String>
-)
-
-data class OptionScore(
-    val option: String,
-    val probability: Float
-)
-
-data class Answer(
-    val question: Question,
-    val scores: List<OptionScore>
-) {
-    val winner: OptionScore get() = scores.maxByOrNull { it.probability } ?: scores.first()
-}
-
-data class DecisionResult(
-    val answers: List<Answer>,
-    val engine: String
-) {
-    val confidence: Float
-        get() = answers.map { it.winner.probability }.average().toFloat()
-
-    fun answer(questionId: String): Answer? = answers.firstOrNull { it.question.id == questionId }
-}
-
-interface Decider {
+interface CardDecider {
     val name: String
-    fun decide(passage: String, schema: List<Question>): DecisionResult
+    fun answer(question: String): CardAnswer
 }
 
 /**
- * Заглушка. Никакой модели — только детерминированная псевдо-вероятностная
- * логика на основе текста пассажа и смысла карт. Нужна, чтобы довести UI
- * до рабочего состояния и потом заменить одну строчку.
+ * Заглушка. Детерминированная: один и тот же вопрос даёт одну и ту же карту.
+ * Нужна только чтобы UI жил и чтобы форматы данных устоялись до модели.
  */
-class StubDecider(private val drawn: List<Drawn>) : Decider {
+class StubCardDecider : CardDecider {
 
-    override val name: String = "заглушка (эвристика)"
+    override val name: String = "заглушка"
 
-    override fun decide(passage: String, schema: List<Question>): DecisionResult {
-        val seed = passage.hashCode().toLong() * 31 + drawn.size
+    override fun answer(question: String): CardAnswer {
+        val normalized = question.trim().lowercase()
+        val seed = if (normalized.isEmpty()) {
+            0L
+        } else {
+            normalized.fold(17L) { acc, ch -> acc * 31L + ch.code }
+        }
         val random = Random(seed)
+        val labels = Deck.labelsRu
 
-        val lightWeight = drawn.count { !it.reversed }.toFloat()
-        val shadowWeight = drawn.count { it.reversed }.toFloat()
-        val total = (drawn.size.coerceAtLeast(1)).toFloat()
+        val topIndex = ((seed % labels.size) + labels.size).toInt() % labels.size
+        val topProbability = 0.28f + random.nextFloat() * 0.40f
 
-        val answers = schema.map { question ->
-            val raw = question.options.map { option ->
-                val base = 0.4f + random.nextFloat() * 1.2f
-                val bias = biasOf(option, lightWeight / total, shadowWeight / total)
-                base * bias
-            }
-            Answer(question, softmax(question.options, raw))
+        val rest = labels.indices.filter { it != topIndex }
+        val raw = rest.map { -ln(0.05 + random.nextDouble()) }
+        val sum = raw.sum().takeIf { it > 0.0 } ?: 1.0
+        val remaining = 1f - topProbability
+
+        val scored = rest.mapIndexed { i, index ->
+            index to (remaining * (raw[i] / sum)).toFloat()
         }
-        return DecisionResult(answers, name)
-    }
+        val runnerUp = scored.maxByOrNull { it.second }
 
-    private fun biasOf(option: String, light: Float, shadow: Float): Float = when {
-        option.contains("светл") || option.contains("да") || option.contains("поддерж") ->
-            0.7f + light * 1.3f
-        option.contains("тревож") || option.contains("нет") || option.contains("тормоз") ->
-            0.7f + shadow * 1.3f
-        else -> 1.0f
-    }
-
-    private fun softmax(options: List<String>, values: List<Float>): List<OptionScore> {
-        val max = values.maxOrNull() ?: 0f
-        val exps = values.map { exp((it - max).toDouble()).toFloat() }
-        val sum = exps.sum().takeIf { it > 0f } ?: 1f
-        return options.indices.map { i ->
-            OptionScore(options[i], exps[i] / sum)
-        }
+        return CardAnswer(
+            card = Deck.byId(topIndex),
+            reversed = random.nextFloat() < 0.35f,
+            probability = topProbability,
+            runnerUp = runnerUp?.let { Deck.byId(it.first) to it.second }
+        )
     }
 }
 
-/**
- * Собирает схему вопросов под конкретный расклад.
- */
-fun buildSchema(spread: Spread, drawn: List<Drawn>): List<Question> {
-    val list = mutableListOf<Question>()
-
-    list += Question(
-        id = "tone",
-        prompt = "Общий тон расклада",
-        options = listOf("светлый", "тревожный", "переломный", "пустой")
-    )
-
-    drawn.forEach { d ->
-        list += Question(
-            id = "pos_${d.position}",
-            prompt = "Как ведёт себя позиция «${d.position}»",
-            options = listOf("поддерживает", "тормозит", "запутывает", "требует действия")
-        )
-    }
-
-    if (spread.positions.size > 1) {
-        list += Question(
-            id = "advice",
-            prompt = "Что делать",
-            options = listOf("ждать", "резать по живому", "договариваться", "менять тактику")
-        )
-    }
-
-    list += Question(
-        id = "outcome",
-        prompt = "Исход",
-        options = listOf("да", "нет", "не сейчас", "зависит от тебя")
-    )
-
-    return list
-}
-
-/**
- * Собирает текст пассажа для модели: вопрос пользователя + вытянутые карты.
- * Это вход, который увидит ONNX-модель на втором этапе.
- */
-fun buildPassage(question: String, spread: Spread, drawn: List<Drawn>): String {
-    val sb = StringBuilder()
-    sb.append("Спрашивающий задаёт вопрос: ")
-    sb.append(question.ifBlank { "без вопроса, просто смотрит на карты" })
-    sb.append(". Расклад: ").append(spread.name).append(". ")
-    drawn.forEach { d ->
-        sb.append("Позиция «").append(d.position).append("»: карта ")
-        sb.append(d.card.title).append(", ")
-        sb.append(if (d.reversed) "перевёрнутая, значения — " else "прямая, значения — ")
-        sb.append(d.activeKeywords().joinToString(", "))
-        sb.append(". ")
-    }
-    return sb.toString()
+/** Softmax пригодится и заглушке, и настоящему движку. */
+fun softmax(logits: FloatArray, temperature: Float = 1f): FloatArray {
+    if (logits.isEmpty()) return FloatArray(0)
+    val scaled = logits.map { it / temperature }
+    val max = scaled.max()
+    val exps = scaled.map { exp((it - max).toDouble()) }
+    val sum = exps.sum().takeIf { it > 0.0 } ?: 1.0
+    return FloatArray(logits.size) { (exps[it] / sum).toFloat() }
 }
