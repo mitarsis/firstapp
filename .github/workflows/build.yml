@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,7 +29,9 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build-log.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -34,3 +39,26 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Publish build log on failure
+        if: failure()
+        run: |
+          mkdir -p .ci
+          tail -c 30000 build-log.txt > .ci/last-error.txt || true
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -f .ci/last-error.txt
+          git commit -m "ci: capture build failure [skip ci]" || true
+          git push || true
+
+      - name: Clear stale log on success
+        if: success()
+        run: |
+          if [ -f .ci/last-error.txt ]; then
+            git rm -q --cached .ci/last-error.txt || true
+            rm -f .ci/last-error.txt
+            git config user.name "ci-bot"
+            git config user.email "ci-bot@users.noreply.github.com"
+            git commit -m "ci: green build, drop stale log [skip ci]" || true
+            git push || true
+          fi
