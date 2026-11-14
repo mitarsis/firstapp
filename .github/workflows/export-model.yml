@@ -50,7 +50,8 @@ jobs:
 
       - name: Quantize int8
         run: |
-          python - <<'PY'
+          set -o pipefail
+          python - <<'PY' 2>&1 | tee -a export-log.txt
           from onnxruntime.quantization import quantize_dynamic, QuantType
           import onnx, os
           from onnx import numpy_helper
@@ -118,6 +119,17 @@ jobs:
           PY
           cp src/gliner2_config.json src/tokenizer.json src/config.json out/ 2>/dev/null || true
           ls -la out
+
+      - name: Publish failure log
+        if: failure()
+        run: |
+          mkdir -p .ci
+          { echo "=== export-log tail ==="; tail -c 30000 export-log.txt 2>/dev/null; } > .ci/model-error.txt || true
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -f .ci/model-error.txt
+          git commit -m "ci: model export failure log [skip ci]" || true
+          git push || true
 
       - name: Publish model assets
         env:

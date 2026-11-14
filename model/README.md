@@ -1,1 +1,1 @@
-model export: variants A, B, C (w4 embeddings)
+model export: variants A, B, C + failure logging
