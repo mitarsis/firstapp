@@ -1,0 +1,12 @@
+=== export-log tail ===
+[0;93m2026-11-14 23:33:45.689468243 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+out/encoder_int8.onnx: 337.5 MB
+excluding nodes: 4 ['/encoder/embeddings/word_embeddings/Gather', '/encoder/encoder/layer.0/attention/self/query_proj/MatMul', '/encoder/encoder/layer.0/attention/self/key_proj/MatMul', '/encoder/encoder/layer.0/attention/self/value_proj/MatMul']
+out/encoder_nopemb.onnx: 914.3 MB
+Traceback (most recent call last):
+  File "<stdin>", line 29, in <module>
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/onnxruntime/quantization/matmul_nbits_quantizer.py", line 18, in <module>
+    import onnx_ir as ir
+ModuleNotFoundError: No module named 'onnx_ir'
