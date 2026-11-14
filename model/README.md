@@ -1,1 +1,1 @@
-model export: variants A (per-channel int8) and B (int8, embeddings excluded)
+model export: variants A, B, C (w4 embeddings)

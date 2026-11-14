@@ -76,6 +76,41 @@ jobs:
           print("excluding nodes:", len(emb), emb[:5])
           quant("src/encoder.onnx", "out/encoder_nopemb.onnx", per_channel=True, nodes_to_exclude=emb)
 
+          # вариант C: как B, плюс 4-битные эмбеддинги (GatherBlockQuantized, block 32)
+          import numpy as np
+          from onnx import helper, TensorProto, numpy_helper
+          from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer, DefaultWeightOnlyQuantConfig
+
+          m = onnx.load("src/encoder.onnx", load_external_data=True)
+          g = m.graph
+          gather = None
+          for n in g.node:
+              if n.op_type == "Gather" and "embed" in n.input[0]:
+                  gather = n
+                  break
+          if gather is not None:
+              out = gather.output[0]
+              gather.output[0] = out + "_fp32"
+              idx = list(g.node).index(gather)
+              g.node.insert(idx + 1, helper.make_node(
+                  "Cast", [out + "_fp32"], [out], name="/embeddings/cast_fp16", to=TensorProto.FLOAT16))
+              cfg = DefaultWeightOnlyQuantConfig(
+                  block_size=32, is_symmetric=False, bits=4,
+                  op_types_to_quantize=("Gather",), quant_axes=(("Gather", 1),))
+              q = MatMulNBitsQuantizer(
+                  m, block_size=32, is_symmetric=False, bits=4, algo_config=cfg,
+                  op_types_to_quantize=("Gather",), quant_axes=(("Gather", 1),))
+              q.process()
+              m = q.model.model
+              onnx.save(m, "out/encoder_w4.onnx", save_as_external_data=True,
+                        all_tensors_to_one_file=True, location="encoder_w4.onnx.data",
+                        size_threshold=1024)
+              sizes = sum(os.path.getsize(os.path.join("out", f))
+                          for f in os.listdir("out") if f.startswith("encoder_w4"))
+              print(f"variant C (w4 embeddings): {sizes/1e6:.1f} MB")
+          else:
+              print("variant C: embedding Gather не найден")
+
           # классификатор оставляем fp16 как есть
           for f in ("classifier_fp16.onnx", "classifier_fp16.onnx.data"):
               if os.path.exists(f"src/{f}"):
