@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.firstapp"
+    namespace = "com.mitrasis.tarot"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.firstapp"
+        applicationId = "com.mitrasis.tarot"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
