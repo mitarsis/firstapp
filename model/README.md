@@ -1,1 +1,1 @@
-model export: add onnx_ir dependency
+model export: fix C graph (no fp16 cast)

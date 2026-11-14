@@ -90,11 +90,6 @@ jobs:
                   gather = n
                   break
           if gather is not None:
-              out = gather.output[0]
-              gather.output[0] = out + "_fp32"
-              idx = list(g.node).index(gather)
-              g.node.insert(idx + 1, helper.make_node(
-                  "Cast", [out + "_fp32"], [out], name="/embeddings/cast_fp16", to=TensorProto.FLOAT16))
               cfg = DefaultWeightOnlyQuantConfig(
                   block_size=32, is_symmetric=False, bits=4,
                   op_types_to_quantize=("Gather",), quant_axes=(("Gather", 1),))
