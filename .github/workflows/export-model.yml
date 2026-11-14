@@ -1,0 +1,77 @@
+name: Export model (quantize)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "model/**"
+
+permissions:
+  contents: write
+
+jobs:
+  quantize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install onnx onnxruntime numpy huggingface_hub
+
+      - name: Download model files
+        run: |
+          mkdir -p src
+          python - <<'PY'
+          from huggingface_hub import hf_hub_download
+          import shutil, os
+          repo = "lmo3/gliner2-multi-v1-onnx"
+          files = [
+              "onnx/encoder_fp16.onnx", "onnx/encoder_fp16.onnx.data",
+              "onnx/classifier_fp16.onnx", "onnx/classifier_fp16.onnx.data",
+              "gliner2_config.json", "tokenizer.json", "tokenizer_config.json", "config.json",
+          ]
+          for f in files:
+              p = hf_hub_download(repo_id=repo, filename=f)
+              dst = os.path.join("src", os.path.basename(f))
+              shutil.copy2(p, dst)
+              print(f"{os.path.getsize(dst)/1e6:8.1f} MB  {dst}")
+          PY
+
+      - name: Quantize int8
+        run: |
+          python - <<'PY'
+          from onnxruntime.quantization import quantize_dynamic, QuantType
+          import os
+          for name in ("encoder", "classifier"):
+              src = f"src/{name}_fp16.onnx"
+              dst = f"out/{name}_int8.onnx"
+              os.makedirs("out", exist_ok=True)
+              quantize_dynamic(src, dst, weight_type=QuantType.QInt8)
+              total = sum(
+                  os.path.getsize(os.path.join("out", f))
+                  for f in os.listdir("out") if f.startswith(f"{name}_int8")
+              )
+              print(f"{name}: {total/1e6:.1f} MB")
+          PY
+          cp src/gliner2_config.json src/tokenizer.json src/config.json out/ 2>/dev/null || true
+          ls -la out
+
+      - name: Publish model assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view model >/dev/null 2>&1 || gh release create model \
+            --title "GLiNER2 multi-v1 int8 (для приложения)" \
+            --notes "Квантованные int8 энкодер и классификатор + токенизатор. Собирается в CI." \
+            --prerelease
+          gh release upload model out/* --clobber
