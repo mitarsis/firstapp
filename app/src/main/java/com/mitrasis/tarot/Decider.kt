@@ -54,8 +54,8 @@ class StubDecider(private val drawn: List<Drawn>) : Decider {
         val seed = passage.hashCode().toLong() * 31 + drawn.size
         val random = Random(seed)
 
-        val lightWeight = drawn.sumOf { if (it.reversed) 0 else 1 }.toFloat()
-        val shadowWeight = drawn.sumOf { if (it.reversed) 1 else 0 }.toFloat()
+        val lightWeight = drawn.count { !it.reversed }.toFloat()
+        val shadowWeight = drawn.count { it.reversed }.toFloat()
         val total = (drawn.size.coerceAtLeast(1)).toFloat()
 
         val answers = schema.map { question ->
