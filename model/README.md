@@ -1,1 +1,1 @@
-placeholder for model export workflow (fp32 -> int8)
+model export: variants A (per-channel int8) and B (int8, embeddings excluded)

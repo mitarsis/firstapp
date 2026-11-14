@@ -38,6 +38,7 @@ jobs:
           files = [
               "onnx/encoder.onnx", "onnx/encoder.onnx.data",
               "onnx/classifier.onnx", "onnx/classifier.onnx.data",
+              "onnx/classifier_fp16.onnx", "onnx/classifier_fp16.onnx.data",
               "gliner2_config.json", "tokenizer.json", "tokenizer_config.json", "config.json",
           ]
           for f in files:
@@ -51,17 +52,34 @@ jobs:
         run: |
           python - <<'PY'
           from onnxruntime.quantization import quantize_dynamic, QuantType
-          import os
-          for name in ("encoder", "classifier"):
-              src = f"src/{name}.onnx"
-              dst = f"out/{name}_int8.onnx"
-              os.makedirs("out", exist_ok=True)
-              quantize_dynamic(src, dst, weight_type=QuantType.QInt8)
+          import onnx, os
+          from onnx import numpy_helper
+
+          os.makedirs("out", exist_ok=True)
+
+          def quant(src, dst, **kw):
+              quantize_dynamic(src, dst, weight_type=QuantType.QInt8, **kw)
               total = sum(
                   os.path.getsize(os.path.join("out", f))
-                  for f in os.listdir("out") if f.startswith(f"{name}_int8")
+                  for f in os.listdir("out") if f.startswith(os.path.basename(dst))
               )
-              print(f"{name}: {total/1e6:.1f} MB")
+              print(f"{dst}: {total/1e6:.1f} MB")
+              return total
+
+          # вариант A: per-channel по осям
+          quant("src/encoder.onnx", "out/encoder_int8.onnx", per_channel=True)
+
+          # вариант B: эмбеддинги не трогаем (исключаем Gather/MatMul в эмбеддингах)
+          m = onnx.load("src/encoder.onnx", load_external_data=False)
+          emb = [n.name for n in m.graph.node
+                 if n.op_type in ("Gather", "MatMul") and ("embed" in n.name or "embed" in n.input[0])]
+          print("excluding nodes:", len(emb), emb[:5])
+          quant("src/encoder.onnx", "out/encoder_nopemb.onnx", per_channel=True, nodes_to_exclude=emb)
+
+          # классификатор оставляем fp16 как есть
+          for f in ("classifier_fp16.onnx", "classifier_fp16.onnx.data"):
+              if os.path.exists(f"src/{f}"):
+                  import shutil; shutil.copy2(f"src/{f}", f"out/{f}")
           PY
           cp src/gliner2_config.json src/tokenizer.json src/config.json out/ 2>/dev/null || true
           ls -la out
