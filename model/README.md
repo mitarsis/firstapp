@@ -1,1 +1,1 @@
-model export: variants A, B, C + failure logging
+model export: add onnx_ir dependency
