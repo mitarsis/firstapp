@@ -1,5 +1,6 @@
 package com.mitrasis.tarot
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -66,6 +68,26 @@ fun TarotApp() {
     var answered by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    val crashFile = remember { File(context.filesDir, TarotAppClass.CRASH_FILE) }
+    var crash by remember { mutableStateOf(crashFile.takeIf { it.exists() }?.readText()) }
+    crash?.let { trace ->
+        CrashScreen(
+            trace = trace,
+            onShare = {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, trace)
+                }
+                context.startActivity(Intent.createChooser(intent, "Отправить стектрейс"))
+            },
+            onClear = {
+                crashFile.delete()
+                crash = null
+            }
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -183,6 +205,49 @@ fun TarotApp() {
             text = "Движок: ${decider.name} · модель ${formatMb(ModelStore.installedBytes(context))}",
             style = MaterialTheme.typography.labelSmall
         )
+    }
+}
+
+@Composable
+private fun CrashScreen(trace: String, onShare: () -> Unit, onClear: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+    ) {
+        Text(
+            text = "ПРОШЛЫЙ ЗАПУСК УПАЛ",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Стектрейс сохранён. Отправь его — по нему видно, что именно сломалось.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(12.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Text(
+                text = trace,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
+            Text("Отправить стектрейс")
+        }
+        Spacer(Modifier.height(8.dp))
+        TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
+            Text("Стереть и попробовать снова")
+        }
     }
 }
 
