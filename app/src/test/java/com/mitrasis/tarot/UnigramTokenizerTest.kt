@@ -50,6 +50,7 @@ class UnigramTokenizerTest {
             }
         }
 
+        File("test-mismatches.txt").writeText(failures.toString(), Charsets.UTF_8)
         if (failures.isNotEmpty()) {
             throw AssertionError("расхождения с эталоном:$failures")
         }
