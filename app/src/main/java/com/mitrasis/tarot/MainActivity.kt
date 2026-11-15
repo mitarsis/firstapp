@@ -167,7 +167,7 @@ fun TarotApp() {
                                 GlinerDecider(context).use { it.answer(text) }
                             }
                         } catch (t: Throwable) {
-                            error = "модель не ответила: ${t.javaClass.simpleName}: ${t.message}"
+                            error = "модель не ответила:\n" + t.stackTraceToString().take(4000)
                         } finally {
                             answered = false
                         }
@@ -205,11 +205,18 @@ fun TarotApp() {
 
         error?.let {
             Spacer(Modifier.height(12.dp))
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = it,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -261,7 +268,8 @@ fun TarotApp() {
                         }
                         report("ГОТОВО")
                     } catch (t: Throwable) {
-                        report("ОШИБКА: ${t.javaClass.name}: ${t.message}")
+                        report("ОШИБКА:")
+                        t.stackTraceToString().lines().take(30).forEach { report("  " + it) }
                     } finally {
                         diagRunning = false
                     }
