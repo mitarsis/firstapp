@@ -48,6 +48,13 @@ import java.io.File
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    override fun onDestroy() {
+        if (isFinishing && !isChangingConfigurations) {
+            DeciderHolder.close()
+        }
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -167,7 +174,7 @@ fun TarotApp() {
                     scope.launch {
                         try {
                             answer = withContext(Dispatchers.Default) {
-                                GlinerDecider(context).use { it.answer(text) }
+                                DeciderHolder.get(context).answer(text)
                             }
                         } catch (t: Throwable) {
                             error = "модель не ответила:\n" + t.stackTraceToString().take(4000)
@@ -263,16 +270,17 @@ fun TarotApp() {
                         if (!ModelStore.isReady(context)) {
                             report("6. сессию не проверяю: модели нет")
                         } else {
-                            report("6. создаю ONNX-сессию…")
+                            report("6. что лежит в папке:\n" + ModelStore.inventory(context))
+                            val removed = ModelStore.cleanup(context)
+                            report("6a. удалено лишнего: ${if (removed.isEmpty()) "нечего" else removed.joinToString(", ")}")
+                            report("7. создаю ONNX-сессию…")
                             withContext(Dispatchers.Default) {
-                                GlinerDecider(context).use { d ->
-                                    d.ensureLoaded()
-                                    report("7. сессия создана")
-                                    val names = d.describeInputs()
-                                    report("8. входы: $names")
-                                    val result = d.answer("Стоит ли мне уйти с работы?")
-                                    report("9. ответ: ${result.card.title} ${(result.probability * 100).toInt()}%")
-                                }
+                                val decider = DeciderHolder.get(context)
+                                decider.ensureLoaded()
+                                report("8. сессия создана")
+                                report("9. входы: ${decider.describeInputs()}")
+                                val result = decider.answer("Стоит ли мне уйти с работы?")
+                                report("10. ответ: ${result.card.title} ${(result.probability * 100).toInt()}%")
                             }
                         }
                         report("ГОТОВО")
@@ -287,6 +295,19 @@ fun TarotApp() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (diagRunning) "Проверяю…" else "Проверить движок")
+        }
+
+        TextButton(
+            onClick = {
+                scope.launch {
+                    withContext(Dispatchers.Default) { DeciderHolder.close() }
+                    answer = null
+                    error = "модель выгружена из памяти"
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Выгрузить модель из памяти")
         }
 
         Spacer(Modifier.height(8.dp))

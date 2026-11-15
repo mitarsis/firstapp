@@ -55,6 +55,34 @@ object ModelStore {
     }
 
     /**
+     * Убирает всё, чего нет в списке нужных файлов: недокачанные .part,
+     * файлы старых версий, дубликаты после перезаливок релиза.
+     */
+    fun cleanup(ctx: Context): List<String> {
+        val keep = FILES.keys
+        val removed = mutableListOf<String>()
+        dir(ctx).listFiles()?.forEach { file ->
+            if (file.name !in keep) {
+                if (file.delete()) removed.add(file.name)
+            }
+        }
+        return removed
+    }
+
+    /** Что реально лежит на диске — для диагностики. */
+    fun inventory(ctx: Context): String {
+        val files = dir(ctx).listFiles()?.sortedBy { it.name } ?: return "папки нет"
+        if (files.isEmpty()) return "папка пуста"
+        return files.joinToString("\n") { file ->
+            String.format(java.util.Locale.ROOT, "%.1f МБ  %s", file.length() / 1_000_000.0, file.name)
+        } + String.format(
+            java.util.Locale.ROOT,
+            "\nитого на диске: %.1f МБ",
+            files.sumOf { it.length() } / 1_000_000.0
+        )
+    }
+
+    /**
      * Качает недостающие файлы. Идемпотентно: уже скачанное пропускается,
      * недокачанное лежит как .part и начинается заново.
      */
