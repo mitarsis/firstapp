@@ -143,19 +143,17 @@ fun CardStack(
             if (image == null) return@forEachIndexed
             val isReversed = flipped.getOrElse(index) { false }
             if (isReversed) {
-                // перевёрнутая карта: рисунок вверх ногами и цвета вывернуты
-                rotate(180f) {
-                    drawImage(
-                        image = image,
-                        srcOffset = IntOffset.Zero,
-                        srcSize = IntSize(image.width, image.height),
-                        dstOffset = IntOffset.Zero,
-                        dstSize = IntSize(width, height),
-                        alpha = alphas.getOrElse(index) { 1f },
-                        colorFilter = inverted,
-                        blendMode = BlendMode.Screen
-                    )
-                }
+                // перевёрнутая карта: без поворота, только вывернутые цвета
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset.Zero,
+                    dstSize = IntSize(width, height),
+                    alpha = alphas.getOrElse(index) { 1f },
+                    colorFilter = inverted,
+                    blendMode = BlendMode.Screen
+                )
             } else {
                 drawImage(
                     image = image,
