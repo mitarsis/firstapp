@@ -197,14 +197,21 @@ class PromptBuilder(private val tokenizer: UnigramTokenizer) {
         private const val TOKEN_P = 250104
         private const val TOKEN_L = 250108
 
-        /** Порт WORD_PATTERN из эталона: (?U) включает юникодные \w, иначе кириллица не ловится. */
+        /**
+         * Порт WORD_PATTERN из эталона.
+         * Важно: \w заменён на [\p{L}\p{N}_], потому что инлайн-флаг (?U)
+         * в Android-регулярке не поддерживается, а без него \w не видит кириллицу.
+         */
         private val WORD_PATTERN = Regex(
-            pattern = "(?U)(?:https?://[^\\s]+|www\\.[^\\s]+)" +
+            pattern = "(?:https?://[^\\s]+|www\\.[^\\s]+)" +
                 "|[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}" +
                 "|@[a-z0-9_]+" +
-                "|\\w+(?:[-_]\\w+)*" +
+                "|[\\p{L}\\p{N}_]+(?:[-_][\\p{L}\\p{N}_]+)*" +
                 "|\\S",
             option = RegexOption.IGNORE_CASE
         )
+
+        internal fun splitWords(text: String): List<String> =
+            WORD_PATTERN.findAll(text.lowercase(Locale.ROOT)).map { it.value }.toList()
     }
 }
