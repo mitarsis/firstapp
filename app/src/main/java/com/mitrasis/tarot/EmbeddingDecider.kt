@@ -82,7 +82,10 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             Deck.byId(shortlist[position]) to probabilities[position]
         }
 
-        val trio = listOf(winnerIndex) + alternatives.map { Deck.labelsRu.indexOf(it.first.title) }
+        val trio = listOf((winnerIndex to probabilities[winnerPosition])) +
+            alternatives.map { (card, probability) ->
+                Deck.labelsRu.indexOf(card.title) to probability
+            }
         val summary = summarize(trio)
 
         return CardAnswer(
@@ -97,11 +100,11 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         )
     }
 
-    /** Итог расклада: фраза, которая ближе всех сразу ко всем трём картам. */
-    private fun summarize(indices: List<Int>): String {
-        val valid = indices.filter { it in 0 until cards.size }
+    /** Итог расклада: фраза, ближайшая к трём картам с учётом их веса. */
+    private fun summarize(trio: List<Pair<Int, Float>>): String {
+        val valid = trio.filter { it.first in 0 until cards.size }
         if (valid.isEmpty()) return ""
-        return summaries.nearestForCards(valid.map { cards.vectorOf(it) })
+        return summaries.nearestForCards(valid.map { cards.vectorOf(it.first) to it.second })
     }
 
     /**
