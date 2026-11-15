@@ -33,6 +33,10 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         ctx.assets.open(CARDS_ASSET).use { CardsCloud.fromStream(it, Deck.labelsRu) }
     }
 
+    private val keywords: KeywordBook by lazy {
+        ctx.assets.open(KEYWORDS_ASSET).use { KeywordBook.fromStream(it) }
+    }
+
     private val summaries: SummaryBook by lazy {
         val cardsMatrix = Array(cards.size) { cards.vectorOf(it) }
         ctx.assets.open(SUMMARIES_ASSET).use { SummaryBook.fromStream(it, cardsMatrix) }
@@ -87,6 +91,16 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
                 Deck.labelsRu.indexOf(card.title) to probability
             }
         val summary = summarize(trio)
+        val lines = trio.map { (index, _) ->
+            val card = Deck.byId(index)
+            val reversed = isReversed(clean, cards.meaningOf(index))
+            val keyword = if (reversed) {
+                card.shadow.firstOrNull().orEmpty()
+            } else {
+                keywords.bestKeyword(index, vector)
+            }
+            CardLine(card.title, keyword, reversed)
+        }
 
         return CardAnswer(
             card = Deck.byId(winnerIndex),
@@ -196,6 +210,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         private const val TOKENIZER_ASSET = "tokenizer.bin"
         private const val CARDS_ASSET = "cards.bin"
         private const val SUMMARIES_ASSET = "summaries.bin"
+        private const val KEYWORDS_ASSET = "keywords.bin"
         private const val HIDDEN_SIZE = 384
         private const val MAX_TOKENS = 128
         private const val QUESTION_PREFIX = "query: "
