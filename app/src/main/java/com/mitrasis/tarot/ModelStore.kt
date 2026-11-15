@@ -26,14 +26,24 @@ object ModelStore {
 
     val totalBytes: Long = FILES.values.sum()
 
+    private const val BIG_FILE = "encoder_w4.onnx.data"
+    private const val MIN_BIG_FILE_BYTES = 100_000_000L
+
     fun dir(ctx: Context): File = File(ctx.filesDir, "gliner2").apply { if (!exists()) mkdirs() }
 
     fun encoderPath(ctx: Context): File = File(dir(ctx), "encoder_w4.onnx")
     fun classifierPath(ctx: Context): File = File(dir(ctx), "classifier_fp16.onnx")
 
-    fun isReady(ctx: Context): Boolean = FILES.keys.all { name ->
-        val f = File(dir(ctx), name)
-        f.exists() && f.length() > 0
+    /**
+     * Проверяем по диску, а не по ожиданию: файл есть и он не обрывок.
+     * Точное совпадение размеров было плохой идеей — перезаливка релиза
+     * ломала проверку, и модель качалась заново.
+     */
+    fun isReady(ctx: Context): Boolean {
+        val names = FILES.keys
+        if (!names.all { File(dir(ctx), it).let { f -> f.isFile && f.length() > 0 } }) return false
+        val weights = File(dir(ctx), BIG_FILE)
+        return weights.isFile && weights.length() > MIN_BIG_FILE_BYTES
     }
 
     fun installedBytes(ctx: Context): Long = FILES.keys.sumOf { name ->
@@ -52,7 +62,7 @@ object ModelStore {
         var done = 0L
         for ((name, size) in FILES) {
             val target = File(dir(ctx), name)
-            if (target.exists() && target.length() == size) {
+            if (target.isFile && target.length() > 0) {
                 done += size
                 onProgress(done, totalBytes)
                 continue
