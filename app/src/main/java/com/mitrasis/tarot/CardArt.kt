@@ -189,10 +189,15 @@ private fun DrawScope.drawPips(card: TarotCard, palette: Palette, seed: Int) {
     val count = rankCount(rank)
 
     if (count == null) {
-        // двор: символ масти + литера в кольце
-        drawSuitGlyph(card, palette, center, minDim * 0.15f, accent.copy(alpha = 0.55f), thin * 1.2f)
-        drawCircle(accent.copy(alpha = 0.6f), minDim * 0.085f, center, style = Stroke(thin * 1.6f))
-        drawTextOn(courtLetter(rank), center, accent, minDim * 0.10f)
+        // двор: крупная литера в кольце, масть — маленькой меткой сверху
+        drawCircle(accent.copy(alpha = 0.35f), minDim * 0.17f, center, style = Stroke(thin * 1.8f))
+        drawCircle(accent.copy(alpha = 0.16f), minDim * 0.24f, center, style = Stroke(thin))
+        drawTextOn(courtLetter(rank), center, accent, minDim * 0.19f)
+        drawSuitGlyph(
+            card, palette,
+            Offset(center.x, center.y - minDim * 0.30f),
+            minDim * 0.055f, accent.copy(alpha = 0.75f), thin
+        )
         return
     }
 

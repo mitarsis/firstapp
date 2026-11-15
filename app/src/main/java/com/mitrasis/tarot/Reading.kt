@@ -12,7 +12,11 @@ object Reading {
 
         val meanings = cards.mapIndexed { index, card ->
             val values = if (index == 0 && answer.reversed) card.shadow else card.light
-            values.firstOrNull().orEmpty()
+            when {
+                values.isEmpty() -> ""
+                card.arcana == "Старший аркан" -> values.take(2).joinToString(", ")
+                else -> values.last()
+            }
         }.filter { it.isNotEmpty() }
 
         if (meanings.isEmpty()) return emptyList()
