@@ -16,15 +16,15 @@ import java.util.Locale
  * Выход : логиты по меткам -> softmax.
  *
  * Двухступенчато: сначала тема (7 меток), затем все 78 карт с темой в тексте.
- * На замерах это давало лучшие ответы, чем один проход по 78 меткам.
  */
-class GlinerDecider(private val ctx: Context) : CardDecider {
+class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
     override val name: String = "GLiNER2 multi-v1 · int8/w4"
 
     private val tokenizer: UnigramTokenizer by lazy {
         ctx.assets.open(TOKENIZER_ASSET).use { UnigramTokenizer.fromStream(it) }
     }
+    private val promptBuilder: PromptBuilder by lazy { PromptBuilder(tokenizer) }
 
     private var env: OrtEnvironment? = null
     private var encoder: OrtSession? = null
@@ -44,12 +44,13 @@ class GlinerDecider(private val ctx: Context) : CardDecider {
         env = environment
     }
 
-    @Synchronized
-    fun close() {
-        encoder?.close()
-        classifier?.close()
-        encoder = null
-        classifier = null
+    fun describeInputs(): String = try {
+        ensureLoaded()
+        val enc = encoder?.inputNames?.joinToString(",") ?: "?"
+        val cls = classifier?.inputNames?.joinToString(",") ?: "?"
+        "encoder[$enc] classifier[$cls]"
+    } catch (t: Throwable) {
+        "ошибка: ${t.javaClass.simpleName}: ${t.message}"
     }
 
     override fun answer(question: String): CardAnswer {
@@ -75,7 +76,7 @@ class GlinerDecider(private val ctx: Context) : CardDecider {
 
     /** Метка -> вероятность, по убыванию. */
     private fun classify(text: String, labels: List<String>): List<Pair<String, Float>> {
-        val built = buildInput(text, labels)
+        val built = promptBuilder.build(text, labels)
         val environment = env ?: throw IllegalStateException("окружение ONNX не готово")
         val encoderSession = encoder ?: throw IllegalStateException("энкодер не загружен")
         val classifierSession = classifier ?: throw IllegalStateException("классификатор не загружен")
@@ -128,12 +129,39 @@ class GlinerDecider(private val ctx: Context) : CardDecider {
             .sortedByDescending { it.second }
     }
 
-    private class BuiltInput(
-        val inputIds: LongArray,
-        val labelPositions: List<Int>
-    )
+    @Synchronized
+    override fun close() {
+        encoder?.close()
+        classifier?.close()
+        encoder = null
+        classifier = null
+    }
 
-    private fun buildInput(text: String, labels: List<String>): BuiltInput {
+    companion object {
+        private const val TOKENIZER_ASSET = "tokenizer.bin"
+        private const val HIDDEN_SIZE = 768
+
+        private val TOPICS = listOf(
+            "отношения и любовь, партнёр, ссоры",
+            "деньги, доход, долги, работа и карьера",
+            "здоровье, тело, усталость",
+            "выбор между двумя вариантами, решение",
+            "потеря, конец, расставание",
+            "семья, дом, быт",
+            "сам вопрос непонятен или спрашивающий лукавит"
+        )
+    }
+}
+
+/**
+ * Сборка промпта GLiNER2. Вынесено отдельно, чтобы можно было проверить
+ * без ONNX (и без модели).
+ */
+class PromptBuilder(private val tokenizer: UnigramTokenizer) {
+
+    class BuiltInput(val inputIds: LongArray, val labelPositions: List<Int>)
+
+    fun build(text: String, labels: List<String>): BuiltInput {
         val ids = ArrayList<Int>(512)
 
         fun addEncoded(value: String) {
@@ -165,8 +193,6 @@ class GlinerDecider(private val ctx: Context) : CardDecider {
     }
 
     companion object {
-        private const val TOKENIZER_ASSET = "tokenizer.bin"
-        private const val HIDDEN_SIZE = 768
         private const val TOKEN_SEP_TEXT = 250103
         private const val TOKEN_P = 250104
         private const val TOKEN_L = 250108
@@ -179,16 +205,6 @@ class GlinerDecider(private val ctx: Context) : CardDecider {
                 "|\\w+(?:[-_]\\w+)*" +
                 "|\\S",
             option = RegexOption.IGNORE_CASE
-        )
-
-        private val TOPICS = listOf(
-            "отношения и любовь, партнёр, ссоры",
-            "деньги, доход, долги, работа и карьера",
-            "здоровье, тело, усталость",
-            "выбор между двумя вариантами, решение",
-            "потеря, конец, расставание",
-            "семья, дом, быт",
-            "сам вопрос непонятен или спрашивающий лукавит"
         )
     }
 }

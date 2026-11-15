@@ -2,6 +2,7 @@ package com.mitrasis.tarot
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -26,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,26 +60,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TarotApp() {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val decider = remember { GlinerDecider(context) }
 
-    var question by remember { mutableStateOf("") }
-    var answer by remember { mutableStateOf<CardAnswer?>(null) }
-    var ready by remember { mutableStateOf(ModelStore.isReady(context)) }
-    var downloading by remember { mutableStateOf(false) }
-    var answered by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }
-    var error by remember { mutableStateOf<String?>(null) }
-
+    // Самая первая проверка: если прошлый запуск упал — показываем стектрейс,
+    // и только потом трогаем ONNX и прочие опасные штуки.
     val crashFile = remember { File(context.filesDir, TarotAppClass.CRASH_FILE) }
     var crash by remember { mutableStateOf(crashFile.takeIf { it.exists() }?.readText()) }
-    crash?.let { trace ->
+    val crashText = crash
+    if (crashText != null) {
         CrashScreen(
-            trace = trace,
+            trace = crashText,
             onShare = {
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, trace)
+                    putExtra(Intent.EXTRA_TEXT, crashText)
                 }
                 context.startActivity(Intent.createChooser(intent, "Отправить стектрейс"))
             },
@@ -88,6 +83,17 @@ fun TarotApp() {
         )
         return
     }
+
+    val scope = rememberCoroutineScope()
+    var question by remember { mutableStateOf("") }
+    var answer by remember { mutableStateOf<CardAnswer?>(null) }
+    var ready by remember { mutableStateOf(ModelStore.isReady(context)) }
+    var downloading by remember { mutableStateOf(false) }
+    var answered by remember { mutableStateOf(false) }
+    var progress by remember { mutableFloatStateOf(0f) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var diagnostics by remember { mutableStateOf<List<String>?>(null) }
+    var diagRunning by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -106,6 +112,11 @@ fun TarotApp() {
             modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
         )
 
+        diagnostics?.let { lines ->
+            DiagnosticsCard(lines, diagRunning)
+            Spacer(Modifier.height(16.dp))
+        }
+
         if (!ready) {
             ModelCard(
                 downloading = downloading,
@@ -120,68 +131,69 @@ fun TarotApp() {
                             }
                             ready = ModelStore.isReady(context)
                         } catch (t: Throwable) {
-                            error = "загрузка сорвалась: ${t.message}"
+                            error = "загрузка сорвалась: ${t.javaClass.simpleName}: ${t.message}"
                         } finally {
                             downloading = false
                         }
                     }
                 }
             )
-            return@Column
-        }
+        } else {
+            OutlinedTextField(
+                value = question,
+                onValueChange = {
+                    question = it
+                    answer = null
+                    answered = false
+                    error = null
+                },
+                label = { Text("Вопрос") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 4
+            )
 
-        OutlinedTextField(
-            value = question,
-            onValueChange = {
-                question = it
-                answer = null
-                answered = false
-                error = null
-            },
-            label = { Text("Вопрос") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2,
-            maxLines = 4
-        )
-
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = {
-                val text = question.trim()
-                if (text.isEmpty()) return@Button
-                error = null
-                answered = true
-                answer = null
-                scope.launch {
-                    try {
-                        answer = withContext(Dispatchers.Default) { decider.answer(text) }
-                    } catch (t: Throwable) {
-                        error = "модель не ответила: ${t.message}"
-                    } finally {
-                        answered = false
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    val text = question.trim()
+                    if (text.isEmpty()) return@Button
+                    error = null
+                    answered = true
+                    answer = null
+                    scope.launch {
+                        try {
+                            answer = withContext(Dispatchers.Default) {
+                                GlinerDecider(context).use { it.answer(text) }
+                            }
+                        } catch (t: Throwable) {
+                            error = "модель не ответила: ${t.javaClass.simpleName}: ${t.message}"
+                        } finally {
+                            answered = false
+                        }
                     }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            enabled = question.isNotBlank() && !answered
-        ) {
-            Text(
-                text = if (answered) "Модель думает…" else "Ответить картой",
-                style = MaterialTheme.typography.titleMedium
-            )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                enabled = question.isNotBlank() && !answered
+            ) {
+                Text(
+                    text = if (answered) "Модель думает…" else "Ответить картой",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            if (answered) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "Первый ответ дольше: модель грузится в память.",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
 
-        if (answered) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "Первый ответ дольше: модель грузится в память (10-20 с), дальше быстрее.",
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
         answer?.let { current ->
             AnswerCard(current)
@@ -200,11 +212,92 @@ fun TarotApp() {
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        TextButton(
+            onClick = {
+                if (diagRunning) return@TextButton
+                diagRunning = true
+                diagnostics = emptyList()
+                scope.launch {
+                    val steps = mutableListOf<String>()
+                    fun report(line: String) {
+                        steps.add(line)
+                        diagnostics = steps.toList()
+                        Log.i("TarotDiag", line)
+                    }
+                    try {
+                        report("1. модель: ${if (ModelStore.isReady(context)) "файлы на месте" else "не скачана"}")
+                        report("   путь: ${ModelStore.dir(context).absolutePath}")
+
+                        val tokenizer = withContext(Dispatchers.IO) {
+                            context.assets.open("tokenizer.bin").use { UnigramTokenizer.fromStream(it) }
+                        }
+                        report("2. токенизатор загружен")
+
+                        val ids = tokenizer.encode("Смерть")
+                        report("3. «Смерть» -> ${ids.joinToString(",")}")
+
+                        val labels = Deck.labelsRu
+                        report("4. метки: ${labels.size}, первая ${labels.first()}, последняя ${labels.last()}")
+
+                        val builder = PromptBuilder(tokenizer)
+                        val built = builder.build("Стоит ли мне уйти с работы?", labels)
+                        report("5. промпт: ${built.inputIds.size} токенов, меток ${built.labelPositions.size}, первая позиция ${built.labelPositions.first()}")
+
+                        if (!ModelStore.isReady(context)) {
+                            report("6. сессию не проверяю: модели нет")
+                        } else {
+                            report("6. создаю ONNX-сессию…")
+                            withContext(Dispatchers.Default) {
+                                GlinerDecider(context).use { d ->
+                                    d.ensureLoaded()
+                                    report("7. сессия создана")
+                                    val names = d.describeInputs()
+                                    report("8. входы: $names")
+                                    val result = d.answer("Стоит ли мне уйти с работы?")
+                                    report("9. ответ: ${result.card.title} ${(result.probability * 100).toInt()}%")
+                                }
+                            }
+                        }
+                        report("ГОТОВО")
+                    } catch (t: Throwable) {
+                        report("ОШИБКА: ${t.javaClass.name}: ${t.message}")
+                    } finally {
+                        diagRunning = false
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (diagRunning) "Проверяю…" else "Проверить движок")
+        }
+
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = "Движок: ${decider.name} · модель ${formatMb(ModelStore.installedBytes(context))}",
+            text = "модель ${formatMb(ModelStore.installedBytes(context))} из ${formatMb(ModelStore.totalBytes)}",
             style = MaterialTheme.typography.labelSmall
         )
+    }
+}
+
+@Composable
+private fun DiagnosticsCard(lines: List<String>, running: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Диагностика", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            if (lines.isEmpty() && running) {
+                Text("пошёл по шагам…", style = MaterialTheme.typography.labelSmall)
+            }
+            lines.forEach { line ->
+                Text(line, style = MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 
