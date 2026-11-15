@@ -34,7 +34,8 @@ fun CardArt(
     card: TarotCard,
     probability: Float,
     alternatives: List<Pair<TarotCard, Float>>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    badge: String? = null
 ) {
     val palette = paletteFor(card)
     val seed = card.titleEn.hashCode()
@@ -103,6 +104,20 @@ fun CardArt(
 
         drawPips(card, palette, seed)
         drawLabel(card, palette)
+
+        badge?.let {
+            drawCircle(
+                color = palette.bottom.copy(alpha = 0.85f),
+                radius = size.minDimension * 0.075f,
+                center = Offset(size.width * 0.12f, size.height * 0.055f)
+            )
+            drawTextOn(
+                text = it,
+                center = Offset(size.width * 0.12f, size.height * 0.055f),
+                color = palette.accent,
+                textSize = size.width * 0.075f
+            )
+        }
 
         // рамка: чем увереннее ответ, тем чётче
         drawRoundRect(
