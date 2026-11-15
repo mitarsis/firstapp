@@ -269,9 +269,7 @@ fun TarotApp() {
                         val labels = Deck.labelsRu
                         report("4. метки: ${labels.size}, первая ${labels.first()}, последняя ${labels.last()}")
 
-                        val builder = PromptBuilder(tokenizer)
-                        val built = builder.build("Стоит ли мне уйти с работы?", labels)
-                        report("5. промпт: ${built.inputIds.size} токенов, меток ${built.labelPositions.size}, первая позиция ${built.labelPositions.first()}")
+                        report("5. вектор вопроса: считается одним проходом")
 
                         if (!ModelStore.isReady(context)) {
                             report("6. сессию не проверяю: модели нет")
