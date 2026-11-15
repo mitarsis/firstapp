@@ -18,7 +18,8 @@ data class CardAnswer(
     val card: TarotCard,
     val reversed: Boolean,
     val probability: Float,
-    val runnerUp: Pair<TarotCard, Float>?
+    val runnerUp: Pair<TarotCard, Float>?,
+    val topic: String = ""
 )
 
 object Deck {
