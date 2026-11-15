@@ -461,67 +461,43 @@ private fun AnswerCard(answer: CardAnswer) {
     val card = answer.card
     val keywords = if (answer.reversed) card.shadow else card.light
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    if (answer.noAnswer) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            // Стопка: две гипотезы лежат за основной картой, сдвинуты и повёрнуты.
-            // Чем выше вероятность — тем плотнее карта и заметнее её край.
-            Box(
-                modifier = Modifier.fillMaxWidth(0.56f),
-                contentAlignment = Alignment.Center
-            ) {
-                answer.alternatives.getOrNull(1)?.let { (alt, p3) ->
-                    CardArt(
-                        card = alt,
-                        probability = p3,
-                        alternatives = emptyList(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer {
-                                rotationZ = -7f
-                                alpha = (0.18f + p3 * 1.6f).coerceIn(0.15f, 0.55f)
-                            }
-                            .offset(x = (-16).dp, y = (-12).dp)
-                            .clip(RoundedCornerShape(18.dp)),
-                        badge = "3"
-                    )
-                }
-                answer.alternatives.getOrNull(0)?.let { (alt, p2) ->
-                    CardArt(
-                        card = alt,
-                        probability = p2,
-                        alternatives = emptyList(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer {
-                                rotationZ = 6f
-                                alpha = (0.25f + p2 * 1.8f).coerceIn(0.2f, 0.75f)
-                            }
-                            .offset(x = 14.dp, y = 10.dp)
-                            .clip(RoundedCornerShape(18.dp)),
-                        badge = "2"
-                    )
-                }
-                CardArt(
-                    card = card,
-                    probability = answer.probability,
-                    alternatives = emptyList(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp)),
-                    badge = "1"
+            Column(Modifier.padding(20.dp)) {
+                Text("ОТВЕТА НЕТ", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Модель не нашла среди карт ничего, что отвечало бы на этот вопрос. " +
+                        "Это не ошибка: так честнее, чем выдать случайную карту.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            Text("ОТВЕТ", style = MaterialTheme.typography.labelMedium)
+        }
+        return
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text("ОТВЕТ", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(10.dp))
+
+        // Главная карта крупно и по центру
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CardArt(
+                card = card,
+                probability = answer.probability,
+                alternatives = emptyList(),
+                modifier = Modifier
+                    .fillMaxWidth(0.62f)
+                    .clip(RoundedCornerShape(20.dp))
+            )
             Spacer(Modifier.height(10.dp))
             Text(
                 text = card.title,
@@ -529,46 +505,61 @@ private fun AnswerCard(answer: CardAnswer) {
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(6.dp))
             Text(
-                text = card.titleEn,
+                text = "${card.titleEn} · ${(answer.probability * 100).toInt()}%",
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(14.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(3.dp)
-                    )
-            ) {}
+        }
+
+        // Второй и третий варианты — рядом, каждый со своей подписью
+        if (answer.alternatives.isNotEmpty()) {
+            Spacer(Modifier.height(22.dp))
+            Text("рядом по вероятности", style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = "уверенность ${(answer.probability * 100).toInt()}%",
-                style = MaterialTheme.typography.labelMedium
-            )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = keywords.joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
-            )
-            if (answer.topic.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "значение: ${answer.topic}",
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                answer.alternatives.forEachIndexed { index, (other, probability) ->
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CardArt(
+                            card = other,
+                            probability = probability,
+                            alternatives = emptyList(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = other.title,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "${(probability * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.height(14.dp))
-            LegendRow("1", card.title, answer.probability, strong = true)
-            answer.alternatives.forEachIndexed { index, (other, probability) ->
-                LegendRow((index + 2).toString(), other.title, probability, strong = false)
-            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Text(
+            text = keywords.joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        if (answer.topic.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = "значение: ${answer.topic}",
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 }

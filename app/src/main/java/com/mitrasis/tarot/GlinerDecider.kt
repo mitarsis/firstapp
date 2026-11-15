@@ -58,40 +58,78 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
-        // Шаг 1: о какой сфере вообще речь.
-        val topicLabel = classify(clean, CardMeanings.topics.map { it.first }).first().first
+        // Шаг 1: сфера вопроса.
+        val topicLabels = CardMeanings.topics.map { it.first }
+        val topicProbabilities = probabilities(clean, topicLabels, FloatArray(topicLabels.size))
+        val topicLabel = topicLabels[topicProbabilities.indices.maxByOrNull { topicProbabilities[it] } ?: 0]
         val suit = CardMeanings.topics.first { it.first == topicLabel }.second
 
-        // Шаг 2: облака тегов по Старшим и по картам нужной масти.
-        val (labels, titles) = CardMeanings.candidates(suit)
-        val titleByLabel = labels.zip(titles).toMap()
+        // Шаг 2: облака тегов по Старшим и картам нужной масти.
+        val (baseLabels, baseTitles) = CardMeanings.candidates(suit)
+        val labels = baseLabels + NO_ANSWER_LABEL
+        val titles = baseTitles + NO_ANSWER_LABEL
         val biases = Bias.forTitles(suit.ifEmpty { "majors" }, titles)
 
-        val ranked = classify(clean, labels, biases).take(3).map { (label, probability) ->
-            val title = titleByLabel[label] ?: titles.first()
-            Triple(Deck.byId(Deck.labelsRu.indexOf(title)), probability, label)
+        val probabilities = probabilities(clean, labels, biases)
+
+        // Топ-k сэмплирование: разнообразие без превращения в рандомайзер.
+        val order = probabilities.indices.sortedByDescending { probabilities[it] }
+        val top = order.take(TOP_K)
+        val picked = top[weightedPick(top, probabilities)]
+        val winnerTitle = titles[picked]
+
+        if (winnerTitle == NO_ANSWER_LABEL) {
+            return CardAnswer(
+                card = Deck.byId(0),
+                reversed = false,
+                probability = probabilities[picked],
+                runnerUp = null,
+                topic = "",
+                alternatives = emptyList(),
+                noAnswer = true
+            )
         }
 
-        val best = ranked.first()
-        val alternatives = ranked.drop(1).map { it.first to it.second }
+        val alternatives = order
+            .filter { it != picked && titles[it] != NO_ANSWER_LABEL }
+            .take(2)
+            .map { Deck.byId(Deck.labelsRu.indexOf(titles[it])) to probabilities[it] }
 
         return CardAnswer(
-            card = best.first,
+            card = Deck.byId(Deck.labelsRu.indexOf(winnerTitle)),
             reversed = false,
-            probability = best.second,
+            probability = probabilities[picked],
             runnerUp = alternatives.firstOrNull(),
-            topic = best.third,
+            topic = labels[picked],
             alternatives = alternatives
         )
     }
 
-    /** Метка -> вероятность, по убыванию. */
-    private fun classify(
-        text: String,
-        labels: List<String>,
-        biases: FloatArray? = null
-    ): List<Pair<String, Float>> {
+    /** Вероятности с учётом калибровки и температуры. */
+    private fun probabilities(text: String, labels: List<String>, biases: FloatArray): FloatArray {
         val built = promptBuilder.build(text, labels)
+        val raw = runModel(built, labels.size)
+        val corrected = FloatArray(raw.size) { raw[it] - (biases.getOrNull(it) ?: 0f) }
+        val scaled = FloatArray(corrected.size) { corrected[it] / TEMPERATURE }
+        val max = scaled.max()
+        val exps = FloatArray(scaled.size) { kotlin.math.exp((scaled[it] - max).toDouble()).toFloat() }
+        val sum = exps.sum().takeIf { it > 0f } ?: 1f
+        return FloatArray(exps.size) { exps[it] / sum }
+    }
+
+    private fun weightedPick(candidates: List<Int>, probabilities: FloatArray): Int {
+        val weights = candidates.map { probabilities[it] }
+        val total = weights.sum().takeIf { it > 0f } ?: return 0
+        var threshold = kotlin.random.Random.nextFloat() * total
+        for (index in candidates.indices) {
+            threshold -= weights[index]
+            if (threshold <= 0f) return index
+        }
+        return candidates.lastIndex
+    }
+
+    /** Логиты по меткам: энкодер -> склейка [L]-позиций -> классификатор. */
+    private fun runModel(built: PromptBuilder.BuiltInput, markerCount: Int): FloatArray {
         val environment = env ?: throw IllegalStateException("окружение ONNX не готово")
         val encoderSession = encoder ?: throw IllegalStateException("энкодер не загружен")
         val classifierSession = classifier ?: throw IllegalStateException("классификатор не загружен")
@@ -119,34 +157,23 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             }
         }
 
-        val markers = built.labelPositions.size
-        val gathered = FloatArray(markers * HIDDEN_SIZE)
+        val gathered = FloatArray(markerCount * HIDDEN_SIZE)
         built.labelPositions.forEachIndexed { index, position ->
             System.arraycopy(hidden, position * HIDDEN_SIZE, gathered, index * HIDDEN_SIZE, HIDDEN_SIZE)
         }
 
-        val logits: FloatArray
         OnnxTensor.createTensor(
             environment,
             FloatBuffer.wrap(gathered),
-            longArrayOf(markers.toLong(), HIDDEN_SIZE.toLong())
+            longArrayOf(markerCount.toLong(), HIDDEN_SIZE.toLong())
         ).use { embeddingTensor ->
             classifierSession.run(mapOf("hidden_state" to embeddingTensor)).use { result ->
                 val buffer = (result[0] as OnnxTensor).floatBuffer
-                logits = FloatArray(buffer.remaining())
+                val logits = FloatArray(buffer.remaining())
                 buffer.get(logits)
+                return logits
             }
         }
-
-        val corrected = if (biases != null && biases.size == logits.size) {
-            FloatArray(logits.size) { logits[it] - biases[it] }
-        } else {
-            logits
-        }
-        val probabilities = softmax(corrected)
-        return labels.indices
-            .map { labels[it] to probabilities[it] }
-            .sortedByDescending { it.second }
     }
 
     @Synchronized
@@ -214,6 +241,9 @@ class PromptBuilder(private val tokenizer: UnigramTokenizer) {
         private const val TOKEN_P = 250104
         private const val TOKEN_L = 250108
         private const val MAX_TOKENS = 500
+        private const val TOP_K = 5
+        private const val TEMPERATURE = 0.9f
+        private const val NO_ANSWER_LABEL = "вопрос не по адресу, ответа нет"
 
         /**
          * Порт WORD_PATTERN из эталона.
