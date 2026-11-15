@@ -22,11 +22,7 @@ object Reading {
             else -> "Вместе карты читаются так"
         }
 
-        val body = if (meanings.size == 1) {
-            meanings.first()
-        } else {
-            meanings.dropLast(1).joinToString(", ") + " и " + meanings.last()
-        }
+        val body = meanings.joinToString("; ")
 
         val reversedNote = if (answer.reversed) {
             " Главная карта перевёрнута: ${answer.card.shadow.firstOrNull().orEmpty()}."

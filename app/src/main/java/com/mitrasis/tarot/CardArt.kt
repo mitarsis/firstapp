@@ -189,16 +189,10 @@ private fun DrawScope.drawPips(card: TarotCard, palette: Palette, seed: Int) {
     val count = rankCount(rank)
 
     if (count == null) {
-        // двор: литера в ромбе
-        val diamond = androidx.compose.ui.graphics.Path().apply {
-            moveTo(center.x, center.y - minDim * 0.17f)
-            lineTo(center.x + minDim * 0.15f, center.y)
-            lineTo(center.x, center.y + minDim * 0.17f)
-            lineTo(center.x - minDim * 0.15f, center.y)
-            close()
-        }
-        drawPath(diamond, accent.copy(alpha = 0.45f), style = Stroke(thin * 1.4f))
-        drawTextOn(courtLetter(rank), center, accent, minDim * 0.15f)
+        // двор: символ масти + литера в кольце
+        drawSuitGlyph(card, palette, center, minDim * 0.15f, accent.copy(alpha = 0.55f), thin * 1.2f)
+        drawCircle(accent.copy(alpha = 0.6f), minDim * 0.085f, center, style = Stroke(thin * 1.6f))
+        drawTextOn(courtLetter(rank), center, accent, minDim * 0.10f)
         return
     }
 
@@ -306,10 +300,10 @@ private fun rankCount(rank: String): Int? = when (rank) {
 }
 
 private fun courtLetter(rank: String): String = when (rank) {
-    "Паж" -> "P"
-    "Рыцарь" -> "N"
-    "Королева" -> "Q"
-    "Король" -> "K"
+    "Паж" -> "П"
+    "Рыцарь" -> "Р"
+    "Королева" -> "Д"
+    "Король" -> "К"
     else -> "?"
 }
 
@@ -337,10 +331,7 @@ private fun DrawScope.drawCardSymbol(card: TarotCard, palette: Palette, sharpnes
     val color = palette.accent.copy(alpha = 0.35f + 0.5f * sharpness)
     val thin = size.minDimension * 0.012f
 
-    if (card.arcana != "Старший аркан") {
-        drawSuitGlyph(card, palette, center, r * 1.15f, color, thin)
-        return
-    }
+    if (card.arcana != "Старший аркан") return
 
     when (card.title) {
         "Шут" -> {
