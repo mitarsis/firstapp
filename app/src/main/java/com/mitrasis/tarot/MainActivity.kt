@@ -475,9 +475,11 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
-        // Три карты стопкой: главная сверху, две под ней со смещением и прозрачностью
+        // Веер: три карты развёрнуты, каждая видна целиком, центральная сверху
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(360.dp),
             contentAlignment = Alignment.Center
         ) {
             answer.alternatives.getOrNull(1)?.let { (other, probability) ->
@@ -486,13 +488,13 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                     probability = probability,
                     alternatives = emptyList(),
                     modifier = Modifier
-                        .fillMaxWidth(0.50f)
+                        .fillMaxWidth(0.46f)
                         .graphicsLayer {
-                            rotationZ = -14f
-                            alpha = 0.5f
+                            rotationZ = -17f
+                            alpha = 0.92f
                         }
-                        .offset(x = (-52).dp, y = (-30).dp)
-                        .clip(RoundedCornerShape(18.dp)),
+                        .offset(x = (-64).dp, y = 26.dp)
+                        .clip(RoundedCornerShape(16.dp)),
                     badge = "3",
                     variant = answer.variant + 2
                 )
@@ -503,13 +505,13 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                     probability = probability,
                     alternatives = emptyList(),
                     modifier = Modifier
-                        .fillMaxWidth(0.50f)
+                        .fillMaxWidth(0.46f)
                         .graphicsLayer {
-                            rotationZ = 12f
-                            alpha = 0.68f
+                            rotationZ = 17f
+                            alpha = 0.95f
                         }
-                        .offset(x = 50.dp, y = 26.dp)
-                        .clip(RoundedCornerShape(18.dp)),
+                        .offset(x = 64.dp, y = 26.dp)
+                        .clip(RoundedCornerShape(16.dp)),
                     badge = "2",
                     variant = answer.variant + 1
                 )
@@ -519,7 +521,8 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                 probability = answer.probability,
                 alternatives = emptyList(),
                 modifier = Modifier
-                    .fillMaxWidth(0.50f)
+                    .fillMaxWidth(0.48f)
+                    .offset(y = (-14).dp)
                     .clip(RoundedCornerShape(20.dp)),
                 badge = "1",
                 variant = answer.variant
