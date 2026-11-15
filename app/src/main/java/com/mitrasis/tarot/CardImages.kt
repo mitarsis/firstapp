@@ -61,7 +61,7 @@ fun CardStack(
         0 -> emptyList()
         1 -> listOf(1f)
         2 -> listOf(0.75f, 1f)
-        else -> listOf(0.55f, 0.75f, 1f)
+        else -> listOf(0.40f, 0.65f, 1f)
     }
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
