@@ -42,6 +42,57 @@ object CardImages {
     }
 }
 
+/** Двойная золотая рамка с уголками и ромбами — поверх рисунка. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: Int, height: Int) {
+    val gold = androidx.compose.ui.graphics.Color(0xFFD9B25F)
+    val w = width.toFloat()
+    val h = height.toFloat()
+    val outer = androidx.compose.ui.geometry.CornerRadius(w * 0.045f, w * 0.045f)
+
+    drawRoundRect(
+        color = gold.copy(alpha = 0.75f),
+        topLeft = androidx.compose.ui.geometry.Offset(1f, 1f),
+        size = androidx.compose.ui.geometry.Size(w - 2f, h - 2f),
+        cornerRadius = outer,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.009f)
+    )
+    val inset = w * 0.035f
+    drawRoundRect(
+        color = gold.copy(alpha = 0.35f),
+        topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+        size = androidx.compose.ui.geometry.Size(w - inset * 2f, h - inset * 2f),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.03f, w * 0.03f),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0035f)
+    )
+
+    // уголки-ромбы
+    val r = w * 0.018f
+    listOf(
+        androidx.compose.ui.geometry.Offset(inset, inset),
+        androidx.compose.ui.geometry.Offset(w - inset, inset),
+        androidx.compose.ui.geometry.Offset(inset, h - inset),
+        androidx.compose.ui.geometry.Offset(w - inset, h - inset)
+    ).forEach { point ->
+        val diamond = androidx.compose.ui.graphics.Path().apply {
+            moveTo(point.x, point.y - r)
+            lineTo(point.x + r, point.y)
+            lineTo(point.x, point.y + r)
+            lineTo(point.x - r, point.y)
+            close()
+        }
+        drawPath(diamond, gold.copy(alpha = 0.85f))
+    }
+
+    // верхний орнамент: три штриха
+    val cx = w / 2f
+    drawLine(gold.copy(alpha = 0.5f),
+        androidx.compose.ui.geometry.Offset(cx - w * 0.09f, h * 0.028f),
+        androidx.compose.ui.geometry.Offset(cx + w * 0.09f, h * 0.028f),
+        strokeWidth = w * 0.004f)
+    drawCircle(gold.copy(alpha = 0.8f), w * 0.008f,
+        androidx.compose.ui.geometry.Offset(cx, h * 0.028f))
+}
+
 @Composable
 fun rememberCardImage(context: Context, cardId: Int): ImageBitmap? =
     remember(cardId) { CardImages.load(context, cardId) }
@@ -82,5 +133,7 @@ fun CardStack(
                 blendMode = BlendMode.Screen
             )
         }
+
+        drawFrame(width, height)
     }
 }
