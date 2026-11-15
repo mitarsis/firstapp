@@ -94,42 +94,60 @@ fun CardArt(
     }
 }
 
-/** Раскладка пипсов как на игральных картах: 1-10 по рангу, дворы — литера. */
+/**
+ * Сигил Младшего аркана: орнаментальные кольца, масть по кругу (роза),
+ * крупный символ масти в центре. Никакой сетки из смазанных точек.
+ */
 private fun DrawScope.drawPips(card: TarotCard, palette: Palette, seed: Int) {
     if (card.arcana == "Старший аркан") return
 
+    val center = Offset(size.width / 2f, size.height * 0.50f)
+    val minDim = size.minDimension
+    val accent = palette.accent
+    val thin = minDim * 0.008f
+
+    // орнамент
+    drawCircle(accent.copy(alpha = 0.12f), minDim * 0.40f, center, style = Stroke(thin))
+    drawCircle(accent.copy(alpha = 0.07f), minDim * 0.31f, center, style = Stroke(thin * 0.8f))
+    for (index in 0 until 4) {
+        val angle = Math.toRadians(90.0 * index + 45.0)
+        val from = Offset(
+            center.x + (minDim * 0.31f * cos(angle)).toFloat(),
+            center.y + (minDim * 0.31f * sin(angle)).toFloat()
+        )
+        drawCircle(accent.copy(alpha = 0.25f), thin * 1.6f, from)
+    }
+
     val rank = card.title.substringBefore(' ')
     val count = rankCount(rank)
-    val center = Offset(size.width / 2f, size.height / 2f)
-    val step = size.width * 0.17f
 
     if (count == null) {
-        // двор: одна крупная фигура с литерой
-        val letter = courtLetter(rank)
-        drawCircle(
-            color = palette.accent.copy(alpha = 0.16f),
-            radius = size.minDimension * 0.26f,
-            center = center,
-            style = Stroke(width = 2f)
-        )
-        drawTextOn(letter, center.copy(y = center.y + size.height * 0.04f), palette.accent, size.width * 0.16f)
+        // двор: литера в ромбе
+        val diamond = androidx.compose.ui.graphics.Path().apply {
+            moveTo(center.x, center.y - minDim * 0.17f)
+            lineTo(center.x + minDim * 0.15f, center.y)
+            lineTo(center.x, center.y + minDim * 0.17f)
+            lineTo(center.x - minDim * 0.15f, center.y)
+            close()
+        }
+        drawPath(diamond, accent.copy(alpha = 0.45f), style = Stroke(thin * 1.4f))
+        drawTextOn(courtLetter(rank), center, accent, minDim * 0.15f)
         return
     }
 
-    val columns = if (count <= 3) count else 3
-    val rows = (count + columns - 1) / columns
-    var drawn = 0
-    for (row in 0 until rows) {
-        for (column in 0 until columns) {
-            if (drawn >= count) break
-            val x = center.x + (column - (columns - 1) / 2f) * step
-            val y = center.y + (row - (rows - 1) / 2f) * step * 1.25f
-            val jitter = ((seed shr (drawn % 8)) % 9 - 4) * 0.6f
-            val position = Offset(x + jitter, y)
-            drawSuitShape(card, palette, position, size.width * 0.035f)
-            drawn++
+    if (count > 1) {
+        val radius = minDim * 0.37f
+        for (index in 0 until count) {
+            val angle = Math.toRadians(360.0 / count * index - 90.0)
+            val position = Offset(
+                center.x + (radius * cos(angle)).toFloat(),
+                center.y + (radius * sin(angle)).toFloat()
+            )
+            drawSuitShape(card, palette, position, minDim * 0.021f)
         }
     }
+
+    drawSuitGlyph(card, palette, center, minDim * 0.12f, accent.copy(alpha = 0.9f), thin * 1.5f)
 }
 
 private fun DrawScope.drawSuitShape(card: TarotCard, palette: Palette, center: Offset, radius: Float) {

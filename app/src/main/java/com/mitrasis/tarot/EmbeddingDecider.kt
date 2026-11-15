@@ -54,12 +54,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
-        val vector = embed(QUESTION_PREFIX + clean)
-        val similarities = cards.similarities(vector)
-        val order = similarities.indices.sortedByDescending { similarities[it] }
-        val best = order.first()
-
-        if (similarities[best] < NO_ANSWER_THRESHOLD) {
+        if (QuestionGuard.isNotLifeQuestion(clean)) {
             return CardAnswer(
                 card = Deck.byId(0),
                 reversed = false,
@@ -71,6 +66,10 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             )
         }
 
+        val vector = embed(QUESTION_PREFIX + clean)
+        val similarities = cards.similarities(vector)
+        val order = similarities.indices.sortedByDescending { similarities[it] }
+        val best = order.first()
         // Считаем распределение не по всем 78 картам, а по пяти самым близким:
         // у остальных сходство почти одинаковое, и проценты превращались в шум.
         val shortlist = order.take(SHORTLIST)
@@ -191,9 +190,6 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         private const val HIDDEN_SIZE = 384
         private const val MAX_TOKENS = 128
         private const val QUESTION_PREFIX = "query: "
-
-        /** Ниже этого косинуса считаем, что карты не про вопрос. */
-        private const val NO_ANSWER_THRESHOLD = 0.72f
 
         /** Доля перевёрнутых карт, в процентах. */
         private const val REVERSED_PERCENT = 35
