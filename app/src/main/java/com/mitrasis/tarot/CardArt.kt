@@ -65,42 +65,8 @@ fun CardArt(
             )
         }
 
-        // сигил
-        val petals = 3 + abs(seed % 6)
-        val rotation = (abs(seed / 7) % 360).toFloat()
-        val sharpness = probability.coerceIn(0.15f, 1f)
-        val radius = size.minDimension * (0.30f - 0.08f * (1f - sharpness))
-        val center = Offset(size.width / 2f, size.height / 2f)
-
-        rotate(rotation, center) {
-            repeat(petals) { petal ->
-                val angle = 360f / petals * petal
-                val tipX = center.x + cos(Math.toRadians(angle.toDouble())).toFloat() * radius
-                val tipY = center.y + sin(Math.toRadians(angle.toDouble())).toFloat() * radius
-                drawLine(
-                    color = palette.accent.copy(alpha = 0.20f + 0.65f * sharpness),
-                    start = center,
-                    end = Offset(tipX, tipY),
-                    strokeWidth = 1.5f + 3f * sharpness
-                )
-                drawCircle(
-                    color = palette.accent.copy(alpha = 0.30f + 0.5f * sharpness),
-                    radius = size.minDimension * 0.022f,
-                    center = Offset(tipX, tipY)
-                )
-            }
-            drawCircle(
-                color = palette.accent.copy(alpha = 0.85f),
-                radius = size.minDimension * 0.035f,
-                center = center
-            )
-            drawCircle(
-                color = palette.accent.copy(alpha = 0.5f),
-                radius = size.minDimension * 0.10f,
-                center = center,
-                style = Stroke(width = 1.5f)
-            )
-        }
+        // Узнаваемый символ вместо абстрактного узора
+        drawCardSymbol(card, palette, probability.coerceIn(0.15f, 1f))
 
         drawPips(card, palette, seed)
         drawLabel(card, palette)
@@ -273,4 +239,197 @@ private fun romanNumeral(value: Int): String {
         }
     }
     return builder.toString()
+}
+
+/** Крупный символ карты: у Старших — свой глиф, у Младших — масть. */
+private fun DrawScope.drawCardSymbol(card: TarotCard, palette: Palette, sharpness: Float) {
+    val center = Offset(size.width / 2f, size.height * 0.46f)
+    val r = size.minDimension * 0.24f
+    val color = palette.accent.copy(alpha = 0.35f + 0.5f * sharpness)
+    val thin = size.minDimension * 0.012f
+
+    if (card.arcana != "Старший аркан") {
+        drawSuitGlyph(card, palette, center, r * 1.15f, color, thin)
+        return
+    }
+
+    when (card.title) {
+        "Шут" -> {
+            drawCircle(color.copy(alpha = 0.25f), r, center, style = Stroke(thin * 1.5f))
+            drawLine(color, Offset(center.x - r * 0.6f, center.y + r * 0.9f),
+                Offset(center.x + r * 0.6f, center.y - r * 1.1f), thin * 1.6f)
+        }
+        "Маг" -> {
+            drawLine(color, Offset(center.x, center.y - r), Offset(center.x, center.y + r), thin * 2f)
+            drawCircle(color, r * 0.18f, Offset(center.x, center.y - r * 1.15f))
+            drawCircle(color, r * 0.5f, Offset(center.x, center.y + r * 0.1f), style = Stroke(thin))
+        }
+        "Верховная Жрица" -> {
+            drawArc(color, 200f, 140f, false,
+                Offset(center.x - r, center.y - r), Size(r * 2f, r * 2f), style = Stroke(thin * 2f))
+            drawLine(color, Offset(center.x - r * 0.8f, center.y - r), Offset(center.x - r * 0.8f, center.y + r), thin)
+            drawLine(color, Offset(center.x + r * 0.8f, center.y - r), Offset(center.x + r * 0.8f, center.y + r), thin)
+        }
+        "Императрица" -> {
+            drawCircle(color, r * 0.75f, center, style = Stroke(thin * 1.6f))
+            drawLine(color, Offset(center.x - r * 0.9f, center.y + r * 0.5f), Offset(center.x, center.y - r * 0.9f), thin)
+            drawLine(color, Offset(center.x + r * 0.9f, center.y + r * 0.5f), Offset(center.x, center.y - r * 0.9f), thin)
+        }
+        "Император" -> {
+            drawRect(color, Offset(center.x - r * 0.7f, center.y - r * 0.7f), Size(r * 1.4f, r * 1.4f), style = Stroke(thin * 2f))
+            drawLine(color, Offset(center.x, center.y - r * 1.1f), Offset(center.x, center.y - r * 0.7f), thin * 2f)
+        }
+        "Иерофант" -> {
+            drawLine(color, Offset(center.x, center.y - r), Offset(center.x, center.y + r), thin * 2f)
+            drawLine(color, Offset(center.x - r * 0.6f, center.y - r * 0.35f), Offset(center.x + r * 0.6f, center.y - r * 0.35f), thin * 1.6f)
+            drawLine(color, Offset(center.x - r * 0.45f, center.y + r * 0.15f), Offset(center.x + r * 0.45f, center.y + r * 0.15f), thin * 1.6f)
+        }
+        "Влюблённые" -> {
+            drawCircle(color, r * 0.62f, Offset(center.x - r * 0.35f, center.y), style = Stroke(thin * 1.6f))
+            drawCircle(color, r * 0.62f, Offset(center.x + r * 0.35f, center.y), style = Stroke(thin * 1.6f))
+        }
+        "Колесница", "Колесо Фортуны" -> {
+            drawCircle(color, r, center, style = Stroke(thin * 1.8f))
+            val spokes = if (card.title == "Колесница") 6 else 8
+            for (index in 0 until spokes) {
+                val angle = Math.toRadians(360.0 / spokes * index)
+                drawLine(color, center,
+                    Offset(center.x + (r * cos(angle)).toFloat(), center.y + (r * sin(angle)).toFloat()), thin)
+            }
+        }
+        "Сила" -> {
+            drawCircle(color, r * 0.9f, center, style = Stroke(thin * 1.8f))
+            drawLine(color, Offset(center.x - r * 0.5f, center.y), Offset(center.x + r * 0.5f, center.y), thin * 2f)
+            drawLine(color, Offset(center.x, center.y - r * 0.5f), Offset(center.x, center.y + r * 0.5f), thin * 2f)
+        }
+        "Отшельник" -> {
+            drawRect(color, Offset(center.x - r * 0.45f, center.y - r * 0.5f), Size(r * 0.9f, r), style = Stroke(thin * 1.6f))
+            drawCircle(color, r * 0.2f, center)
+        }
+        "Справедливость" -> {
+            drawLine(color, Offset(center.x, center.y - r), Offset(center.x, center.y + r * 0.9f), thin * 2f)
+            drawLine(color, Offset(center.x - r * 0.9f, center.y - r * 0.4f), Offset(center.x + r * 0.9f, center.y - r * 0.4f), thin * 1.6f)
+            drawLine(color, Offset(center.x - r * 0.9f, center.y - r * 0.4f), Offset(center.x - r * 0.75f, center.y + r * 0.15f), thin)
+            drawLine(color, Offset(center.x + r * 0.9f, center.y - r * 0.4f), Offset(center.x + r * 0.75f, center.y + r * 0.15f), thin)
+        }
+        "Повешенный" -> {
+            drawLine(color, Offset(center.x, center.y - r), Offset(center.x, center.y - r * 0.2f), thin * 2f)
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(center.x - r * 0.6f, center.y + r * 0.9f)
+                lineTo(center.x + r * 0.6f, center.y + r * 0.9f)
+                lineTo(center.x, center.y - r * 0.2f)
+                close()
+            }
+            drawPath(path, color, style = Stroke(thin * 1.6f))
+        }
+        "Смерть" -> {
+            drawCircle(color, r * 0.8f, center, style = Stroke(thin * 1.8f))
+            drawArc(color, 200f, 140f, false,
+                Offset(center.x + r * 0.3f, center.y - r * 1.1f), Size(r * 1.2f, r * 1.2f), style = Stroke(thin * 2f))
+        }
+        "Умеренность" -> {
+            drawLine(color, Offset(center.x - r, center.y - r * 0.5f), Offset(center.x - r * 0.3f, center.y + r * 0.6f), thin * 1.6f)
+            drawLine(color, Offset(center.x + r, center.y - r * 0.5f), Offset(center.x + r * 0.3f, center.y + r * 0.6f), thin * 1.6f)
+            drawLine(color, Offset(center.x - r * 0.3f, center.y + r * 0.6f), Offset(center.x + r * 0.3f, center.y + r * 0.6f), thin)
+        }
+        "Дьявол" -> {
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(center.x, center.y + r)
+                lineTo(center.x - r * 0.9f, center.y - r * 0.6f)
+                lineTo(center.x + r * 0.9f, center.y - r * 0.6f)
+                close()
+            }
+            drawPath(path, color, style = Stroke(thin * 1.8f))
+            drawCircle(color, r * 0.25f, Offset(center.x, center.y + r * 0.15f))
+        }
+        "Башня" -> {
+            drawRect(color, Offset(center.x - r * 0.5f, center.y - r * 0.4f), Size(r, r * 1.6f), style = Stroke(thin * 1.8f))
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(center.x + r * 0.2f, center.y - r * 1.2f)
+                lineTo(center.x - r * 0.2f, center.y - r * 0.4f)
+                lineTo(center.x + r * 0.15f, center.y - r * 0.35f)
+                lineTo(center.x - r * 0.25f, center.y + r * 0.4f)
+            }
+            drawPath(path, color, style = Stroke(thin * 1.6f))
+        }
+        "Звезда" -> {
+            val points = 8
+            val path = androidx.compose.ui.graphics.Path()
+            for (index in 0 until points * 2) {
+                val angle = Math.toRadians(180.0 / points * index - 90)
+                val radius = if (index % 2 == 0) r else r * 0.45f
+                val x = center.x + (radius * cos(angle)).toFloat()
+                val y = center.y + (radius * sin(angle)).toFloat()
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            drawPath(path, color, style = Stroke(thin * 1.6f))
+        }
+        "Луна" -> {
+            drawArc(color, 90f, 180f, false,
+                Offset(center.x - r * 0.5f, center.y - r), Size(r * 1.6f, r * 2f), style = Stroke(thin * 2f))
+            drawCircle(color, r * 0.12f, Offset(center.x + r * 0.7f, center.y - r * 0.4f))
+            drawCircle(color, r * 0.09f, Offset(center.x + r * 1f, center.y + r * 0.2f))
+        }
+        "Солнце" -> {
+            drawCircle(color, r * 0.55f, center, style = Stroke(thin * 1.8f))
+            for (index in 0 until 12) {
+                val angle = Math.toRadians(30.0 * index)
+                drawLine(color,
+                    Offset(center.x + (r * 0.75f * cos(angle)).toFloat(), center.y + (r * 0.75f * sin(angle)).toFloat()),
+                    Offset(center.x + (r * 1.05f * cos(angle)).toFloat(), center.y + (r * 1.05f * sin(angle)).toFloat()),
+                    thin * 1.6f)
+            }
+        }
+        "Суд" -> {
+            drawRect(color, Offset(center.x - r * 0.15f, center.y - r * 0.2f), Size(r * 0.3f, r * 1.1f), style = Stroke(thin * 1.6f))
+            drawCircle(color, r * 0.55f, Offset(center.x, center.y - r * 0.6f), style = Stroke(thin * 1.6f))
+        }
+        "Мир" -> {
+            drawOval(color, Offset(center.x - r * 0.7f, center.y - r), Size(r * 1.4f, r * 2f), style = Stroke(thin * 1.8f))
+            drawCircle(color, r * 0.2f, center)
+        }
+        else -> {
+            drawCircle(color, r * 0.8f, center, style = Stroke(thin * 1.6f))
+        }
+    }
+}
+
+/** Символ масти: жезл, чаша, клинок, пентакль. */
+private fun DrawScope.drawSuitGlyph(
+    card: TarotCard,
+    palette: Palette,
+    center: Offset,
+    r: Float,
+    color: Color,
+    thin: Float
+) {
+    when {
+        card.title.endsWith("Жезлов") -> {
+            drawLine(color, Offset(center.x, center.y - r), Offset(center.x, center.y + r), thin * 2.2f)
+            drawCircle(color, thin * 2.2f, Offset(center.x, center.y - r))
+        }
+        card.title.endsWith("Кубков") -> {
+            drawArc(color, 0f, 180f, false, Offset(center.x - r * 0.7f, center.y - r * 0.6f),
+                Size(r * 1.4f, r * 1.2f), style = Stroke(thin * 1.8f))
+            drawLine(color, Offset(center.x, center.y + r * 0.2f), Offset(center.x, center.y + r * 0.9f), thin * 1.8f)
+        }
+        card.title.endsWith("Мечей") -> {
+            drawLine(color, Offset(center.x, center.y - r), Offset(center.x, center.y + r * 0.6f), thin * 1.8f)
+            drawLine(color, Offset(center.x - r * 0.5f, center.y + r * 0.3f), Offset(center.x + r * 0.5f, center.y + r * 0.3f), thin * 1.4f)
+        }
+        else -> {
+            drawCircle(color, r * 0.75f, center, style = Stroke(thin * 1.4f))
+            val path = androidx.compose.ui.graphics.Path()
+            for (index in 0 until 10) {
+                val angle = Math.toRadians(36.0 * index - 90)
+                val radius = if (index % 2 == 0) r * 0.65f else r * 0.25f
+                val x = center.x + (radius * cos(angle)).toFloat()
+                val y = center.y + (radius * sin(angle)).toFloat()
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            drawPath(path, color, style = Stroke(thin))
+        }
+    }
 }
