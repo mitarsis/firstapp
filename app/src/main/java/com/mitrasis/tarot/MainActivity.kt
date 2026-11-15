@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -471,76 +472,42 @@ private fun ModelCard(
 
 @Composable
 private fun AnswerCard(answer: CardAnswer, question: String) {
+    val context = LocalContext.current
     val card = answer.card
+    val trio = listOf(card) + answer.alternatives.map { it.first }
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
-        // Веер: три карты развёрнуты, каждая видна целиком, центральная сверху
+        // Transparent Tarot: три карты лежат друг на друге, штрихи складываются
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(420.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth(0.72f)
+                .align(Alignment.CenterHorizontally)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(18.dp)
+                )
+                .padding(1.dp)
         ) {
-            answer.alternatives.getOrNull(1)?.let { (other, probability) ->
-                CardArt(
-                    card = other,
-                    probability = probability,
-                    alternatives = emptyList(),
-                    modifier = Modifier
-                        .fillMaxWidth(0.40f)
-                        .graphicsLayer {
-                            rotationZ = -21f
-                            alpha = 0.9f
-                        }
-                        .offset(x = (-96).dp, y = 34.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    badge = "3",
-                    variant = answer.variant + 2
-                )
-            }
-            answer.alternatives.getOrNull(0)?.let { (other, probability) ->
-                CardArt(
-                    card = other,
-                    probability = probability,
-                    alternatives = emptyList(),
-                    modifier = Modifier
-                        .fillMaxWidth(0.40f)
-                        .graphicsLayer {
-                            rotationZ = 21f
-                            alpha = 0.93f
-                        }
-                        .offset(x = 96.dp, y = 34.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    badge = "2",
-                    variant = answer.variant + 1
-                )
-            }
-            CardArt(
-                card = card,
-                probability = answer.probability,
-                alternatives = emptyList(),
-                modifier = Modifier
-                    .fillMaxWidth(0.46f)
-                    .offset(y = (-12).dp)
-                    .clip(RoundedCornerShape(20.dp)),
-                badge = "1",
-                variant = answer.variant
+            CardStack(
+                context = context,
+                cards = trio,
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         LegendRow("1", card.title, answer.probability, strong = true)
         answer.alternatives.forEachIndexed { index, (other, probability) ->
             LegendRow((index + 2).toString(), other.title, probability, strong = false)
         }
 
-        Spacer(Modifier.height(16.dp))
-        Reading.interpret(question, answer).forEach { paragraph ->
+        if (answer.summary.isNotBlank()) {
+            Spacer(Modifier.height(16.dp))
             Text(
-                text = paragraph,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 4.dp)
+                text = answer.summary.replaceFirstChar { it.uppercase() } + ".",
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }

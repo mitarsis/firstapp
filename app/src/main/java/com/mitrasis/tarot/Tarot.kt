@@ -22,7 +22,8 @@ data class CardAnswer(
     val topic: String = "",
     val alternatives: List<Pair<TarotCard, Float>> = emptyList(),
     val noAnswer: Boolean = false,
-    val variant: Int = 0
+    val variant: Int = 0,
+    val summary: String = ""
 )
 
 object Deck {
