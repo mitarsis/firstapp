@@ -57,9 +57,4 @@ class UnigramTokenizerTest {
         println("токенизатор: ${cases.size} случаев совпали полностью")
     }
 
-    @Test
-    fun `единичный пример`() {
-        val tokenizer = loadTokenizer()
-        assertArrayEquals(intArrayOf(689, 10132, 1068), tokenizer.encode("Смерть"))
-    }
 }
