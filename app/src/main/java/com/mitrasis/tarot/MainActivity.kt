@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -440,6 +441,15 @@ private fun AnswerCard(answer: CardAnswer) {
             modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            CardArt(
+                card = card,
+                probability = answer.probability,
+                alternatives = answer.alternatives,
+                modifier = Modifier
+                    .fillMaxWidth(0.52f)
+                    .clip(RoundedCornerShape(18.dp))
+            )
+            Spacer(Modifier.height(16.dp))
             Text("ОТВЕТ", style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
             Text(
