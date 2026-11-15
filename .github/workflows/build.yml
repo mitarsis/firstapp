@@ -28,6 +28,11 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          gradle testDebugUnitTest --no-daemon --console=plain 2>&1 | tee -a build-log.txt
+
       - name: Build debug APK
         run: |
           set -o pipefail
