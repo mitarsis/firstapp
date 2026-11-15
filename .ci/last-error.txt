@@ -3,8 +3,8 @@ Daemon will be stopped at the end of the build
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
-> Task :app:checkDebugAarMetadata
 > Task :app:generateDebugResValues FROM-CACHE
+> Task :app:checkDebugAarMetadata
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources FROM-CACHE
 > Task :app:mergeDebugResources FROM-CACHE
@@ -21,8 +21,8 @@ Daemon will be stopped at the end of the build
 > Task :app:javaPreCompileDebugUnitTest FROM-CACHE
 > Task :app:compileDebugKotlin
 > Task :app:compileDebugJavaWithJavac NO-SOURCE
-> Task :app:bundleDebugClassesToRuntimeJar
 > Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
 > Task :app:processDebugJavaRes
 > Task :app:compileDebugUnitTestKotlin
 > Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
@@ -34,7 +34,7 @@ UnigramTokenizerTest > совпадает с эталонным токениза
     java.lang.AssertionError at UnigramTokenizerTest.kt:54
 
 2 tests completed, 1 failed
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794702138067.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794702315138.json
 
 FAILURE: Build failed with an exception.
 
@@ -45,5 +45,5 @@ Execution failed for task ':app:testDebugUnitTest'.
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 21s
+BUILD FAILED in 28s
 22 actionable tasks: 10 executed, 12 from cache
