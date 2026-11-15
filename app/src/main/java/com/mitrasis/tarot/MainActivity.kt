@@ -1,6 +1,7 @@
 package com.mitrasis.tarot
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -41,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.system.Os
+import android.system.OsConstants
 import java.io.File
 import java.util.Locale
 
@@ -233,6 +236,12 @@ fun TarotApp() {
                         Log.i("TarotDiag", line)
                     }
                     try {
+                        val pageSize = try {
+                            Os.sysconf(OsConstants._SC_PAGESIZE).toString()
+                        } catch (t: Throwable) {
+                            "?"
+                        }
+                        report("0. abi: ${Build.SUPPORTED_ABIS.joinToString("/")} · страница: $pageSize байт · sdk ${Build.VERSION.SDK_INT}")
                         report("1. модель: ${if (ModelStore.isReady(context)) "файлы на месте" else "не скачана"}")
                         report("   путь: ${ModelStore.dir(context).absolutePath}")
 
