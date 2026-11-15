@@ -190,7 +190,7 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         /** Разнообразие без рандомайзера: случайный выбор только из топ-5. */
         private const val TOP_K = 5
-        private const val TEMPERATURE = 0.9f
+        private const val TEMPERATURE = 1.5f
 
         /** Метка-отказ: заберёт расплывчатые вопросы вместо случайной карты. */
         private const val NO_ANSWER_LABEL = "вопрос не по адресу, ответа нет"
