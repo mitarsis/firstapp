@@ -45,7 +45,7 @@ fun CardArt(
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
         val corner = CornerRadius(size.width * 0.08f, size.width * 0.08f)
 
-        val tilt = ((seed % 9).absoluteValue % 9) / 9f
+        val tilt = (((seed % 9) + 9) % 9) / 9f
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(palette.top, palette.bottom),
