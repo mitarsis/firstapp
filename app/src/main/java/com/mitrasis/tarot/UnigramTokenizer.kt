@@ -122,18 +122,22 @@ class UnigramTokenizer private constructor(
          */
         internal fun clean(text: String): String {
             val sb = StringBuilder(text.length + 1)
-            for (ch in text) {
-                val type = Character.getType(ch)
+            var i = 0
+            while (i < text.length) {
+                val cp = text.codePointAt(i)
+                val width = Character.charCount(cp)
+                val type = Character.getType(cp)
                 val junk = type == Character.CONTROL.toInt() ||
                     type == Character.FORMAT.toInt() ||
                     type == Character.SURROGATE.toInt() ||
                     type == Character.PRIVATE_USE.toInt() ||
                     type == Character.UNASSIGNED.toInt()
-                if (junk || ch.isWhitespace() || Character.isSpaceChar(ch)) {
-                    sb.append(' ')
-                } else {
-                    sb.append(ch)
+                when {
+                    junk -> sb.append(' ')
+                    Character.isWhitespace(cp) || Character.isSpaceChar(cp) -> sb.append(' ')
+                    else -> sb.append(text, i, i + width)
                 }
+                i += width
             }
             val squeezed = sb.split(' ').filter { it.isNotEmpty() }.joinToString(" ")
             return Normalizer.normalize(squeezed, Normalizer.Form.NFKC)
