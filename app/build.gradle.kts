@@ -51,6 +51,14 @@ android {
         compose = true
     }
 
+    packaging {
+        jniLibs {
+            // сжимаем нативные библиотеки: ONNX Runtime иначе лежит в APK
+            // несжатым на 36 МБ и не влезает в лимит Telegram
+            useLegacyPackaging = true
+        }
+    }
+
     testOptions {
         unitTests.all {
             it.testLogging {
