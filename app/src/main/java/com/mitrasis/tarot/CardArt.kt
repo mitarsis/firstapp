@@ -169,7 +169,11 @@ private fun DrawScope.drawSuitShape(card: TarotCard, palette: Palette, center: O
 
 private fun DrawScope.drawLabel(card: TarotCard, palette: Palette) {
     val top = card.arcana == "Старший аркан"
-    val label = if (top) romanNumeral(card.id + 1) else card.title.substringBefore(' ')
+    val label = if (top) {
+        if (card.id == 0) "0" else romanNumeral(card.id)
+    } else {
+        card.title.substringBefore(' ')
+    }
     drawTextOn(
         text = label,
         center = Offset(size.width / 2f, size.height * 0.09f),
