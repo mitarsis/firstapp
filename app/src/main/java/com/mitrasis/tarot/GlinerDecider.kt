@@ -187,6 +187,13 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     companion object {
         private const val TOKENIZER_ASSET = "tokenizer.bin"
         private const val HIDDEN_SIZE = 768
+
+        /** Разнообразие без рандомайзера: случайный выбор только из топ-5. */
+        private const val TOP_K = 5
+        private const val TEMPERATURE = 0.9f
+
+        /** Метка-отказ: заберёт расплывчатые вопросы вместо случайной карты. */
+        private const val NO_ANSWER_LABEL = "вопрос не по адресу, ответа нет"
     }
 }
 
@@ -241,9 +248,6 @@ class PromptBuilder(private val tokenizer: UnigramTokenizer) {
         private const val TOKEN_P = 250104
         private const val TOKEN_L = 250108
         private const val MAX_TOKENS = 500
-        private const val TOP_K = 5
-        private const val TEMPERATURE = 0.9f
-        private const val NO_ANSWER_LABEL = "вопрос не по адресу, ответа нет"
 
         /**
          * Порт WORD_PATTERN из эталона.
