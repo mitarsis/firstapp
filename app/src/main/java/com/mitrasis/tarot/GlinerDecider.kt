@@ -60,10 +60,13 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         // Схема v2: тема — фильтр кандидатов, а не подсказка в тексте.
         // Иначе модель отвечает на слово «выбор» вместо самого вопроса.
-        val topic = classify(clean, TOPICS).first().first
+        // Названия карт из вопроса затираем: иначе модель выбирает карту,
+        // чьё имя просто прозвучало, а не отвечает на смысл.
+        val masked = CardWordMask.mask(clean)
+        val topic = classify(masked, TOPICS).first().first
         val candidates = candidatesFor(topic)
 
-        val scores = classify(clean, candidates)
+        val scores = classify(masked, candidates)
         val best = scores[0]
         val alternatives = scores.drop(1).take(3).map { score ->
             Deck.byId(Deck.labelsRu.indexOf(score.first)) to score.second
