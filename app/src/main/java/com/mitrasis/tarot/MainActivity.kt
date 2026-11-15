@@ -107,7 +107,6 @@ fun TarotApp() {
     val scope = rememberCoroutineScope()
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf<CardAnswer?>(null) }
-    var history by remember { mutableStateOf(History.load(context)) }
     var ready by remember { mutableStateOf(ModelStore.isReady(context)) }
     var downloading by remember { mutableStateOf(false) }
     var answered by remember { mutableStateOf(false) }
@@ -193,8 +192,6 @@ fun TarotApp() {
                                 DeciderHolder.get(context).answer(text)
                             }
                             answer = result
-                            History.add(context, text, result)
-                            history = History.load(context)
                         } catch (t: Throwable) {
                             error = "модель не ответила:\n" + t.stackTraceToString().take(4000)
                         } finally {
@@ -250,26 +247,6 @@ fun TarotApp() {
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.labelSmall
                 )
-            }
-        }
-
-        if (history.isNotEmpty()) {
-            Spacer(Modifier.height(18.dp))
-            Text("прошлые расклады", style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.height(6.dp))
-            history.take(5).forEach { entry ->
-                Text(
-                    text = "${entry.card}${if (entry.reversed) " (перев.)" else ""} · ${entry.percent}%" +
-                        " — ${entry.question.ifBlank { "без вопроса" }}",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
-            }
-            TextButton(onClick = {
-                History.clear(context)
-                history = History.load(context)
-            }) {
-                Text("очистить историю")
             }
         }
 
@@ -495,37 +472,48 @@ private fun ModelCard(
 @Composable
 private fun AnswerCard(answer: CardAnswer, question: String) {
     val card = answer.card
-    val keywords = if (answer.reversed) card.shadow else card.light
-
-    if (answer.noAnswer) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(Modifier.padding(20.dp)) {
-                Text("ОТВЕТА НЕТ", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Модель не нашла среди карт ничего, что отвечало бы на этот вопрос. " +
-                        "Это не ошибка: так честнее, чем выдать случайную карту.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-        return
-    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text("ОТВЕТ", style = MaterialTheme.typography.labelMedium)
-        Spacer(Modifier.height(10.dp))
 
-        // Главная карта крупно и по центру
-        Column(
+        // Три карты стопкой: главная сверху, две под ней со смещением и прозрачностью
+        Box(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.Center
         ) {
+            answer.alternatives.getOrNull(1)?.let { (other, probability) ->
+                CardArt(
+                    card = other,
+                    probability = probability,
+                    alternatives = emptyList(),
+                    modifier = Modifier
+                        .fillMaxWidth(0.58f)
+                        .graphicsLayer {
+                            rotationZ = -9f
+                            alpha = 0.42f
+                        }
+                        .offset(x = (-26).dp, y = (-18).dp)
+                        .clip(RoundedCornerShape(18.dp)),
+                    badge = "3",
+                    variant = answer.variant + 2
+                )
+            }
+            answer.alternatives.getOrNull(0)?.let { (other, probability) ->
+                CardArt(
+                    card = other,
+                    probability = probability,
+                    alternatives = emptyList(),
+                    modifier = Modifier
+                        .fillMaxWidth(0.58f)
+                        .graphicsLayer {
+                            rotationZ = 7f
+                            alpha = 0.62f
+                        }
+                        .offset(x = 24.dp, y = 16.dp)
+                        .clip(RoundedCornerShape(18.dp)),
+                    badge = "2",
+                    variant = answer.variant + 1
+                )
+            }
             CardArt(
                 card = card,
                 probability = answer.probability,
@@ -533,79 +521,23 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                 modifier = Modifier
                     .fillMaxWidth(0.62f)
                     .clip(RoundedCornerShape(20.dp)),
+                badge = "1",
                 variant = answer.variant
             )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = card.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "${card.titleEn} · ${(answer.probability * 100).toInt()}%",
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
-            )
         }
-
-        // Второй и третий варианты — рядом, каждый со своей подписью
-        if (answer.alternatives.isNotEmpty()) {
-            Spacer(Modifier.height(22.dp))
-            Text("рядом по вероятности", style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                answer.alternatives.forEachIndexed { index, (other, probability) ->
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CardArt(
-                            card = other,
-                            probability = probability,
-                            alternatives = emptyList(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp)),
-                            variant = answer.variant + index + 1
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = other.title,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "${(probability * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-        Text(
-            text = keywords.joinToString(" · "),
-            style = MaterialTheme.typography.bodyMedium
-        )
 
         Spacer(Modifier.height(14.dp))
+        LegendRow("1", card.title, answer.probability, strong = true)
+        answer.alternatives.forEachIndexed { index, (other, probability) ->
+            LegendRow((index + 2).toString(), other.title, probability, strong = false)
+        }
+
+        Spacer(Modifier.height(16.dp))
         Reading.interpret(question, answer).forEach { paragraph ->
             Text(
                 text = paragraph,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(vertical = 4.dp)
-            )
-        }
-        if (answer.topic.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "значение: ${answer.topic}",
-                style = MaterialTheme.typography.labelSmall
             )
         }
     }

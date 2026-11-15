@@ -72,6 +72,46 @@ fun CardArt(
             )
         }
 
+        // лучи за символом
+        val rayCount = 7 + ((seed shr 5) and 0x7)
+        val rayCenter = Offset(size.width / 2f, size.height * 0.46f)
+        repeat(rayCount) { index ->
+            val angle = Math.toRadians(360.0 / rayCount * index)
+            drawLine(
+                color = palette.accent.copy(alpha = 0.09f),
+                start = rayCenter,
+                end = Offset(
+                    rayCenter.x + (size.minDimension * 0.46f * cos(angle)).toFloat(),
+                    rayCenter.y + (size.minDimension * 0.46f * sin(angle)).toFloat()
+                ),
+                strokeWidth = size.minDimension * 0.004f
+            )
+        }
+
+        // внутренняя рамка и угловые ромбы
+        val inset = size.width * 0.055f
+        drawRoundRect(
+            color = palette.accent.copy(alpha = 0.20f),
+            topLeft = Offset(inset, inset),
+            size = Size(size.width - inset * 2f, size.height - inset * 2f),
+            cornerRadius = CornerRadius(inset * 0.8f, inset * 0.8f),
+            style = Stroke(width = size.minDimension * 0.004f)
+        )
+        val diamondR = size.minDimension * 0.012f
+        listOf(
+            Offset(inset, inset), Offset(size.width - inset, inset),
+            Offset(inset, size.height - inset), Offset(size.width - inset, size.height - inset)
+        ).forEach { cornerPoint ->
+            val diamond = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cornerPoint.x, cornerPoint.y - diamondR)
+                lineTo(cornerPoint.x + diamondR, cornerPoint.y)
+                lineTo(cornerPoint.x, cornerPoint.y + diamondR)
+                lineTo(cornerPoint.x - diamondR, cornerPoint.y)
+                close()
+            }
+            drawPath(diamond, palette.accent.copy(alpha = 0.45f))
+        }
+
         // Узнаваемый символ вместо абстрактного узора.
         // Лёгкий наклон и звёздная пыль вокруг зависят от варианта расклада.
         val glyphCenter = Offset(size.width / 2f, size.height * 0.46f)
@@ -293,7 +333,7 @@ private fun romanNumeral(value: Int): String {
 /** Крупный символ карты: у Старших — свой глиф, у Младших — масть. */
 private fun DrawScope.drawCardSymbol(card: TarotCard, palette: Palette, sharpness: Float) {
     val center = Offset(size.width / 2f, size.height * 0.46f)
-    val r = size.minDimension * 0.24f
+    val r = size.minDimension * 0.30f
     val color = palette.accent.copy(alpha = 0.35f + 0.5f * sharpness)
     val thin = size.minDimension * 0.012f
 
