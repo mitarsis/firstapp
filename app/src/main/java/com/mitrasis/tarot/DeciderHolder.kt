@@ -9,11 +9,11 @@ import android.content.Context
  */
 object DeciderHolder {
 
-    private var instance: GlinerDecider? = null
+    private var instance: EmbeddingDecider? = null
 
-    fun get(context: Context): GlinerDecider {
+    fun get(context: Context): EmbeddingDecider {
         val app = context.applicationContext
-        return instance ?: GlinerDecider(app).also { instance = it }
+        return instance ?: EmbeddingDecider(app).also { instance = it }
     }
 
     fun isLoaded(): Boolean = instance != null
