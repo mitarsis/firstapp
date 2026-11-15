@@ -493,6 +493,7 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
             CardStack(
                 context = context,
                 cards = trio,
+                probabilities = listOf(answer.probability) + answer.alternatives.map { it.second },
                 modifier = Modifier.fillMaxWidth()
             )
         }
