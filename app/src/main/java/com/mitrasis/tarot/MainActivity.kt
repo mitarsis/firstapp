@@ -486,12 +486,12 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                     probability = probability,
                     alternatives = emptyList(),
                     modifier = Modifier
-                        .fillMaxWidth(0.58f)
+                        .fillMaxWidth(0.52f)
                         .graphicsLayer {
-                            rotationZ = -9f
-                            alpha = 0.42f
+                            rotationZ = -13f
+                            alpha = 0.38f
                         }
-                        .offset(x = (-26).dp, y = (-18).dp)
+                        .offset(x = (-46).dp, y = (-26).dp)
                         .clip(RoundedCornerShape(18.dp)),
                     badge = "3",
                     variant = answer.variant + 2
@@ -503,12 +503,12 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                     probability = probability,
                     alternatives = emptyList(),
                     modifier = Modifier
-                        .fillMaxWidth(0.58f)
+                        .fillMaxWidth(0.52f)
                         .graphicsLayer {
-                            rotationZ = 7f
-                            alpha = 0.62f
+                            rotationZ = 11f
+                            alpha = 0.6f
                         }
-                        .offset(x = 24.dp, y = 16.dp)
+                        .offset(x = 44.dp, y = 22.dp)
                         .clip(RoundedCornerShape(18.dp)),
                     badge = "2",
                     variant = answer.variant + 1
@@ -519,7 +519,7 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                 probability = answer.probability,
                 alternatives = emptyList(),
                 modifier = Modifier
-                    .fillMaxWidth(0.62f)
+                    .fillMaxWidth(0.54f)
                     .clip(RoundedCornerShape(20.dp)),
                 badge = "1",
                 variant = answer.variant
