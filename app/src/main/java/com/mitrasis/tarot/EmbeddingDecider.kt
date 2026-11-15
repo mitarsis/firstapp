@@ -33,6 +33,10 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         ctx.assets.open(CARDS_ASSET).use { CardsCloud.fromStream(it, Deck.labelsRu) }
     }
 
+    private val summaries: SummaryBook by lazy {
+        ctx.assets.open(SUMMARIES_ASSET).use { SummaryBook.fromStream(it) }
+    }
+
     private var env: OrtEnvironment? = null
     private var session: OrtSession? = null
 
@@ -77,15 +81,36 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             Deck.byId(shortlist[position]) to probabilities[position]
         }
 
+        val trio = listOf(winnerIndex) + alternatives.map { Deck.labelsRu.indexOf(it.first.title) }
+        val summary = summarize(trio)
+
         return CardAnswer(
             card = Deck.byId(winnerIndex),
             variant = kotlin.random.Random.nextInt(1 shl 20),
+            summary = summary,
             reversed = isReversed(clean, cards.meaningOf(winnerIndex)),
             probability = probabilities[winnerPosition],
             runnerUp = alternatives.firstOrNull(),
             topic = cards.meaningOf(winnerIndex),
             alternatives = alternatives
         )
+    }
+
+    /** Средний вектор карт расклада, нормированный, ближе всего к одной из фраз-смыслов. */
+    private fun summarize(indices: List<Int>): String {
+        val valid = indices.filter { it in 0 until cards.size }
+        if (valid.isEmpty()) return ""
+        val dimension = 384
+        val mean = FloatArray(dimension)
+        for (index in valid) {
+            val vector = cards.vectorOf(index)
+            for (dim in 0 until dimension) mean[dim] += vector[dim]
+        }
+        var norm = 0f
+        for (value in mean) norm += value * value
+        norm = kotlin.math.sqrt(norm).takeIf { it > 0f } ?: 1f
+        for (dim in mean.indices) mean[dim] /= norm
+        return summaries.nearest(mean)
     }
 
     /**
@@ -176,6 +201,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     companion object {
         private const val TOKENIZER_ASSET = "tokenizer.bin"
         private const val CARDS_ASSET = "cards.bin"
+        private const val SUMMARIES_ASSET = "summaries.bin"
         private const val HIDDEN_SIZE = 384
         private const val MAX_TOKENS = 128
         private const val QUESTION_PREFIX = "query: "
@@ -210,6 +236,8 @@ class CardsCloud private constructor(
         }
 
     fun meaningOf(index: Int): String = meanings.getOrElse(index) { "" }
+
+    fun vectorOf(index: Int): FloatArray = vectors[index]
 
     companion object {
         fun fromStream(stream: java.io.InputStream, titles: List<String>): CardsCloud {
