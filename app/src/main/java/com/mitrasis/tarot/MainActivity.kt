@@ -7,11 +7,13 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -441,14 +444,51 @@ private fun AnswerCard(answer: CardAnswer) {
             modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CardArt(
-                card = card,
-                probability = answer.probability,
-                alternatives = answer.alternatives,
-                modifier = Modifier
-                    .fillMaxWidth(0.52f)
-                    .clip(RoundedCornerShape(18.dp))
-            )
+            // Стопка: две гипотезы лежат за основной картой, сдвинуты и повёрнуты.
+            // Чем выше вероятность — тем плотнее карта и заметнее её край.
+            Box(
+                modifier = Modifier.fillMaxWidth(0.56f),
+                contentAlignment = Alignment.Center
+            ) {
+                answer.alternatives.getOrNull(1)?.let { (alt, p3) ->
+                    CardArt(
+                        card = alt,
+                        probability = p3,
+                        alternatives = emptyList(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                rotationZ = -7f
+                                alpha = (0.18f + p3 * 1.6f).coerceIn(0.15f, 0.55f)
+                            }
+                            .offset(x = (-16).dp, y = (-12).dp)
+                            .clip(RoundedCornerShape(18.dp))
+                    )
+                }
+                answer.alternatives.getOrNull(0)?.let { (alt, p2) ->
+                    CardArt(
+                        card = alt,
+                        probability = p2,
+                        alternatives = emptyList(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                rotationZ = 6f
+                                alpha = (0.25f + p2 * 1.8f).coerceIn(0.2f, 0.75f)
+                            }
+                            .offset(x = 14.dp, y = 10.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                    )
+                }
+                CardArt(
+                    card = card,
+                    probability = answer.probability,
+                    alternatives = emptyList(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                )
+            }
             Spacer(Modifier.height(16.dp))
             Text("ОТВЕТ", style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(10.dp))
