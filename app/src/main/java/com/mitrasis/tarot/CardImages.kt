@@ -54,14 +54,17 @@ fun rememberCardImage(context: Context, cardId: Int): ImageBitmap? =
 fun CardStack(
     context: Context,
     cards: List<TarotCard>,
+    probabilities: List<Float>,
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
-    val alphas = when (cards.size) {
-        0 -> emptyList()
-        1 -> listOf(1f)
-        2 -> listOf(0.75f, 1f)
-        else -> listOf(0.40f, 0.65f, 1f)
+
+    // Акцент на карте пропорционален её вероятности: главная всегда плотная,
+    // остальные тем прозрачнее, чем слабее их шанс.
+    val strongest = probabilities.maxOrNull()?.takeIf { it > 0f } ?: 1f
+    val alphas = probabilities.map { probability ->
+        val share = (probability / strongest).coerceIn(0f, 1f)
+        (0.30f + 0.70f * share).coerceIn(0.25f, 1f)
     }
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
