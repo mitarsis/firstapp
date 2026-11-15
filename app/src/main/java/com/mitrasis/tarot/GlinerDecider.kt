@@ -58,15 +58,21 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
-        // Один проход по значениям. Названий карт во входе нет — маска не нужна.
-        val ranked = classify(clean, Archetypes.meanings)
-        val top = ranked.take(3).mapIndexed { position, (meaning, probability) ->
-            val index = Archetypes.meanings.indexOf(meaning)
-            Triple(Deck.byId(Deck.labelsRu.indexOf(Archetypes.cardTitleAt(index))), probability, meaning)
+        // Шаг 1: о какой сфере вообще речь.
+        val topicLabel = classify(clean, CardMeanings.topics.map { it.first }).first().first
+        val suit = CardMeanings.topics.first { it.first == topicLabel }.second
+
+        // Шаг 2: облака тегов по Старшим и по картам нужной масти.
+        val (labels, titles) = CardMeanings.candidates(suit)
+        val titleByLabel = labels.zip(titles).toMap()
+
+        val ranked = classify(clean, labels).take(3).map { (label, probability) ->
+            val title = titleByLabel[label] ?: titles.first()
+            Triple(Deck.byId(Deck.labelsRu.indexOf(title)), probability, label)
         }
 
-        val best = top.first()
-        val alternatives = top.drop(1).map { it.first to it.second }
+        val best = ranked.first()
+        val alternatives = ranked.drop(1).map { it.first to it.second }
 
         return CardAnswer(
             card = best.first,
@@ -178,9 +184,16 @@ class PromptBuilder(private val tokenizer: UnigramTokenizer) {
         addEncoded(")")
         ids.add(TOKEN_SEP_TEXT)
 
+        // Вопрос обрезаем по бюджету токенов: у модели окно 512, а облака
+        // тегов занимают почти всё. Лишние слова просто не влезают.
         val lowered = text.lowercase(Locale.ROOT)
         for (match in WORD_PATTERN.findAll(lowered)) {
+            val before = ids.size
             addEncoded(match.value)
+            if (ids.size > MAX_TOKENS) {
+                while (ids.size > before) ids.removeAt(ids.size - 1)
+                break
+            }
         }
 
         return BuiltInput(LongArray(ids.size) { ids[it].toLong() }, labelPositions)
@@ -190,6 +203,7 @@ class PromptBuilder(private val tokenizer: UnigramTokenizer) {
         private const val TOKEN_SEP_TEXT = 250103
         private const val TOKEN_P = 250104
         private const val TOKEN_L = 250108
+        private const val MAX_TOKENS = 500
 
         /**
          * Порт WORD_PATTERN из эталона.
