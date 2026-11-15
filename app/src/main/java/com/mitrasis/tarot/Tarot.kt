@@ -14,6 +14,12 @@ data class TarotCard(
     val shadow: List<String>
 )
 
+data class CardLine(
+    val title: String,
+    val keyword: String,
+    val reversed: Boolean
+)
+
 data class CardAnswer(
     val card: TarotCard,
     val reversed: Boolean,
@@ -23,7 +29,8 @@ data class CardAnswer(
     val alternatives: List<Pair<TarotCard, Float>> = emptyList(),
     val noAnswer: Boolean = false,
     val variant: Int = 0,
-    val summary: String = ""
+    val summary: String = "",
+    val lines: List<CardLine> = emptyList()
 )
 
 object Deck {

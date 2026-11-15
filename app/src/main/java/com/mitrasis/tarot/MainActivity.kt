@@ -504,11 +504,12 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
             LegendRow((index + 2).toString(), other.title, probability, strong = false)
         }
 
-        if (answer.summary.isNotBlank()) {
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
+        Reading.compose(answer).forEach { paragraph ->
             Text(
-                text = answer.summary.replaceFirstChar { it.uppercase() } + ".",
-                style = MaterialTheme.typography.bodyMedium
+                text = paragraph,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(vertical = 3.dp)
             )
         }
     }
