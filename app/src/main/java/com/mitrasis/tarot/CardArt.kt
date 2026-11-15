@@ -137,6 +137,7 @@ fun CardArt(
 
         drawPips(card, palette, seed)
         drawLabel(card, palette)
+        drawBottomCaption(card, palette)
 
         badge?.let {
             drawCircle(
@@ -249,6 +250,21 @@ private fun DrawScope.drawSuitShape(card: TarotCard, palette: Palette, center: O
             style = Stroke(width = radius * 0.6f)
         )
     }
+}
+
+private fun DrawScope.drawBottomCaption(card: TarotCard, palette: Palette) {
+    drawTextOn(
+        text = card.title.uppercase(),
+        center = Offset(size.width / 2f, size.height * 0.915f),
+        color = palette.accent.copy(alpha = 0.6f),
+        textSize = size.width * 0.055f
+    )
+    drawLine(
+        color = palette.accent.copy(alpha = 0.18f),
+        start = Offset(size.width * 0.24f, size.height * 0.885f),
+        end = Offset(size.width * 0.76f, size.height * 0.885f),
+        strokeWidth = size.minDimension * 0.004f
+    )
 }
 
 private fun DrawScope.drawLabel(card: TarotCard, palette: Palette) {

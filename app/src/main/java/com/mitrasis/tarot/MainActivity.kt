@@ -132,7 +132,7 @@ fun TarotApp() {
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "78 карт как классы. Модель не гадает — она выбирает карту.",
+            text = "78 карт как векторы смысла. Модель не гадает — она ищет ближайшее значение.",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
         )
