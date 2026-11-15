@@ -57,13 +57,13 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val vector = embed(QUESTION_PREFIX + clean)
         val similarities = cards.similarities(vector)
         val order = similarities.indices.sortedByDescending { similarities[it] }
-
         val best = order.first()
+
         if (similarities[best] < NO_ANSWER_THRESHOLD) {
             return CardAnswer(
                 card = Deck.byId(0),
                 reversed = false,
-                probability = similarities[best],
+                probability = 0f,
                 runnerUp = null,
                 topic = "",
                 alternatives = emptyList(),
@@ -71,23 +71,31 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             )
         }
 
-        // Сэмплирование только по тем картам, что близки к лучшей — иначе
-        // пришлось бы тянуть карту с вдвое меньшим сходством.
-        val threshold = similarities[best] * DROP_RATIO
-        val pool = order.take(TOP_K).filter { similarities[it] >= threshold }.ifEmpty { order.take(1) }
-        val pickedIndex = pool[kotlin.random.Random.nextInt(pool.size)]
+        // Считаем распределение не по всем 78 картам, а по пяти самым близким:
+        // у остальных сходство почти одинаковое, и проценты превращались в шум.
+        val shortlist = order.take(SHORTLIST)
+        val scaled = FloatArray(shortlist.size) { similarities[shortlist[it]] * SHARPNESS }
+        val maxScaled = scaled.max()
+        val exps = FloatArray(scaled.size) {
+            kotlin.math.exp((scaled[it] - maxScaled).toDouble()).toFloat()
+        }
+        val sum = exps.sum().takeIf { it > 0f } ?: 1f
+        val probabilities = FloatArray(exps.size) { exps[it] / sum }
 
-        val alternatives = order
-            .filter { it != pickedIndex }
-            .take(2)
-            .map { Deck.byId(it) to similarities[it].coerceIn(0f, 1f) }
+        val ranked = shortlist.indices.sortedByDescending { probabilities[it] }
+        val winnerPosition = ranked.first()
+        val winnerIndex = shortlist[winnerPosition]
+
+        val alternatives = ranked.drop(1).take(2).map { position ->
+            Deck.byId(shortlist[position]) to probabilities[position]
+        }
 
         return CardAnswer(
-            card = Deck.byId(pickedIndex),
+            card = Deck.byId(winnerIndex),
             reversed = false,
-            probability = similarities[pickedIndex].coerceIn(0f, 1f),
+            probability = probabilities[winnerPosition],
             runnerUp = alternatives.firstOrNull(),
-            topic = cards.meaningOf(pickedIndex),
+            topic = cards.meaningOf(winnerIndex),
             alternatives = alternatives
         )
     }
@@ -177,9 +185,11 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         /** Ниже этого косинуса считаем, что карты не про вопрос. */
         private const val NO_ANSWER_THRESHOLD = 0.72f
 
-        /** Сэмплируем только карты, чьё сходство не хуже этой доли от лучшей. */
-        private const val DROP_RATIO = 0.93f
-        private const val TOP_K = 5
+        /** Сколько близких карт участвует в распределении. */
+        private const val SHORTLIST = 5
+
+        /** Насколько резко разводим близкие косинусы в вероятности. */
+        private const val SHARPNESS = 120f
     }
 }
 
