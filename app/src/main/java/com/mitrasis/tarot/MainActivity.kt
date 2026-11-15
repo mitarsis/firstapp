@@ -483,13 +483,19 @@ private fun AnswerCard(answer: CardAnswer) {
                     textAlign = TextAlign.Center
                 )
             }
-            answer.runnerUp?.let { (other, p) ->
-                Spacer(Modifier.height(10.dp))
+            if (answer.alternatives.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "следующая гипотеза: ${other.title}, ${(p * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center
+                    text = "ещё варианты",
+                    style = MaterialTheme.typography.labelSmall
                 )
+                answer.alternatives.forEach { (other, probability) ->
+                    Text(
+                        text = "${other.title} — ${(probability * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

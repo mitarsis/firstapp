@@ -58,19 +58,24 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
+        // Схема v2: тема — фильтр кандидатов, а не подсказка в тексте.
+        // Иначе модель отвечает на слово «выбор» вместо самого вопроса.
         val topic = classify(clean, TOPICS).first().first
-        val payload = "Вопрос о следующем: $topic. $clean"
+        val candidates = candidatesFor(topic)
 
-        val scores = classify(payload, Deck.labelsRu)
+        val scores = classify(clean, candidates)
         val best = scores[0]
-        val second = scores.getOrNull(1)
+        val alternatives = scores.drop(1).take(3).map { score ->
+            Deck.byId(Deck.labelsRu.indexOf(score.first)) to score.second
+        }
 
         return CardAnswer(
             card = Deck.byId(Deck.labelsRu.indexOf(best.first)),
             reversed = false,
             probability = best.second,
-            runnerUp = second?.let { Deck.byId(Deck.labelsRu.indexOf(it.first)) to it.second },
-            topic = topic
+            runnerUp = alternatives.firstOrNull(),
+            topic = topic,
+            alternatives = alternatives
         )
     }
 
@@ -129,6 +134,26 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             .sortedByDescending { it.second }
     }
 
+    /** Какие карты вообще рассматривать при такой теме. */
+    private fun candidatesFor(topic: String): List<String> {
+        val majors = Deck.cards.filter { it.arcana == MAJOR_ARCANA }.map { it.title }
+        fun suit(genitive: String): List<String> =
+            Deck.cards.filter { it.arcana != MAJOR_ARCANA && it.title.endsWith(" $genitive") }.map { it.title }
+
+        val selected = when {
+            topic.startsWith("отношения") -> majors + suit("Кубков")
+            topic.startsWith("деньги") -> majors + suit("Пентаклей")
+            topic.startsWith("здоровье") -> majors + suit("Пентаклей") + suit("Мечей")
+            topic.startsWith("выбор") -> majors + Deck.cards
+                .filter { it.arcana != MAJOR_ARCANA && it.title.startsWith("Двойка ") }
+                .map { it.title }
+            topic.startsWith("потеря") -> majors + suit("Мечей")
+            topic.startsWith("семья") -> majors + suit("Кубков") + suit("Пентаклей")
+            else -> Deck.labelsRu
+        }
+        return selected.distinct().ifEmpty { Deck.labelsRu }
+    }
+
     @Synchronized
     override fun close() {
         encoder?.close()
@@ -140,6 +165,7 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     companion object {
         private const val TOKENIZER_ASSET = "tokenizer.bin"
         private const val HIDDEN_SIZE = 768
+        private const val MAJOR_ARCANA = "Старший аркан"
 
         private val TOPICS = listOf(
             "отношения и любовь, партнёр, ссоры",

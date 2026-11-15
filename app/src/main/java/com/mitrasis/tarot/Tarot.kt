@@ -19,7 +19,8 @@ data class CardAnswer(
     val reversed: Boolean,
     val probability: Float,
     val runnerUp: Pair<TarotCard, Float>?,
-    val topic: String = ""
+    val topic: String = "",
+    val alternatives: List<Pair<TarotCard, Float>> = emptyList()
 )
 
 object Deck {
@@ -50,10 +51,10 @@ object Deck {
     )
 
     private val suits = listOf(
-        Triple("Жезлы", "Wands", "воля и действие"),
-        Triple("Кубки", "Cups", "чувства и связи"),
-        Triple("Мечи", "Swords", "мысли и конфликт"),
-        Triple("Пентакли", "Pentacles", "деньги, тело, быт")
+        Triple("Жезлов", "Wands", "воля и действие"),
+        Triple("Кубков", "Cups", "чувства и связи"),
+        Triple("Мечей", "Swords", "мысли и конфликт"),
+        Triple("Пентаклей", "Pentacles", "деньги, тело, быт")
     )
 
     private val ranks = listOf(
