@@ -65,8 +65,9 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         // Шаг 2: облака тегов по Старшим и по картам нужной масти.
         val (labels, titles) = CardMeanings.candidates(suit)
         val titleByLabel = labels.zip(titles).toMap()
+        val biases = Bias.forTitles(suit.ifEmpty { "majors" }, titles)
 
-        val ranked = classify(clean, labels).take(3).map { (label, probability) ->
+        val ranked = classify(clean, labels, biases).take(3).map { (label, probability) ->
             val title = titleByLabel[label] ?: titles.first()
             Triple(Deck.byId(Deck.labelsRu.indexOf(title)), probability, label)
         }
@@ -85,7 +86,11 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     }
 
     /** Метка -> вероятность, по убыванию. */
-    private fun classify(text: String, labels: List<String>): List<Pair<String, Float>> {
+    private fun classify(
+        text: String,
+        labels: List<String>,
+        biases: FloatArray? = null
+    ): List<Pair<String, Float>> {
         val built = promptBuilder.build(text, labels)
         val environment = env ?: throw IllegalStateException("окружение ONNX не готово")
         val encoderSession = encoder ?: throw IllegalStateException("энкодер не загружен")
@@ -133,7 +138,12 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             }
         }
 
-        val probabilities = softmax(logits)
+        val corrected = if (biases != null && biases.size == logits.size) {
+            FloatArray(logits.size) { logits[it] - biases[it] }
+        } else {
+            logits
+        }
+        val probabilities = softmax(corrected)
         return labels.indices
             .map { labels[it] to probabilities[it] }
             .sortedByDescending { it.second }

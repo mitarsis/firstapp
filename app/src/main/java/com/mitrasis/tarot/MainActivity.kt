@@ -7,8 +7,10 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -344,6 +346,32 @@ private fun DiagnosticsCard(lines: List<String>, running: Boolean) {
 }
 
 @Composable
+private fun LegendRow(marker: String, title: String, probability: Float, strong: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = marker,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "  $title  ",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Normal
+        )
+        Text(
+            text = "${(probability * 100).toInt()}%",
+            style = MaterialTheme.typography.labelSmall
+        )
+    }
+}
+
+@Composable
 private fun CrashScreen(trace: String, onShare: () -> Unit, onClear: () -> Unit) {
     Column(
         modifier = Modifier
@@ -462,7 +490,8 @@ private fun AnswerCard(answer: CardAnswer) {
                                 alpha = (0.18f + p3 * 1.6f).coerceIn(0.15f, 0.55f)
                             }
                             .offset(x = (-16).dp, y = (-12).dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(RoundedCornerShape(18.dp)),
+                        badge = "3"
                     )
                 }
                 answer.alternatives.getOrNull(0)?.let { (alt, p2) ->
@@ -477,7 +506,8 @@ private fun AnswerCard(answer: CardAnswer) {
                                 alpha = (0.25f + p2 * 1.8f).coerceIn(0.2f, 0.75f)
                             }
                             .offset(x = 14.dp, y = 10.dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(RoundedCornerShape(18.dp)),
+                        badge = "2"
                     )
                 }
                 CardArt(
@@ -486,7 +516,8 @@ private fun AnswerCard(answer: CardAnswer) {
                     alternatives = emptyList(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(18.dp)),
+                    badge = "1"
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -533,19 +564,10 @@ private fun AnswerCard(answer: CardAnswer) {
                     textAlign = TextAlign.Center
                 )
             }
-            if (answer.alternatives.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "ещё варианты",
-                    style = MaterialTheme.typography.labelSmall
-                )
-                answer.alternatives.forEach { (other, probability) ->
-                    Text(
-                        text = "${other.title} — ${(probability * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center
-                    )
-                }
+            Spacer(Modifier.height(14.dp))
+            LegendRow("1", card.title, answer.probability, strong = true)
+            answer.alternatives.forEachIndexed { index, (other, probability) ->
+                LegendRow((index + 2).toString(), other.title, probability, strong = false)
             }
         }
     }
