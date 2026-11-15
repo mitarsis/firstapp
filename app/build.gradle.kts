@@ -34,6 +34,16 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests.all {
+            it.testLogging {
+                events("failed", "standardOut")
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                showStandardStreams = true
+            }
+        }
+    }
 }
 
 dependencies {
