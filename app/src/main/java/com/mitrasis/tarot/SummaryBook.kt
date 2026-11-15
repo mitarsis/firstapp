@@ -24,31 +24,42 @@ class SummaryBook private constructor(
      * на себя, три равные карты дают почти равный вклад. Нижняя граница 0.08,
      * чтобы гипотеза с 2% всё же учитывалась как контекст.
      */
-    fun nearestForCards(cards: List<Pair<FloatArray, Float>>): String {
+    fun nearestForCards(cards: List<Pair<FloatArray, Float>>, seed: Int): String {
         if (cards.isEmpty()) return ""
         val weights = cards.map { it.second.coerceAtLeast(0.08f) }
         val totalWeight = weights.sum().takeIf { it > 0f } ?: 1f
 
-        var bestIndex = 0
-        var bestScore = -Float.MAX_VALUE
-
-        for (phrase in vectors.indices) {
-            val phraseVector = vectors[phrase]
-            var weighted = 0f
-            cards.forEachIndexed { index, (cardVector, _) ->
-                var dot = 0f
-                for (dimension in phraseVector.indices) {
-                    dot += phraseVector[dimension] * cardVector[dimension]
+        fun bestIn(range: IntRange): Int {
+            var index = range.first
+            var best = -Float.MAX_VALUE
+            for (phrase in range) {
+                val phraseVector = vectors[phrase]
+                var weighted = 0f
+                cards.forEachIndexed { position, (cardVector, _) ->
+                    var dot = 0f
+                    for (dimension in phraseVector.indices) {
+                        dot += phraseVector[dimension] * cardVector[dimension]
+                    }
+                    weighted += dot * weights[position] / totalWeight
                 }
-                weighted += dot * weights[index] / totalWeight
+                val score = weighted - genericity[phrase]
+                if (score > best) {
+                    best = score
+                    index = phrase
+                }
             }
-            val score = weighted - genericity[phrase]
-            if (score > bestScore) {
-                bestScore = score
-                bestIndex = phrase
-            }
+            return index
         }
-        return SummaryPhrases.all.getOrElse(bestIndex) { "" }
+
+        val concreteEnd = (SummaryPhrases.CONCRETE_COUNT - 1).coerceAtMost(vectors.lastIndex)
+        val concrete = bestIn(0..concreteEnd)
+        if (concreteEnd >= vectors.lastIndex) return SummaryPhrases.all.getOrElse(concrete) { "" }
+
+        // Метафоры по близости не выигрывают — они далеки от смыслов карт.
+        // Поэтому образ выбирается жребием: примерно в 40% раскладов.
+        val metaphor = bestIn((concreteEnd + 1)..vectors.lastIndex)
+        val chosen = if (Math.floorMod(seed, 100) < 40) metaphor else concrete
+        return SummaryPhrases.all.getOrElse(chosen) { "" }
     }
 
     companion object {

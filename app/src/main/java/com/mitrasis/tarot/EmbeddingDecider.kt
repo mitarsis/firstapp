@@ -118,7 +118,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     private fun summarize(trio: List<Pair<Int, Float>>): String {
         val valid = trio.filter { it.first in 0 until cards.size }
         if (valid.isEmpty()) return ""
-        return summaries.nearestForCards(valid.map { cards.vectorOf(it.first) to it.second })
+        val seed = valid.joinToString("|") { it.first.toString() }.hashCode() + valid.size
+        return summaries.nearestForCards(valid.map { cards.vectorOf(it.first) to it.second }, seed)
     }
 
     /**
