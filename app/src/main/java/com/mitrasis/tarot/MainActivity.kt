@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,7 +68,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            TarotTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     TarotApp()
                 }
@@ -104,6 +107,7 @@ fun TarotApp() {
     val scope = rememberCoroutineScope()
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf<CardAnswer?>(null) }
+    var history by remember { mutableStateOf(History.load(context)) }
     var ready by remember { mutableStateOf(ModelStore.isReady(context)) }
     var downloading by remember { mutableStateOf(false) }
     var answered by remember { mutableStateOf(false) }
@@ -185,9 +189,12 @@ fun TarotApp() {
                     answer = null
                     scope.launch {
                         try {
-                            answer = withContext(Dispatchers.Default) {
+                            val result = withContext(Dispatchers.Default) {
                                 DeciderHolder.get(context).answer(text)
                             }
+                            answer = result
+                            History.add(context, text, result)
+                            history = History.load(context)
                         } catch (t: Throwable) {
                             error = "модель не ответила:\n" + t.stackTraceToString().take(4000)
                         } finally {
@@ -218,7 +225,12 @@ fun TarotApp() {
         Spacer(Modifier.height(20.dp))
 
         answer?.let { current ->
-            AnswerCard(current)
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn() + scaleIn(initialScale = 0.92f)
+            ) {
+                AnswerCard(current, question)
+            }
             Spacer(Modifier.height(12.dp))
             TextButton(onClick = { answer = null; question = "" }) {
                 Text("Спросить другое")
@@ -238,6 +250,26 @@ fun TarotApp() {
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.labelSmall
                 )
+            }
+        }
+
+        if (history.isNotEmpty()) {
+            Spacer(Modifier.height(18.dp))
+            Text("прошлые расклады", style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(6.dp))
+            history.take(5).forEach { entry ->
+                Text(
+                    text = "${entry.card}${if (entry.reversed) " (перев.)" else ""} · ${entry.percent}%" +
+                        " — ${entry.question.ifBlank { "без вопроса" }}",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+            }
+            TextButton(onClick = {
+                History.clear(context)
+                history = History.load(context)
+            }) {
+                Text("очистить историю")
             }
         }
 
@@ -461,7 +493,7 @@ private fun ModelCard(
 }
 
 @Composable
-private fun AnswerCard(answer: CardAnswer) {
+private fun AnswerCard(answer: CardAnswer, question: String) {
     val card = answer.card
     val keywords = if (answer.reversed) card.shadow else card.light
 
@@ -558,6 +590,15 @@ private fun AnswerCard(answer: CardAnswer) {
             text = keywords.joinToString(" · "),
             style = MaterialTheme.typography.bodyMedium
         )
+
+        Spacer(Modifier.height(14.dp))
+        Reading.interpret(question, answer).forEach { paragraph ->
+            Text(
+                text = paragraph,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
         if (answer.topic.isNotBlank()) {
             Spacer(Modifier.height(10.dp))
             Text(

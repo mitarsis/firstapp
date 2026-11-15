@@ -92,12 +92,22 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         return CardAnswer(
             card = Deck.byId(winnerIndex),
-            reversed = false,
+            reversed = isReversed(clean, cards.meaningOf(winnerIndex)),
             probability = probabilities[winnerPosition],
             runnerUp = alternatives.firstOrNull(),
             topic = cards.meaningOf(winnerIndex),
             alternatives = alternatives
         )
+    }
+
+    /**
+     * Ориентация карты. Модель её не предсказывает — это честный жребий,
+     * детерминированный от пары «вопрос + карта»: тот же вопрос даёт ту же
+     * ориентацию, но на разных вопросах распределение примерно 35/65.
+     */
+    private fun isReversed(question: String, cardMeaning: String): Boolean {
+        val hash = (question.lowercase().trim() + "|" + cardMeaning).hashCode()
+        return (hash and 0x7fffffff) % 100 < REVERSED_PERCENT
     }
 
     /** Вектор текста: усреднение скрытых состояний по маске, потом нормировка. */
@@ -184,6 +194,9 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         /** Ниже этого косинуса считаем, что карты не про вопрос. */
         private const val NO_ANSWER_THRESHOLD = 0.72f
+
+        /** Доля перевёрнутых карт, в процентах. */
+        private const val REVERSED_PERCENT = 35
 
         /** Сколько близких карт участвует в распределении. */
         private const val SHORTLIST = 5
