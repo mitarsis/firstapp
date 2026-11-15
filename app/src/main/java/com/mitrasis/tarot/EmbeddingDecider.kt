@@ -54,18 +54,6 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
-        if (QuestionGuard.isNotLifeQuestion(clean)) {
-            return CardAnswer(
-                card = Deck.byId(0),
-                reversed = false,
-                probability = 0f,
-                runnerUp = null,
-                topic = "",
-                alternatives = emptyList(),
-                noAnswer = true
-            )
-        }
-
         val vector = embed(QUESTION_PREFIX + clean)
         val similarities = cards.similarities(vector)
         val order = similarities.indices.sortedByDescending { similarities[it] }
@@ -91,6 +79,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         return CardAnswer(
             card = Deck.byId(winnerIndex),
+            variant = kotlin.random.Random.nextInt(1 shl 20),
             reversed = isReversed(clean, cards.meaningOf(winnerIndex)),
             probability = probabilities[winnerPosition],
             runnerUp = alternatives.firstOrNull(),

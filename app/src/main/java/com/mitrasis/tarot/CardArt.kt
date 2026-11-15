@@ -35,16 +35,23 @@ fun CardArt(
     probability: Float,
     alternatives: List<Pair<TarotCard, Float>>,
     modifier: Modifier = Modifier,
-    badge: String? = null
+    badge: String? = null,
+    variant: Int = 0
 ) {
     val palette = paletteFor(card)
-    val seed = card.titleEn.hashCode()
+    // variant меняется от расклада к раскладу: символ карты тот же, орнамент новый
+    val seed = card.titleEn.hashCode() * 31 + variant
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
         val corner = CornerRadius(size.width * 0.08f, size.width * 0.08f)
 
+        val tilt = ((seed % 9).absoluteValue % 9) / 9f
         drawRoundRect(
-            brush = Brush.verticalGradient(listOf(palette.top, palette.bottom)),
+            brush = Brush.linearGradient(
+                colors = listOf(palette.top, palette.bottom),
+                start = Offset(size.width * tilt, 0f),
+                end = Offset(size.width * (1f - tilt), size.height)
+            ),
             cornerRadius = corner
         )
 
@@ -65,8 +72,28 @@ fun CardArt(
             )
         }
 
-        // Узнаваемый символ вместо абстрактного узора
-        drawCardSymbol(card, palette, probability.coerceIn(0.15f, 1f))
+        // Узнаваемый символ вместо абстрактного узора.
+        // Лёгкий наклон и звёздная пыль вокруг зависят от варианта расклада.
+        val glyphCenter = Offset(size.width / 2f, size.height * 0.46f)
+        val tiltAngle = (((seed % 13) + 13) % 13 - 6).toFloat()
+        rotate(tiltAngle, glyphCenter) {
+            drawCardSymbol(card, palette, probability.coerceIn(0.15f, 1f))
+        }
+
+        val stars = 4 + ((seed shr 3) and 0x7)
+        repeat(stars) { index ->
+            val angle = Math.toRadians(((seed shr (index * 2)) % 360).toDouble())
+            val radius = size.minDimension * (0.36f + ((seed shr index) % 9) * 0.012f)
+            val point = Offset(
+                glyphCenter.x + (radius * cos(angle)).toFloat(),
+                glyphCenter.y + (radius * sin(angle)).toFloat()
+            )
+            drawCircle(
+                color = palette.accent.copy(alpha = 0.18f + 0.25f * probability.coerceIn(0f, 1f)),
+                radius = size.minDimension * 0.007f,
+                center = point
+            )
+        }
 
         drawPips(card, palette, seed)
         drawLabel(card, palette)
