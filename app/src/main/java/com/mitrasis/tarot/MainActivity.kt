@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -109,6 +110,11 @@ fun TarotApp() {
     var progress by remember { mutableFloatStateOf(0f) }
     var error by remember { mutableStateOf<String?>(null) }
     var diagnostics by remember { mutableStateOf<List<String>?>(null) }
+
+    // При старте выбрасываем остатки прошлых схем: старые модели весили сотни мегабайт.
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { runCatching { ModelStore.cleanup(context) } }
+    }
     var diagRunning by remember { mutableStateOf(false) }
 
     Column(
