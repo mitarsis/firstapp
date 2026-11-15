@@ -532,7 +532,8 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                 alternatives = emptyList(),
                 modifier = Modifier
                     .fillMaxWidth(0.62f)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(20.dp)),
+                variant = answer.variant
             )
             Spacer(Modifier.height(10.dp))
             Text(
@@ -568,7 +569,8 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                             alternatives = emptyList(),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(14.dp)),
+                            variant = answer.variant + index + 1
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
