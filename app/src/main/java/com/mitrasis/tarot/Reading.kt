@@ -35,7 +35,7 @@ object Reading {
         }
         lines += opening
 
-        lines += keywords.take(2).joinToString(". ").replaceFirstChar { it.uppercase() } + "."
+        lines += keywords.take(2).joinToString(". ") { it.replaceFirstChar { ch -> ch.uppercase() } } + "."
 
         lines += when {
             answer.probability >= 0.45f -> pick(
@@ -56,7 +56,7 @@ object Reading {
         }
 
         if (answer.reversed) {
-            lines += "В перевёрнутом виде: " + card.shadow.take(2).joinToString(", ") + "."
+            lines += "В прямом положении было бы наоборот: " + card.light.take(2).joinToString(", ") + "."
         }
 
         answer.alternatives.takeIf { it.isNotEmpty() }?.let { alternatives ->
