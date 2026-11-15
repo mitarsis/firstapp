@@ -528,7 +528,7 @@ private fun AnswerCard(answer: CardAnswer) {
             if (answer.topic.isNotBlank()) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "тема: ${answer.topic}",
+                    text = "значение: ${answer.topic}",
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
                 )
