@@ -37,7 +37,12 @@ class UnigramTokenizer private constructor(
     /** Возвращает куски сегментации (до маппинга в id) — удобно для отладки и тестов. */
     fun pieces(text: String): List<String> {
         val normalized = clean(text)
-        val prepared = METASPACE + normalized.replace(" ", METASPACE)
+        val prepared = buildString(normalized.length + 1) {
+            append(METASPACE)
+            for (ch in normalized) {
+                if (ch == ' ') append(METASPACE) else append(ch)
+            }
+        }
         val n = prepared.length
         val bestScore = FloatArray(n + 1) { NEG_INF }
         val bestPrev = IntArray(n + 1) { -1 }
