@@ -58,25 +58,19 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
-        // Шаг 1: сфера вопроса.
-        val topicLabels = CardMeanings.topics.map { it.first }
-        val topicProbabilities = probabilities(clean, topicLabels, FloatArray(topicLabels.size))
-        val topicLabel = topicLabels[topicProbabilities.indices.maxByOrNull { topicProbabilities[it] } ?: 0]
-        val suit = CardMeanings.topics.first { it.first == topicLabel }.second
-
-        // Шаг 2: облака тегов по Старшим и картам нужной масти.
-        val (baseLabels, baseTitles) = CardMeanings.candidates(suit)
-        val labels = baseLabels + NO_ANSWER_LABEL
-        val titles = baseTitles + NO_ANSWER_LABEL
-        val biases = Bias.forTitles(suit.ifEmpty { "majors" }, titles)
+        // Один проход по всем 78 картам: короткие облака тегов влезают в окно,
+        // а ступень с темой давала 52% точности и только портила ответ.
+        val titles = CardMeanings.titles()
+        val labels = CardMeanings.labels() + NO_ANSWER_LABEL
+        val allTitles = titles + NO_ANSWER_LABEL
+        val biases = Bias.forTitles(allTitles)
 
         val probabilities = probabilities(clean, labels, biases)
-
-        // Топ-k сэмплирование: разнообразие без превращения в рандомайзер.
         val order = probabilities.indices.sortedByDescending { probabilities[it] }
+
         val top = order.take(TOP_K)
         val picked = top[weightedPick(top, probabilities)]
-        val winnerTitle = titles[picked]
+        val winnerTitle = allTitles[picked]
 
         if (winnerTitle == NO_ANSWER_LABEL) {
             return CardAnswer(
@@ -91,16 +85,16 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         }
 
         val alternatives = order
-            .filter { it != picked && titles[it] != NO_ANSWER_LABEL }
+            .filter { it != picked && allTitles[it] != NO_ANSWER_LABEL }
             .take(2)
-            .map { Deck.byId(Deck.labelsRu.indexOf(titles[it])) to probabilities[it] }
+            .map { Deck.byId(Deck.labelsRu.indexOf(allTitles[it])) to probabilities[it] }
 
         return CardAnswer(
             card = Deck.byId(Deck.labelsRu.indexOf(winnerTitle)),
             reversed = false,
             probability = probabilities[picked],
             runnerUp = alternatives.firstOrNull(),
-            topic = labels[picked],
+            topic = CardMeanings.all.firstOrNull { it.title == winnerTitle }?.full ?: "",
             alternatives = alternatives
         )
     }
@@ -190,7 +184,7 @@ class GlinerDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         /** Разнообразие без рандомайзера: случайный выбор только из топ-5. */
         private const val TOP_K = 5
-        private const val TEMPERATURE = 1.5f
+        private const val TEMPERATURE = 1.2f
 
         /** Метка-отказ: заберёт расплывчатые вопросы вместо случайной карты. */
         private const val NO_ANSWER_LABEL = "вопрос не по адресу, ответа нет"
