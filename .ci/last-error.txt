@@ -3,8 +3,8 @@ Daemon will be stopped at the end of the build
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
-> Task :app:generateDebugResValues FROM-CACHE
 > Task :app:checkDebugAarMetadata
+> Task :app:generateDebugResValues FROM-CACHE
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources FROM-CACHE
 > Task :app:mergeDebugResources FROM-CACHE
@@ -24,7 +24,7 @@ Daemon will be stopped at the end of the build
 > Task :app:bundleDebugClassesToCompileJar
 > Task :app:bundleDebugClassesToRuntimeJar
 > Task :app:processDebugJavaRes
-> Task :app:compileDebugUnitTestKotlin FROM-CACHE
+> Task :app:compileDebugUnitTestKotlin
 > Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
 > Task :app:processDebugUnitTestJavaRes
 
@@ -40,10 +40,10 @@ UnigramTokenizerTest > совпадает с эталонным токениза
         ждали: 30274,3554,181144,1009
         вышло: 3554,181144,1009
         куски: ▁ма|тематическ|ий
-        at com.mitrasis.tarot.UnigramTokenizerTest.совпадает с эталонным токенизатором(UnigramTokenizerTest.kt:54)
+        at com.mitrasis.tarot.UnigramTokenizerTest.совпадает с эталонным токенизатором(UnigramTokenizerTest.kt:55)
 
 2 tests completed, 1 failed
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794703171500.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794703322987.json
 
 FAILURE: Build failed with an exception.
 
@@ -54,12 +54,12 @@ Execution failed for task ':app:testDebugUnitTest'.
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 22s
-22 actionable tasks: 8 executed, 14 from cache
+BUILD FAILED in 21s
+22 actionable tasks: 9 executed, 13 from cache
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.mitrasis.tarot.UnigramTokenizerTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-11-15T00:39:47" hostname="runnervmccnms" time="0.324">
+<testsuite name="com.mitrasis.tarot.UnigramTokenizerTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-11-15T00:42:19" hostname="runnervmccnms" time="0.272">
   <properties/>
-  <testcase name="совпадает с эталонным токенизатором" classname="com.mitrasis.tarot.UnigramTokenizerTest" time="0.201">
+  <testcase name="совпадает с эталонным токенизатором" classname="com.mitrasis.tarot.UnigramTokenizerTest" time="0.172">
     <failure message="java.lang.AssertionError: расхождения с эталоном:&#10;  текст: эмодзи &#x1f600; в тексте&#10;    ждали: 10186,9068,5437,260,34949,316,14176,325&#10;    вышло: 10186,9068,5437,316,14176,325&#10;    куски: ▁эм|од|зи|▁в|▁текст|е&#10;  текст: &#x1d573;&#x1d58a;&#x1d591;&#x1d591;&#x1d594; математический&#10;    ждали: 30274,3554,181144,1009&#10;    вышло: 3554,181144,1009&#10;    куски: ▁ма|тематическ|ий" type="java.lang.AssertionError">java.lang.AssertionError: расхождения с эталоном:
   текст: эмодзи &#x1f600; в тексте
     ждали: 10186,9068,5437,260,34949,316,14176,325
@@ -69,7 +69,7 @@ BUILD FAILED in 22s
     ждали: 30274,3554,181144,1009
     вышло: 3554,181144,1009
     куски: ▁ма|тематическ|ий
-	at com.mitrasis.tarot.UnigramTokenizerTest.совпадает с эталонным токенизатором(UnigramTokenizerTest.kt:54)
+	at com.mitrasis.tarot.UnigramTokenizerTest.совпадает с эталонным токенизатором(UnigramTokenizerTest.kt:55)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
@@ -115,7 +115,17 @@ BUILD FAILED in 22s
 	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
 </failure>
   </testcase>
-  <testcase name="единичный пример" classname="com.mitrasis.tarot.UnigramTokenizerTest" time="0.123"/>
+  <testcase name="единичный пример" classname="com.mitrasis.tarot.UnigramTokenizerTest" time="0.1"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
+=== test mismatches ===
+
+  текст: эмодзи 😀 в тексте
+    ждали: 10186,9068,5437,260,34949,316,14176,325
+    вышло: 10186,9068,5437,316,14176,325
+    куски: ▁эм|од|зи|▁в|▁текст|е
+  текст: 𝕳𝖊𝖑𝖑𝖔 математический
+    ждали: 30274,3554,181144,1009
+    вышло: 3554,181144,1009
+    куски: ▁ма|тематическ|ий
