@@ -20,7 +20,8 @@ data class CardAnswer(
     val probability: Float,
     val runnerUp: Pair<TarotCard, Float>?,
     val topic: String = "",
-    val alternatives: List<Pair<TarotCard, Float>> = emptyList()
+    val alternatives: List<Pair<TarotCard, Float>> = emptyList(),
+    val noAnswer: Boolean = false
 )
 
 object Deck {
