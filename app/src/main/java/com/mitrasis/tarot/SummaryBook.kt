@@ -19,22 +19,30 @@ class SummaryBook private constructor(
     private val genericity: FloatArray
 ) {
 
-    fun nearestForCards(cardVectors: List<FloatArray>): String {
-        if (cardVectors.isEmpty()) return ""
+    /**
+     * Веса берутся из вероятностей самих карт: уверенная карта тянет итог
+     * на себя, три равные карты дают почти равный вклад. Нижняя граница 0.08,
+     * чтобы гипотеза с 2% всё же учитывалась как контекст.
+     */
+    fun nearestForCards(cards: List<Pair<FloatArray, Float>>): String {
+        if (cards.isEmpty()) return ""
+        val weights = cards.map { it.second.coerceAtLeast(0.08f) }
+        val totalWeight = weights.sum().takeIf { it > 0f } ?: 1f
+
         var bestIndex = 0
         var bestScore = -Float.MAX_VALUE
 
         for (phrase in vectors.indices) {
-            var minSimilarity = Float.MAX_VALUE
-            for (card in cardVectors) {
+            val phraseVector = vectors[phrase]
+            var weighted = 0f
+            cards.forEachIndexed { index, (cardVector, _) ->
                 var dot = 0f
-                val phraseVector = vectors[phrase]
                 for (dimension in phraseVector.indices) {
-                    dot += phraseVector[dimension] * card[dimension]
+                    dot += phraseVector[dimension] * cardVector[dimension]
                 }
-                if (dot < minSimilarity) minSimilarity = dot
+                weighted += dot * weights[index] / totalWeight
             }
-            val score = minSimilarity - genericity[phrase]
+            val score = weighted - genericity[phrase]
             if (score > bestScore) {
                 bestScore = score
                 bestIndex = phrase
