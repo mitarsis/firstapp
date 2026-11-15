@@ -34,7 +34,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     }
 
     private val summaries: SummaryBook by lazy {
-        ctx.assets.open(SUMMARIES_ASSET).use { SummaryBook.fromStream(it) }
+        val cardsMatrix = Array(cards.size) { cards.vectorOf(it) }
+        ctx.assets.open(SUMMARIES_ASSET).use { SummaryBook.fromStream(it, cardsMatrix) }
     }
 
     private var env: OrtEnvironment? = null
@@ -96,21 +97,11 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         )
     }
 
-    /** Средний вектор карт расклада, нормированный, ближе всего к одной из фраз-смыслов. */
+    /** Итог расклада: фраза, которая ближе всех сразу ко всем трём картам. */
     private fun summarize(indices: List<Int>): String {
         val valid = indices.filter { it in 0 until cards.size }
         if (valid.isEmpty()) return ""
-        val dimension = 384
-        val mean = FloatArray(dimension)
-        for (index in valid) {
-            val vector = cards.vectorOf(index)
-            for (dim in 0 until dimension) mean[dim] += vector[dim]
-        }
-        var norm = 0f
-        for (value in mean) norm += value * value
-        norm = kotlin.math.sqrt(norm).takeIf { it > 0f } ?: 1f
-        for (dim in mean.indices) mean[dim] /= norm
-        return summaries.nearest(mean)
+        return summaries.nearestForCards(valid.map { cards.vectorOf(it) })
     }
 
     /**
