@@ -62,9 +62,24 @@ object Reading {
             result += if (line.reversed) "Тоже перевёрнутая. $text" else text
         }
 
-        if (answer.summary.isNotBlank()) {
-            val template = pick(CLOSING, 3)
-            result += template.replaceFirst("%s", answer.summary)
+        // Связка трёх значений — без банка готовых фраз:
+        // просто собираем их в одну мысль.
+        val values = lines.map { it.keyword }.filter { it.isNotBlank() }
+        if (values.size >= 2) {
+            val joined = if (values.size == 2) {
+                "${values[0]} и ${values[1]}"
+            } else {
+                values.dropLast(1).joinToString(", ") + " и " + values.last()
+            }
+            result += pick(
+                listOf(
+                    "Вместе это про $joined.",
+                    "Связка такая: $joined.",
+                    "Одна линия: $joined.",
+                    "Общая нить — $joined."
+                ),
+                3
+            )
         }
 
         return result

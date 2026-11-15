@@ -8,6 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
@@ -22,6 +25,19 @@ import androidx.compose.ui.unit.IntSize
  * три карты накладываются друг на друга, как в Transparent Tarot, и
  * складываются в общий рисунок.
  */
+/** Инверсия RGB: перевёрнутая карта выглядит вывернутой и по цвету. */
+private val inverted: ColorFilter = run {
+    val matrix = ColorMatrix(
+        floatArrayOf(
+            -1f, 0f, 0f, 0f, 255f,
+            0f, -1f, 0f, 0f, 255f,
+            0f, 0f, -1f, 0f, 255f,
+            0f, 0f, 0f, 1f, 0f
+        )
+    )
+    ColorFilter.colorMatrix(matrix)
+}
+
 object CardImages {
 
     private val cache = HashMap<Int, ImageBitmap>()
@@ -54,19 +70,19 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: In
         topLeft = androidx.compose.ui.geometry.Offset(1f, 1f),
         size = androidx.compose.ui.geometry.Size(w - 2f, h - 2f),
         cornerRadius = outer,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.009f)
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.017f)
     )
-    val inset = w * 0.035f
+    val inset = w * 0.045f
     drawRoundRect(
         color = gold.copy(alpha = 0.35f),
         topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
         size = androidx.compose.ui.geometry.Size(w - inset * 2f, h - inset * 2f),
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.03f, w * 0.03f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0035f)
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.006f)
     )
 
     // уголки-ромбы
-    val r = w * 0.018f
+    val r = w * 0.024f
     listOf(
         androidx.compose.ui.geometry.Offset(inset, inset),
         androidx.compose.ui.geometry.Offset(w - inset, inset),
@@ -106,9 +122,11 @@ fun CardStack(
     context: Context,
     cards: List<TarotCard>,
     probabilities: List<Float>,
+    reversed: List<Boolean> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
+    val flipped = images.mapIndexed { index, _ -> reversed.getOrElse(index) { false } }
 
     // Акцент на карте пропорционален её вероятности: главная всегда плотная,
     // остальные тем прозрачнее, чем слабее их шанс.
@@ -123,15 +141,32 @@ fun CardStack(
         val height = size.height.toInt()
         images.forEachIndexed { index, image ->
             if (image == null) return@forEachIndexed
-            drawImage(
-                image = image,
-                srcOffset = IntOffset.Zero,
-                srcSize = IntSize(image.width, image.height),
-                dstOffset = IntOffset.Zero,
-                dstSize = IntSize(width, height),
-                alpha = alphas.getOrElse(index) { 1f },
-                blendMode = BlendMode.Screen
-            )
+            val isReversed = flipped.getOrElse(index) { false }
+            if (isReversed) {
+                // перевёрнутая карта: рисунок вверх ногами и цвета вывернуты
+                rotate(180f) {
+                    drawImage(
+                        image = image,
+                        srcOffset = IntOffset.Zero,
+                        srcSize = IntSize(image.width, image.height),
+                        dstOffset = IntOffset.Zero,
+                        dstSize = IntSize(width, height),
+                        alpha = alphas.getOrElse(index) { 1f },
+                        colorFilter = inverted,
+                        blendMode = BlendMode.Screen
+                    )
+                }
+            } else {
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset.Zero,
+                    dstSize = IntSize(width, height),
+                    alpha = alphas.getOrElse(index) { 1f },
+                    blendMode = BlendMode.Screen
+                )
+            }
         }
 
         drawFrame(width, height)

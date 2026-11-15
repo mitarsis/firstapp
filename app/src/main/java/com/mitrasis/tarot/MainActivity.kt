@@ -494,6 +494,7 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
                 context = context,
                 cards = trio,
                 probabilities = listOf(answer.probability) + answer.alternatives.map { it.second },
+                reversed = answer.lines.map { it.reversed },
                 modifier = Modifier.fillMaxWidth()
             )
         }
