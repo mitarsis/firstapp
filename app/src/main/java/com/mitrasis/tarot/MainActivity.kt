@@ -145,13 +145,11 @@ fun TarotApp() {
     var progress by remember { mutableFloatStateOf(0f) }
     var note by remember { mutableStateOf("") }
     var showDiag by remember { mutableStateOf(false) }
-    var offsetX by remember { mutableStateOf(0f) }
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
         animationSpec = androidx.compose.animation.core.tween(420),
         label = "flip"
     )
-    val slide by animateFloatAsState(offsetX, label = "slide")
     var diag by remember { mutableStateOf<List<String>>(emptyList()) }
 
     fun draw() {
@@ -239,7 +237,6 @@ fun TarotApp() {
                 .fillMaxWidth(0.78f)
                 .aspectRatio(0.62f)
                 .graphicsLayer {
-                    translationX = slide
                     rotationY = flip
                     cameraDistance = 14f * density
                 }
@@ -255,20 +252,6 @@ fun TarotApp() {
                         size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 0.3f)
                     )
                 }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta -> offsetX += delta },
-                    onDragStopped = {
-                        if (abs(offsetX) > 150f) {
-                            offsetX = 0f
-                            answer = null
-                            question = ""
-                            note = ""
-                        } else {
-                            offsetX = 0f
-                        }
-                    }
-                )
                 .pointerInput(answer, ready, busy, question) {
                     detectTapGestures(
                         onTap = {
@@ -284,6 +267,21 @@ fun TarotApp() {
                 }
         ) {
             val shown = answer
+            if (shown != null) {
+                Text(
+                    text = "↺",
+                    style = TextStyle(fontSize = 20.sp),
+                    color = FOIL.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(14.dp)
+                        .clickable {
+                            answer = null
+                            question = ""
+                            note = ""
+                        }
+                )
+            }
             if (shown == null) {
                 CardBack(
                     question = question,
@@ -347,7 +345,7 @@ fun TarotApp() {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "смахни карту, чтобы спросить другое",
+                    text = "коснись карты — новая вытяжка",
                     style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
                     color = ASH.copy(alpha = 0.45f)
                 )

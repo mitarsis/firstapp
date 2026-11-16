@@ -70,81 +70,96 @@ object CardImages {
 }
 
 /**
- * Обод зеркала: широкий скошенный кант с бликом, тёмная фаска,
- * зубчатая кромка внутри и накладки по углам.
+ * Шершавая гравюрная рамка: несколько неровных процарапанных обводов
+ * с пропусками, угловая штриховка и крапины — как у старой печатной доски.
  */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: Int, height: Int) {
+    val ink = androidx.compose.ui.graphics.Color(0xFFC0A276)
     val w = width.toFloat()
     val h = height.toFloat()
-    val brass = androidx.compose.ui.graphics.Color(0xFFC9A26B)
-    val light = androidx.compose.ui.graphics.Color(0xFFEBD8B2)
-    val dark = androidx.compose.ui.graphics.Color(0xFF5A4527)
 
-    // скошенный кант: градиент от блика к тени
-    val rim = androidx.compose.ui.graphics.Brush.linearGradient(
-        colors = listOf(light, brass, dark),
-        start = androidx.compose.ui.geometry.Offset(0f, 0f),
-        end = androidx.compose.ui.geometry.Offset(w, h)
-    )
-    val rimThickness = w * 0.030f
-    drawRoundRect(
-        brush = rim,
-        topLeft = androidx.compose.ui.geometry.Offset(rimThickness / 2f, rimThickness / 2f),
-        size = androidx.compose.ui.geometry.Size(w - rimThickness, h - rimThickness),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.07f, w * 0.07f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = rimThickness)
-    )
-
-    // тёмная фаска внутри канта
-    val bevelInset = rimThickness * 1.05f
-    drawRoundRect(
-        color = androidx.compose.ui.graphics.Color(0xCC120E08),
-        topLeft = androidx.compose.ui.geometry.Offset(bevelInset, bevelInset),
-        size = androidx.compose.ui.geometry.Size(w - bevelInset * 2f, h - bevelInset * 2f),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.055f, w * 0.055f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.008f)
-    )
-
-    // зубчатая кромка: мелкие дуги по периметру
-    val toothRadius = w * 0.011f
-    val inner = bevelInset + w * 0.018f
-    val stepsX = 11
-    val stepsY = 16
-    for (i in 1 until stepsX) {
-        val x = inner + (w - inner * 2f) * i / stepsX
-        drawArc(brass.copy(alpha = 0.45f), 0f, 180f, false,
-            androidx.compose.ui.geometry.Offset(x - toothRadius, inner - toothRadius),
-            androidx.compose.ui.geometry.Size(toothRadius * 2f, toothRadius * 2f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0025f))
-        drawArc(brass.copy(alpha = 0.45f), 180f, 180f, false,
-            androidx.compose.ui.geometry.Offset(x - toothRadius, h - inner - toothRadius),
-            androidx.compose.ui.geometry.Size(toothRadius * 2f, toothRadius * 2f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0025f))
-    }
-    for (i in 1 until stepsY) {
-        val y = inner + (h - inner * 2f) * i / stepsY
-        drawArc(brass.copy(alpha = 0.45f), 90f, 180f, false,
-            androidx.compose.ui.geometry.Offset(inner - toothRadius, y - toothRadius),
-            androidx.compose.ui.geometry.Size(toothRadius * 2f, toothRadius * 2f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0025f))
-        drawArc(brass.copy(alpha = 0.45f), 270f, 180f, false,
-            androidx.compose.ui.geometry.Offset(w - inner - toothRadius, y - toothRadius),
-            androidx.compose.ui.geometry.Size(toothRadius * 2f, toothRadius * 2f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0025f))
+    fun wornSide(
+        from: androidx.compose.ui.geometry.Offset,
+        to: androidx.compose.ui.geometry.Offset,
+        seed: Int,
+        alpha: Float,
+        strokeWidth: Float
+    ) {
+        var state = seed
+        fun rnd(): Float {
+            state = state * 1103515245 + 12345
+            return ((state ushr 16) and 0xFF) / 255f
+        }
+        val steps = 64
+        var previous = from
+        for (step in 1..steps) {
+            val t = step / steps.toFloat()
+            val x = from.x + (to.x - from.x) * t + (rnd() - 0.5f) * w * 0.004f
+            val y = from.y + (to.y - from.y) * t + (rnd() - 0.5f) * w * 0.004f
+            val current = androidx.compose.ui.geometry.Offset(x, y)
+            val gap = rnd() < 0.055f
+            if (!gap) {
+                drawLine(
+                    color = ink.copy(alpha = alpha),
+                    start = previous,
+                    end = current,
+                    strokeWidth = strokeWidth
+                )
+            }
+            previous = current
+        }
     }
 
-    // накладки по углам: розетка из трёх кругов
-    val bossRadius = w * 0.030f
-    listOf(
-        androidx.compose.ui.geometry.Offset(rimThickness, rimThickness),
-        androidx.compose.ui.geometry.Offset(w - rimThickness, rimThickness),
-        androidx.compose.ui.geometry.Offset(w - rimThickness, h - rimThickness),
-        androidx.compose.ui.geometry.Offset(rimThickness, h - rimThickness)
-    ).forEach { point ->
-        drawCircle(dark.copy(alpha = 0.85f), bossRadius, point)
-        drawCircle(brass.copy(alpha = 0.9f), bossRadius, point,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.004f))
-        drawCircle(light.copy(alpha = 0.75f), bossRadius * 0.35f, point)
+    // три процарапанных обвода
+    for (pass in 0..2) {
+        val inset = w * (0.018f + pass * 0.007f)
+        val alpha = 0.40f - pass * 0.10f
+        val stroke = w * (0.0050f - pass * 0.0011f)
+        wornSide(androidx.compose.ui.geometry.Offset(inset, inset),
+            androidx.compose.ui.geometry.Offset(w - inset, inset), 11 + pass, alpha, stroke)
+        wornSide(androidx.compose.ui.geometry.Offset(w - inset, inset),
+            androidx.compose.ui.geometry.Offset(w - inset, h - inset), 37 + pass, alpha, stroke)
+        wornSide(androidx.compose.ui.geometry.Offset(w - inset, h - inset),
+            androidx.compose.ui.geometry.Offset(inset, h - inset), 71 + pass, alpha, stroke)
+        wornSide(androidx.compose.ui.geometry.Offset(inset, h - inset),
+            androidx.compose.ui.geometry.Offset(inset, inset), 97 + pass, alpha, stroke)
+    }
+
+    // угловая штриховка в четыре линии
+    val cornerInset = w * 0.030f
+    val hatchLength = w * 0.045f
+    val hatchGap = w * 0.011f
+    val corners = listOf(
+        Triple(cornerInset, cornerInset, 1f),
+        Triple(w - cornerInset, cornerInset, -1f),
+        Triple(w - cornerInset, h - cornerInset, -1f),
+        Triple(cornerInset, h - cornerInset, 1f)
+    )
+    corners.forEach { (cx, cy, direction) ->
+        for (line in 0 until 4) {
+            val shift = line * hatchGap
+            drawLine(
+                color = ink.copy(alpha = 0.22f - line * 0.04f),
+                start = androidx.compose.ui.geometry.Offset(cx + direction * shift, cy),
+                end = androidx.compose.ui.geometry.Offset(
+                    cx + direction * (shift + hatchLength), cy + hatchLength
+                ),
+                strokeWidth = w * 0.0022f
+            )
+        }
+    }
+
+    // крапины по кромке
+    var scatter = 1234
+    fun noise(): Float {
+        scatter = scatter * 1103515245 + 12345
+        return ((scatter ushr 16) and 0xFF) / 255f
+    }
+    repeat(26) {
+        val x = noise() * w
+        val y = noise() * h
+        drawCircle(ink.copy(alpha = 0.06f + noise() * 0.10f), w * 0.0022f,
+            androidx.compose.ui.geometry.Offset(x, y))
     }
 }
 
