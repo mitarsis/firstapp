@@ -68,94 +68,116 @@ object CardImages {
 }
 
 /**
- * Ажурная рамка в оккультном духе: двойной контур, дуги-завитки по углам,
- * точки по кромке, ромбы и «глаз» по центру каждой стороны.
+ * Гравюрная рамка: линия «от руки» с дрожью, а по кромке — алхимические
+ * глифы (солнце, луна, стихии, пентаграмма). Ничего веб-дизайнерского.
  */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: Int, height: Int) {
-    val gold = androidx.compose.ui.graphics.Color(0xFFC0A276)
+    val ink = androidx.compose.ui.graphics.Color(0xFFBFA37A)
     val w = width.toFloat()
     val h = height.toFloat()
-    val thin = w * 0.0035f
 
-    // внешний и внутренний контуры
-    drawRoundRect(
-        color = gold.copy(alpha = 0.55f),
-        topLeft = androidx.compose.ui.geometry.Offset(w * 0.006f, w * 0.006f),
-        size = androidx.compose.ui.geometry.Size(w - w * 0.012f, h - w * 0.012f),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.05f, w * 0.05f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.008f)
-    )
-    val inset = w * 0.045f
-    drawRoundRect(
-        color = gold.copy(alpha = 0.30f),
-        topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-        size = androidx.compose.ui.geometry.Size(w - inset * 2f, h - inset * 2f),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.035f, w * 0.035f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = thin)
-    )
-
-    // завитки по углам: три дуги, вложенные друг в друга
-    val corners = listOf(
-        Triple(inset, inset, 0f),
-        Triple(w - inset, inset, 90f),
-        Triple(w - inset, h - inset, 180f),
-        Triple(inset, h - inset, 270f)
-    )
-    corners.forEachIndexed { index, (cx, cy, startAngle) ->
-        val radius = w * 0.075f
-        for (ring in 0 until 3) {
-            val r = radius * (1f - ring * 0.28f)
-            drawArc(
-                color = gold.copy(alpha = 0.42f - ring * 0.1f),
-                startAngle = startAngle,
-                sweepAngle = 90f,
-                useCenter = false,
-                topLeft = androidx.compose.ui.geometry.Offset(cx - r, cy - r),
-                size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = thin)
-            )
+    fun wobblyPath(inset: Float, amplitude: Float, seed: Int): androidx.compose.ui.graphics.Path {
+        val path = androidx.compose.ui.graphics.Path()
+        val steps = 48
+        var random = seed
+        fun jitter(): Float {
+            random = random * 1103515245 + 12345
+            return ((random ushr 16 and 0xFF) / 255f - 0.5f) * 2f * amplitude
         }
-        // точка в углу
-        drawCircle(gold.copy(alpha = 0.55f), w * 0.008f, androidx.compose.ui.geometry.Offset(cx, cy))
-        // ромбик внутрь от угла
-        val dx = if (index == 0 || index == 3) 1f else -1f
-        val dy = if (index == 0 || index == 1) 1f else -1f
-        val point = androidx.compose.ui.geometry.Offset(cx + dx * w * 0.10f, cy + dy * w * 0.10f)
-        val r2 = w * 0.010f
-        val diamond = androidx.compose.ui.graphics.Path().apply {
-            moveTo(point.x, point.y - r2)
-            lineTo(point.x + r2, point.y)
-            lineTo(point.x, point.y + r2)
-            lineTo(point.x - r2, point.y)
-            close()
+        // верх
+        for (i in 0..steps) {
+            val x = inset + (w - inset * 2f) * i / steps
+            val y = inset + jitter()
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
-        drawPath(diamond, gold.copy(alpha = 0.5f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = thin))
+        // право
+        for (i in 0..steps) {
+            val y = inset + (h - inset * 2f) * i / steps
+            path.lineTo(w - inset + jitter(), y)
+        }
+        // низ
+        for (i in steps downTo 0) {
+            val x = inset + (w - inset * 2f) * i / steps
+            path.lineTo(x, h - inset + jitter())
+        }
+        // лево
+        for (i in steps downTo 0) {
+            val y = inset + (h - inset * 2f) * i / steps
+            path.lineTo(inset + jitter(), y)
+        }
+        path.close()
+        return path
     }
 
-    // точки-бусины по кромке
-    val steps = 9
-    for (index in 1 until steps) {
-        val fx = w * index / steps
-        val fy = h * index / steps
-        val alpha = if (index % 2 == 0) 0.35f else 0.20f
-        drawCircle(gold.copy(alpha = alpha), w * 0.0045f, androidx.compose.ui.geometry.Offset(fx, inset))
-        drawCircle(gold.copy(alpha = alpha), w * 0.0045f, androidx.compose.ui.geometry.Offset(fx, h - inset))
-        drawCircle(gold.copy(alpha = alpha), w * 0.0045f, androidx.compose.ui.geometry.Offset(inset, fy))
-        drawCircle(gold.copy(alpha = alpha), w * 0.0045f, androidx.compose.ui.geometry.Offset(w - inset, fy))
+    drawPath(wobblyPath(w * 0.02f, w * 0.0035f, 17), ink.copy(alpha = 0.55f),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.006f))
+    val innerInset = w * 0.055f
+    drawPath(wobblyPath(innerInset, w * 0.0025f, 91), ink.copy(alpha = 0.28f),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.003f))
+
+    // глифы по кромке: солнце, луна, треугольник, квадрат, пентаграмма
+    val glyphRadius = w * 0.013f
+    fun glyph(index: Int, center: androidx.compose.ui.geometry.Offset) {
+        val color = ink.copy(alpha = 0.55f)
+        val thin = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.0028f)
+        when (index % 5) {
+            0 -> { // солнце
+                drawCircle(color, glyphRadius, center, style = thin)
+                drawCircle(color, glyphRadius * 0.22f, center)
+            }
+            1 -> { // луна
+                drawArc(color, 60f, 240f, false,
+                    androidx.compose.ui.geometry.Offset(center.x - glyphRadius, center.y - glyphRadius),
+                    androidx.compose.ui.geometry.Size(glyphRadius * 2f, glyphRadius * 2f), style = thin)
+            }
+            2 -> { // треугольник
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(center.x, center.y - glyphRadius)
+                    lineTo(center.x + glyphRadius, center.y + glyphRadius * 0.8f)
+                    lineTo(center.x - glyphRadius, center.y + glyphRadius * 0.8f)
+                    close()
+                }
+                drawPath(path, color, style = thin)
+            }
+            3 -> { // квадрат
+                drawRect(color,
+                    androidx.compose.ui.geometry.Offset(center.x - glyphRadius * 0.75f, center.y - glyphRadius * 0.75f),
+                    androidx.compose.ui.geometry.Size(glyphRadius * 1.5f, glyphRadius * 1.5f), style = thin)
+            }
+            else -> { // пентаграмма
+                val path = androidx.compose.ui.graphics.Path()
+                for (point in 0 until 5) {
+                    val angle = Math.toRadians(144.0 * point - 90.0)
+                    val x = center.x + (glyphRadius * cos(angle)).toFloat()
+                    val y = center.y + (glyphRadius * sin(angle)).toFloat()
+                    if (point == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                path.close()
+                drawPath(path, color, style = thin)
+            }
+        }
     }
 
-    // «глаз» по центру верхней и нижней кромки
-    listOf(inset, h - inset).forEach { y ->
+    val margin = w * 0.037f
+    val positions = listOf(
+        androidx.compose.ui.geometry.Offset(w * 0.30f, margin),
+        androidx.compose.ui.geometry.Offset(w * 0.70f, margin),
+        androidx.compose.ui.geometry.Offset(w - margin, h * 0.30f),
+        androidx.compose.ui.geometry.Offset(w - margin, h * 0.70f),
+        androidx.compose.ui.geometry.Offset(w * 0.70f, h - margin),
+        androidx.compose.ui.geometry.Offset(w * 0.30f, h - margin),
+        androidx.compose.ui.geometry.Offset(margin, h * 0.70f),
+        androidx.compose.ui.geometry.Offset(margin, h * 0.30f)
+    )
+    positions.forEachIndexed { index, point -> glyph(index, point) }
+
+    // центральный медальон сверху и снизу
+    listOf(margin, h - margin).forEach { y ->
         val cx = w / 2f
-        drawCircle(gold.copy(alpha = 0.45f), w * 0.014f, androidx.compose.ui.geometry.Offset(cx, y),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thin))
-        drawCircle(gold.copy(alpha = 0.7f), w * 0.004f, androidx.compose.ui.geometry.Offset(cx, y))
-        drawLine(gold.copy(alpha = 0.25f),
-            androidx.compose.ui.geometry.Offset(cx - w * 0.10f, y),
-            androidx.compose.ui.geometry.Offset(cx - w * 0.02f, y), thin)
-        drawLine(gold.copy(alpha = 0.25f),
-            androidx.compose.ui.geometry.Offset(cx + w * 0.02f, y),
-            androidx.compose.ui.geometry.Offset(cx + w * 0.10f, y), thin)
+        drawCircle(ink.copy(alpha = 0.5f), w * 0.019f,
+            androidx.compose.ui.geometry.Offset(cx, y),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.003f))
+        drawCircle(ink.copy(alpha = 0.75f), w * 0.005f, androidx.compose.ui.geometry.Offset(cx, y))
     }
 }
 
