@@ -25,17 +25,25 @@ import androidx.compose.ui.unit.IntSize
  * три карты накладываются друг на друга, как в Transparent Tarot, и
  * складываются в общий рисунок.
  */
-/** Инверсия RGB: перевёрнутая карта выглядит вывернутой и по цвету. */
-private val inverted: ColorFilter = run {
-    val matrix = ColorMatrix(
-        floatArrayOf(
-            -1f, 0f, 0f, 0f, 255f,
-            0f, -1f, 0f, 0f, 255f,
-            0f, 0f, -1f, 0f, 255f,
-            0f, 0f, 0f, 1f, 0f
+/**
+ * Цвет позиции: по нему видно, где чей слой при наложении.
+ * Перевёрнутая карта того же цвета, но притушенная и сдвинутая в фиолетовый.
+ */
+fun positionTint(index: Int, reversed: Boolean): Color {
+    val base = when (index) {
+        0 -> Color(0xFFE7B15C)   // янтарь
+        1 -> Color(0xFF5EC9D6)   // бирюза
+        else -> Color(0xFFB07BE3) // пурпур
+    }
+    return if (reversed) {
+        Color(
+            red = base.red * 0.55f,
+            green = base.green * 0.5f,
+            blue = (base.blue * 0.85f).coerceAtLeast(0.5f)
         )
-    )
-    ColorFilter.colorMatrix(matrix)
+    } else {
+        base
+    }
 }
 
 object CardImages {
@@ -191,29 +199,16 @@ fun CardStack(
         images.forEachIndexed { index, image ->
             if (image == null) return@forEachIndexed
             val isReversed = flipped.getOrElse(index) { false }
-            if (isReversed) {
-                // перевёрнутая карта: без поворота, только вывернутые цвета
-                drawImage(
-                    image = image,
-                    srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(image.width, image.height),
-                    dstOffset = IntOffset.Zero,
-                    dstSize = IntSize(width, height),
-                    alpha = alphas.getOrElse(index) { 1f },
-                    colorFilter = inverted,
-                    blendMode = BlendMode.Screen
-                )
-            } else {
-                drawImage(
-                    image = image,
-                    srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(image.width, image.height),
-                    dstOffset = IntOffset.Zero,
-                    dstSize = IntSize(width, height),
-                    alpha = alphas.getOrElse(index) { 1f },
-                    blendMode = BlendMode.Screen
-                )
-            }
+            drawImage(
+                image = image,
+                srcOffset = IntOffset.Zero,
+                srcSize = IntSize(image.width, image.height),
+                dstOffset = IntOffset.Zero,
+                dstSize = IntSize(width, height),
+                alpha = alphas.getOrElse(index) { 1f },
+                colorFilter = ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn),
+                blendMode = BlendMode.Screen
+            )
         }
 
         drawFrame(width, height)

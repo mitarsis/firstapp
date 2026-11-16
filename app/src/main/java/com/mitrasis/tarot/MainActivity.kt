@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -370,7 +371,13 @@ private fun DiagnosticsCard(lines: List<String>, running: Boolean) {
 }
 
 @Composable
-private fun LegendRow(marker: String, title: String, probability: Float, strong: Boolean) {
+private fun LegendRow(
+    marker: String,
+    title: String,
+    probability: Float,
+    strong: Boolean,
+    dot: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -378,8 +385,13 @@ private fun LegendRow(marker: String, title: String, probability: Float, strong:
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .size(9.dp)
+                .background(dot, androidx.compose.foundation.shape.CircleShape)
+        )
         Text(
-            text = marker,
+            text = " " + marker,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold
         )
@@ -510,9 +522,16 @@ private fun AnswerCard(answer: CardAnswer, question: String) {
         }
 
         Spacer(Modifier.height(16.dp))
-        LegendRow("1", card.title, answer.probability, strong = true)
+        val reversedFlags = answer.lines.map { it.reversed }
+        LegendRow(
+            "1", card.title, answer.probability, strong = true,
+            dot = positionTint(0, reversedFlags.getOrElse(0) { false })
+        )
         answer.alternatives.forEachIndexed { index, (other, probability) ->
-            LegendRow((index + 2).toString(), other.title, probability, strong = false)
+            LegendRow(
+                (index + 2).toString(), other.title, probability, strong = false,
+                dot = positionTint(index + 1, reversedFlags.getOrElse(index + 1) { false })
+            )
         }
 
         Spacer(Modifier.height(16.dp))
