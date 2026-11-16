@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +60,35 @@ import android.system.OsConstants
 import java.io.File
 import java.util.Locale
 
+/** Фон: лёгкая гравюрная штриховка и виньетка, без картинок. */
+@Composable
+private fun EngravedBackdrop() {
+    val line = MaterialTheme.colorScheme.primary
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val step = size.height / 46f
+        var y = 0f
+        while (y < size.height) {
+            drawLine(
+                color = line.copy(alpha = 0.035f),
+                start = androidx.compose.ui.geometry.Offset(0f, y),
+                end = androidx.compose.ui.geometry.Offset(size.width, y),
+                strokeWidth = 1f
+            )
+            y += step
+        }
+        drawRect(
+            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                colors = listOf(
+                    androidx.compose.ui.graphics.Color.Transparent,
+                    MaterialTheme.colorScheme.background.copy(alpha = 0.75f)
+                ),
+                center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.35f),
+                radius = size.height * 0.85f
+            )
+        )
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing && !isChangingConfigurations) {
@@ -72,7 +102,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             TarotTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TarotApp()
+                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+                        EngravedBackdrop()
+                        TarotApp()
+                    }
                 }
             }
         }
@@ -177,6 +210,14 @@ fun TarotApp() {
             )
         } else {
             OutlinedTextField(
+                shape = RoundedCornerShape(2.dp),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
                 value = question,
                 onValueChange = {
                     question = it
@@ -191,10 +232,12 @@ fun TarotApp() {
             )
 
             Spacer(Modifier.height(16.dp))
-            Button(
+            StampButton(
+                text = if (answered) "Модель думает…" else "Ответить картой",
+                enabled = question.isNotBlank() && !answered,
                 onClick = {
                     val text = question.trim()
-                    if (text.isEmpty()) return@Button
+                    if (text.isEmpty()) return@StampButton
                     error = null
                     answered = true
                     answer = null
@@ -210,17 +253,8 @@ fun TarotApp() {
                             answered = false
                         }
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                enabled = question.isNotBlank() && !answered
-            ) {
-                Text(
-                    text = if (answered) "Модель думает…" else "Ответить картой",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
+                }
+            )
 
             if (answered) {
                 Spacer(Modifier.height(10.dp))
@@ -350,6 +384,36 @@ fun TarotApp() {
 }
 
 @Composable
+private fun StampButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    androidx.compose.foundation.layout.Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .background(accent.copy(alpha = if (enabled) 0.05f else 0.02f), RoundedCornerShape(2.dp))
+            .border(
+                width = 1.dp,
+                color = accent.copy(alpha = if (enabled) 0.75f else 0.25f),
+                shape = RoundedCornerShape(2.dp)
+            )
+            .clickable(enabled = enabled) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text.uppercase(),
+            style = MaterialTheme.typography.titleMedium,
+            letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
+            color = if (enabled) accent else accent.copy(alpha = 0.4f)
+        )
+    }
+}
+
+@Composable
 private fun DiagnosticsCard(lines: List<String>, running: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -440,9 +504,7 @@ private fun CrashScreen(trace: String, onShare: () -> Unit, onClear: () -> Unit)
             )
         }
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
-            Text("Отправить стектрейс")
-        }
+        StampButton(text = "Отправить стектрейс", onClick = onShare)
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
             Text("Стереть и попробовать снова")
@@ -484,9 +546,7 @@ private fun ModelCard(
                     style = MaterialTheme.typography.labelSmall
                 )
             } else {
-                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                    Text("Скачать модель")
-                }
+                StampButton(text = "Скачать модель", onClick = onDownload)
             }
         }
     }
