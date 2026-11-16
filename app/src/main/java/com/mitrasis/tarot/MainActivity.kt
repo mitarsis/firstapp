@@ -65,6 +65,7 @@ import java.util.Locale
 @Composable
 private fun EngravedBackdrop() {
     val line = MaterialTheme.colorScheme.primary
+    val veil = MaterialTheme.colorScheme.background.copy(alpha = 0.75f)
     Canvas(modifier = Modifier.fillMaxSize()) {
         val step = size.height / 46f
         var y = 0f
@@ -81,7 +82,7 @@ private fun EngravedBackdrop() {
             brush = androidx.compose.ui.graphics.Brush.radialGradient(
                 colors = listOf(
                     androidx.compose.ui.graphics.Color.Transparent,
-                    MaterialTheme.colorScheme.background.copy(alpha = 0.75f)
+                    veil
                 ),
                 center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.35f),
                 radius = size.height * 0.85f
