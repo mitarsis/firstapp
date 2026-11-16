@@ -60,29 +60,29 @@ object CardImages {
 
 /** Двойная золотая рамка с уголками и ромбами — поверх рисунка. */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: Int, height: Int) {
-    val gold = androidx.compose.ui.graphics.Color(0xFFD9B25F)
+    val gold = androidx.compose.ui.graphics.Color(0xFFC0A276)
     val w = width.toFloat()
     val h = height.toFloat()
     val outer = androidx.compose.ui.geometry.CornerRadius(w * 0.045f, w * 0.045f)
 
     drawRoundRect(
-        color = gold.copy(alpha = 0.75f),
+        color = gold.copy(alpha = 0.45f),
         topLeft = androidx.compose.ui.geometry.Offset(1f, 1f),
         size = androidx.compose.ui.geometry.Size(w - 2f, h - 2f),
         cornerRadius = outer,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.017f)
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.010f)
     )
     val inset = w * 0.045f
     drawRoundRect(
-        color = gold.copy(alpha = 0.35f),
+        color = gold.copy(alpha = 0.18f),
         topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
         size = androidx.compose.ui.geometry.Size(w - inset * 2f, h - inset * 2f),
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.03f, w * 0.03f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.006f)
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.003f)
     )
 
     // уголки-ромбы
-    val r = w * 0.024f
+    val r = w * 0.014f
     listOf(
         androidx.compose.ui.geometry.Offset(inset, inset),
         androidx.compose.ui.geometry.Offset(w - inset, inset),
@@ -96,16 +96,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: In
             lineTo(point.x - r, point.y)
             close()
         }
-        drawPath(diamond, gold.copy(alpha = 0.85f))
+        drawPath(diamond, gold.copy(alpha = 0.5f))
     }
 
     // верхний орнамент: три штриха
     val cx = w / 2f
-    drawLine(gold.copy(alpha = 0.5f),
+    drawLine(gold.copy(alpha = 0.28f),
         androidx.compose.ui.geometry.Offset(cx - w * 0.09f, h * 0.028f),
         androidx.compose.ui.geometry.Offset(cx + w * 0.09f, h * 0.028f),
         strokeWidth = w * 0.004f)
-    drawCircle(gold.copy(alpha = 0.8f), w * 0.008f,
+    drawCircle(gold.copy(alpha = 0.45f), w * 0.006f,
         androidx.compose.ui.geometry.Offset(cx, h * 0.028f))
 }
 
