@@ -246,15 +246,50 @@ fun CardStack(
         images.forEachIndexed { index, image ->
             if (image == null) return@forEachIndexed
             val isReversed = flipped.getOrElse(index) { false }
+            // глубина: чем дальше слой, тем он мельче — эффект вложенности
+            val depthScale = when (index) {
+                0 -> 1f
+                1 -> 0.93f
+                else -> 0.86f
+            }
+            val layerWidth = (width * depthScale).toInt()
+            val layerHeight = (height * depthScale).toInt()
+            val dx = (width - layerWidth) / 2
+            val dy = (height - layerHeight) / 2
+
             drawImage(
                 image = image,
                 srcOffset = IntOffset.Zero,
                 srcSize = IntSize(image.width, image.height),
-                dstOffset = IntOffset.Zero,
-                dstSize = IntSize(width, height),
+                dstOffset = IntOffset(dx, dy),
+                dstSize = IntSize(layerWidth, layerHeight),
                 alpha = alphas.getOrElse(index) { 1f },
                 colorFilter = ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn),
                 blendMode = BlendMode.Screen
+            )
+        }
+
+        // глубина: тёмный омут по краям, светлее к центру
+        drawRect(
+            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                colors = listOf(
+                    androidx.compose.ui.graphics.Color.Transparent,
+                    androidx.compose.ui.graphics.Color(0x880A0710),
+                    androidx.compose.ui.graphics.Color(0xE00A0710)
+                ),
+                center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.45f),
+                radius = size.height * 0.62f
+            )
+        )
+
+        // круги на воде — намёк на воронку
+        repeat(3) { ring ->
+            val radius = size.width * (0.30f + ring * 0.11f)
+            drawCircle(
+                color = androidx.compose.ui.graphics.Color(0xFFBFA37A).copy(alpha = 0.05f),
+                radius = radius,
+                center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.45f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.002f)
             )
         }
 
