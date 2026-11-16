@@ -8,13 +8,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,14 +23,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,26 +37,29 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.random.Random
 
-private val INK = Color(0xFF2A2118)
-private val PAPER = Color(0xFFF2E9D6)
-private val PAPER_DEEP = Color(0xFFE4D8BE)
-private val SEPIA = Color(0xFF7A6242)
+private val TABLE = Color(0xFF0B090D)
+private val FOIL = Color(0xFFC9A26B)
+private val ASH = Color(0xFFB9AE9A)
 
 class MainActivity : ComponentActivity() {
     override fun onDestroy() {
@@ -71,9 +73,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TarotTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = PAPER) {
+                Surface(modifier = Modifier.fillMaxSize(), color = TABLE) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        PaperBackdrop()
+                        TableBackdrop()
                         TarotApp()
                     }
                 }
@@ -82,84 +84,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Лист бумаги: мягкие пятна, зерно и тёмные края. Никаких картинок. */
+/** Стол, а не фон приложения: тёмная поверхность с редкими искрами. */
 @Composable
-private fun PaperBackdrop() {
+private fun TableBackdrop() {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        drawRect(
-            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                listOf(PAPER, PAPER_DEEP)
-            )
-        )
-        val random = Random(1911)
-        repeat(1400) {
-            val x = random.nextFloat() * size.width
-            val y = random.nextFloat() * size.height
+        drawRect(brush = Brush.radialGradient(
+            colors = listOf(Color(0xFF1A1620), TABLE),
+            center = Offset(size.width * 0.5f, size.height * 0.38f),
+            radius = size.height * 0.75f
+        ))
+        val random = Random(77)
+        repeat(90) {
             drawCircle(
-                color = SEPIA.copy(alpha = 0.05f + random.nextFloat() * 0.05f),
-                radius = 0.7f + random.nextFloat() * 1.1f,
-                center = androidx.compose.ui.geometry.Offset(x, y)
-            )
-        }
-        drawRect(
-            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                colors = listOf(Color.Transparent, SEPIA.copy(alpha = 0.22f)),
-                center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.4f),
-                radius = size.height * 0.85f
-            )
-        )
-    }
-}
-
-/** Тонкая линейка, как оттиск пера. */
-@Composable
-private fun InkRule(modifier: Modifier = Modifier, strong: Boolean = false) {
-    Canvas(modifier = modifier.fillMaxWidth().height(1.dp)) {
-        drawLine(
-            color = INK.copy(alpha = if (strong) 0.55f else 0.25f),
-            start = androidx.compose.ui.geometry.Offset(0f, 0.5f),
-            end = androidx.compose.ui.geometry.Offset(size.width, 0.5f),
-            strokeWidth = if (strong) 1.6f else 1f
-        )
-    }
-}
-
-/** Кнопка — не плашка, а надпись с двойным подчёркиванием. */
-@Composable
-private fun InkButton(
-    text: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick() }
-            .alpha(if (enabled) 1f else 0.4f),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = text.uppercase(),
-            style = TextStyle(
-                fontSize = 15.sp,
-                letterSpacing = 3.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            color = INK
-        )
-        Spacer(Modifier.height(6.dp))
-        Canvas(modifier = Modifier.fillMaxWidth(0.55f).height(5.dp)) {
-            drawLine(
-                color = SEPIA,
-                start = androidx.compose.ui.geometry.Offset(0f, 1f),
-                end = androidx.compose.ui.geometry.Offset(size.width, 1f),
-                strokeWidth = 1.4f
-            )
-            drawLine(
-                color = SEPIA.copy(alpha = 0.6f),
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.12f, 4f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.88f, 4f),
-                strokeWidth = 1f
+                color = FOIL.copy(alpha = 0.05f + random.nextFloat() * 0.12f),
+                radius = 0.6f + random.nextFloat(),
+                center = Offset(random.nextFloat() * size.width, random.nextFloat() * size.height)
             )
         }
     }
@@ -168,7 +107,6 @@ private fun InkButton(
 @Composable
 fun TarotApp() {
     val context = LocalContext.current
-
     val crashFile = remember { File(context.filesDir, TarotAppClass.CRASH_FILE) }
     var crash by remember { mutableStateOf(crashFile.takeIf { it.exists() }?.readText()) }
     val crashText = crash
@@ -195,313 +133,293 @@ fun TarotApp() {
     var answer by remember { mutableStateOf<CardAnswer?>(null) }
     var ready by remember { mutableStateOf(ModelStore.isReady(context)) }
     var downloading by remember { mutableStateOf(false) }
-    var answered by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var diagnostics by remember { mutableStateOf<List<String>?>(null) }
-    var diagRunning by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf("") }
+    var showDiag by remember { mutableStateOf(false) }
+    var diag by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) { runCatching { ModelStore.cleanup(context) } }
+    fun draw() {
+        val text = question.trim()
+        if (text.isEmpty() || busy) return
+        note = ""
+        busy = true
+        answer = null
+        scope.launch {
+            try {
+                answer = withContext(Dispatchers.Default) {
+                    DeciderHolder.get(context).answer(text)
+                }
+            } catch (t: Throwable) {
+                note = "не смогла: ${t.javaClass.simpleName}"
+            } finally {
+                busy = false
+            }
+        }
     }
 
-    val scrollState = rememberScrollState()
-    LaunchedEffect(answer) {
-        if (answer != null) {
-            delay(120)
-            scrollState.animateScrollTo(scrollState.maxValue)
+    fun download() {
+        if (downloading) return
+        downloading = true
+        note = ""
+        scope.launch {
+            try {
+                ModelStore.download(context) { done, total ->
+                    progress = if (total > 0) done.toFloat() / total else 0f
+                }
+                ready = ModelStore.isReady(context)
+            } catch (t: Throwable) {
+                note = "загрузка сорвалась"
+            } finally {
+                downloading = false
+            }
+        }
+    }
+
+    fun diagnostics() {
+        showDiag = true
+        diag = emptyList()
+        scope.launch {
+            val steps = mutableListOf<String>()
+            fun say(line: String) {
+                steps.add(line)
+                diag = steps.toList()
+                Log.i("TarotDiag", line)
+            }
+            try {
+                val page = try {
+                    android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE).toString()
+                } catch (t: Throwable) {
+                    "?"
+                }
+                say("${Build.SUPPORTED_ABIS.joinToString("/")} · ${page} · sdk ${Build.VERSION.SDK_INT}")
+                say(if (ModelStore.isReady(context)) "модель на месте" else "модели нет")
+                say(ModelStore.inventory(context).replace("\n", " · "))
+                if (ModelStore.isReady(context)) {
+                    withContext(Dispatchers.Default) {
+                        val decider = DeciderHolder.get(context)
+                        decider.ensureLoaded()
+                        say(decider.describeInputs())
+                        val probe = decider.answer("стоит ли мне уйти с работы?")
+                        say("пробный ответ: ${probe.card.title} ${(probe.probability * 100).toInt()}%")
+                    }
+                }
+            } catch (t: Throwable) {
+                say("ошибка: ${t.javaClass.simpleName}")
+            }
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 26.dp, vertical = 28.dp)
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "ТАРО-ДЕЦИДЕР",
-            style = TextStyle(fontSize = 23.sp, letterSpacing = 6.sp, fontWeight = FontWeight.Normal),
-            color = INK
-        )
-        Spacer(Modifier.height(10.dp))
-        InkRule(strong = true)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = "семьдесят восемь карт как векторы смысла.\nмодель не гадает — она ищет ближайшее значение",
-            style = TextStyle(fontSize = 13.sp, lineHeight = 19.sp),
-            color = SEPIA
-        )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.weight(0.5f))
 
-        diagnostics?.let { lines ->
-            DiagnosticsBlock(lines, diagRunning)
-            Spacer(Modifier.height(20.dp))
-        }
-
-        if (!ready) {
-            Text("МОДЕЛЬ НЕ УСТАНОВЛЕНА", style = TextStyle(fontSize = 13.sp, letterSpacing = 2.sp), color = INK)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "для ответов нужен локальный классификатор: ${formatMb(ModelStore.totalBytes)}.\n" +
-                    "качается один раз, дальше всё работает без сети",
-                style = TextStyle(fontSize = 13.sp, lineHeight = 19.sp),
-                color = SEPIA
-            )
-            Spacer(Modifier.height(18.dp))
-            if (downloading) {
-                Text(
-                    "${(progress * 100).toInt()}% · ${formatMb((ModelStore.totalBytes * progress).toLong())}",
-                    style = TextStyle(fontSize = 13.sp),
-                    color = INK
-                )
-                Spacer(Modifier.height(10.dp))
-                InkRule()
-            } else {
-                InkButton("Скачать модель") {
-                    error = null
-                    downloading = true
-                    scope.launch {
-                        try {
-                            ModelStore.download(context) { done, total ->
-                                progress = if (total > 0) done.toFloat() / total else 0f
-                            }
-                            ready = ModelStore.isReady(context)
-                        } catch (t: Throwable) {
-                            error = "загрузка сорвалась: ${t.javaClass.simpleName}: ${t.message}"
-                        } finally {
-                            downloading = false
-                        }
-                    }
-                }
-            }
-        } else {
-            Text(
-                "ВОПРОС",
-                style = TextStyle(fontSize = 11.sp, letterSpacing = 3.sp),
-                color = SEPIA
-            )
-            Spacer(Modifier.height(4.dp))
-            BasicTextField(
-                value = question,
-                onValueChange = {
-                    question = it
-                    answer = null
-                    answered = false
-                    error = null
-                },
-                textStyle = TextStyle(fontSize = 17.sp, color = INK, lineHeight = 24.sp),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(SEPIA),
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 4,
-                decorationBox = { inner ->
-                    Column {
-                        Box(modifier = Modifier.fillMaxWidth().height(56.dp)) {
-                            if (question.isBlank()) {
-                                Text(
-                                    "напиши, что тревожит",
-                                    style = TextStyle(fontSize = 17.sp, color = SEPIA.copy(alpha = 0.55f))
-                                )
-                            }
-                            inner()
-                        }
-                        InkRule()
-                    }
-                }
-            )
-
-            Spacer(Modifier.height(26.dp))
-            InkButton(
-                text = if (answered) "модель думает…" else "ответить картой",
-                enabled = question.isNotBlank() && !answered
-            ) {
-                val text = question.trim()
-                if (text.isEmpty()) return@InkButton
-                error = null
-                answered = true
-                answer = null
-                scope.launch {
-                    try {
-                        answer = withContext(Dispatchers.Default) {
-                            DeciderHolder.get(context).answer(text)
-                        }
-                    } catch (t: Throwable) {
-                        error = "модель не ответила:\n" + t.stackTraceToString().take(3000)
-                    } finally {
-                        answered = false
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(26.dp))
-
-        answer?.let { current ->
-            AnswerBlock(current)
-            Spacer(Modifier.height(10.dp))
-            InkButton("спросить другое") {
-                answer = null
-                question = ""
-            }
-        }
-
-        error?.let {
-            Spacer(Modifier.height(16.dp))
-            InkRule()
-            Spacer(Modifier.height(8.dp))
-            Text(it, style = TextStyle(fontSize = 11.sp, lineHeight = 16.sp), color = Color(0xFF8C3B2E))
-        }
-
-        Spacer(Modifier.height(28.dp))
-        InkRule()
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = "v${BuildConfig.VERSION_NAME} · модель ${formatMb(ModelStore.installedBytes(context))} из ${formatMb(ModelStore.totalBytes)}",
-            style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
-            color = SEPIA.copy(alpha = 0.7f)
-        )
-        Spacer(Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Text(
-                "диагностика",
-                style = TextStyle(fontSize = 11.sp),
-                color = SEPIA,
-                modifier = Modifier.clickable {
-                    if (diagRunning) return@clickable
-                    diagRunning = true
-                    diagnostics = emptyList()
-                    scope.launch {
-                        val steps = mutableListOf<String>()
-                        fun report(line: String) {
-                            steps.add(line)
-                            diagnostics = steps.toList()
-                            Log.i("TarotDiag", line)
-                        }
-                        try {
-                            val page = try {
-                                android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE).toString()
-                            } catch (t: Throwable) {
-                                "?"
-                            }
-                            report("abi ${Build.SUPPORTED_ABIS.joinToString("/")} · страница $page · sdk ${Build.VERSION.SDK_INT}")
-                            report("модель: ${if (ModelStore.isReady(context)) "на месте" else "нет"}")
-                            report(ModelStore.inventory(context))
-                            report("удалено: ${ModelStore.cleanup(context).ifEmpty { listOf("нечего") }.joinToString()}")
-                            val tokenizer = withContext(Dispatchers.IO) {
-                                context.assets.open("tokenizer.bin").use { UnigramTokenizer.fromStream(it) }
-                            }
-                            report("токенизатор: «Смерть» -> ${tokenizer.encode("Смерть").joinToString(",")}")
-                            if (ModelStore.isReady(context)) {
-                                withContext(Dispatchers.Default) {
-                                    val decider = DeciderHolder.get(context)
-                                    decider.ensureLoaded()
-                                    report(decider.describeInputs())
-                                    val probe = decider.answer("стоит ли мне уйти с работы?")
-                                    report("пробный ответ: ${probe.card.title} ${(probe.probability * 100).toInt()}%")
-                                }
-                            }
-                        } catch (t: Throwable) {
-                            report("ошибка: ${t.javaClass.name}: ${t.message}")
-                        } finally {
-                            diagRunning = false
-                        }
-                    }
-                }
-            )
-            Text(
-                "выгрузить модель",
-                style = TextStyle(fontSize = 11.sp),
-                color = SEPIA,
-                modifier = Modifier.clickable {
-                    scope.launch {
-                        withContext(Dispatchers.Default) { DeciderHolder.close() }
-                        answer = null
-                        error = "модель выгружена из памяти"
-                    }
-                }
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-    }
-}
-
-@Composable
-private fun AnswerBlock(answer: CardAnswer) {
-    val context = LocalContext.current
-    val trio = listOf(answer.card) + answer.alternatives.map { it.first }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
+        // Карта — и есть интерфейс
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth(0.78f)
+                .aspectRatio(0.62f)
+                .pointerInput(answer, ready, busy, question) {
+                    detectTapGestures(
+                        onTap = {
+                            when {
+                                !ready -> download()
+                                busy -> Unit
+                                else -> draw()
+                            }
+                        },
+                        onLongPress = { diagnostics() }
+                    )
+                }
         ) {
-            CardStack(
-                context = context,
-                cards = trio,
-                probabilities = listOf(answer.probability) + answer.alternatives.map { it.second },
-                reversed = answer.lines.map { it.reversed },
-                modifier = Modifier.fillMaxWidth()
+            if (answer == null) {
+                CardBack(
+                    question = question,
+                    onQuestion = { question = it },
+                    ready = ready,
+                    downloading = downloading,
+                    progress = progress
+                )
+            } else {
+                val trio = listOf(answer.card) + answer.alternatives.map { it.first }
+                CardStack(
+                    context = context,
+                    cards = trio,
+                    probabilities = listOf(answer.probability) + answer.alternatives.map { it.second },
+                    reversed = answer.lines.map { it.reversed },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        when {
+            !ready && !downloading -> Text(
+                "коснись карты — скачаю толкователь",
+                style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp),
+                color = ASH
+            )
+            downloading -> Text(
+                "качаю ${(progress * 100).toInt()}%",
+                style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp),
+                color = ASH
+            )
+            busy -> Text("смотрю…", style = TextStyle(fontSize = 12.sp, letterSpacing = 2.sp), color = ASH)
+            answer != null -> {
+                val current = answer!!
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true))
+                    current.alternatives.forEachIndexed { index, (_, p) ->
+                        Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true))
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Reading.compose(current).forEach { line ->
+                    Text(
+                        text = line,
+                        style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+                        color = Color(0xFFEDE4D2),
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = current.card.title.lowercase(),
+                    style = TextStyle(fontSize = 11.sp, letterSpacing = 2.sp),
+                    color = ASH
+                )
+            }
+            else -> Text(
+                "напиши вопрос на карте и коснись её",
+                style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp),
+                color = ASH
             )
         }
 
-        Spacer(Modifier.height(20.dp))
-        val reversedFlags = answer.lines.map { it.reversed }
-        LegendLine(1, answer.card.title, answer.probability, positionTint(0, reversedFlags.getOrElse(0) { false }))
-        answer.alternatives.forEachIndexed { index, (other, probability) ->
-            LegendLine(
-                index + 2, other.title, probability,
-                positionTint(index + 1, reversedFlags.getOrElse(index + 1) { false })
-            )
+        if (note.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(note, style = TextStyle(fontSize = 11.sp), color = Color(0xFFC97A6A))
         }
 
-        Spacer(Modifier.height(18.dp))
-        InkRule()
-        Spacer(Modifier.height(14.dp))
-        Reading.compose(answer).forEach { paragraph ->
+        if (showDiag) {
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = paragraph,
-                style = TextStyle(fontSize = 17.sp, lineHeight = 26.sp, letterSpacing = 0.3.sp),
-                color = INK
+                diag.joinToString("\n").ifBlank { "…" },
+                style = TextStyle(fontSize = 9.sp, lineHeight = 13.sp),
+                color = ASH.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
             )
         }
-    }
-}
 
-@Composable
-private fun LegendLine(number: Int, title: String, probability: Float, dot: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(modifier = Modifier.size(7.dp).background(dot, CircleShape))
-        Text(
-            text = "  $number · $title",
-            style = TextStyle(fontSize = 13.sp, letterSpacing = 0.5.sp),
-            color = INK
-        )
         Spacer(Modifier.weight(1f))
+
         Text(
-            text = "${(probability * 100).toInt()}%",
-            style = TextStyle(fontSize = 12.sp),
-            color = SEPIA
+            text = "v${BuildConfig.VERSION_NAME}",
+            style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+            color = ASH.copy(alpha = 0.35f),
+            modifier = Modifier.clickable {
+                scope.launch {
+                    withContext(Dispatchers.Default) { DeciderHolder.close() }
+                    answer = null
+                }
+            }
         )
     }
 }
 
 @Composable
-private fun DiagnosticsBlock(lines: List<String>, running: Boolean) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text("ДИАГНОСТИКА", style = TextStyle(fontSize = 11.sp, letterSpacing = 2.sp), color = SEPIA)
-        Spacer(Modifier.height(6.dp))
-        if (lines.isEmpty() && running) {
-            Text("идёт проверка…", style = TextStyle(fontSize = 11.sp), color = SEPIA)
+private fun Dots(number: Int, probability: Float, tint: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(6.dp).background(tint, CircleShape))
+        Text(
+            text = " ${(probability * 100).toInt()}",
+            style = TextStyle(fontSize = 11.sp, letterSpacing = 0.5.sp),
+            color = ASH
+        )
+    }
+}
+
+/** Обратная сторона: рубашка, на которой пишут вопрос. */
+@Composable
+private fun CardBack(
+    question: String,
+    onQuestion: (String) -> Unit,
+    ready: Boolean,
+    downloading: Boolean,
+    progress: Float
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(Color(0xFF241B2C), Color(0xFF120E18))),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.05f)
+            )
+            val center = Offset(size.width / 2f, size.height * 0.42f)
+            val radius = size.width * 0.26f
+            repeat(3) { ring ->
+                drawCircle(
+                    color = FOIL.copy(alpha = 0.22f - ring * 0.05f),
+                    radius = radius * (1f - ring * 0.22f),
+                    center = center,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.004f)
+                )
+            }
+            val path = androidx.compose.ui.graphics.Path()
+            for (point in 0 until 5) {
+                val angle = Math.toRadians(144.0 * point - 90.0)
+                val x = center.x + (radius * cos(angle)).toFloat()
+                val y = center.y + (radius * sin(angle)).toFloat()
+                if (point == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            drawPath(path, FOIL.copy(alpha = 0.35f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.003f))
+
+            if (downloading) {
+                drawLine(
+                    color = FOIL.copy(alpha = 0.6f),
+                    start = Offset(size.width * 0.1f, size.height * 0.9f),
+                    end = Offset(size.width * (0.1f + 0.8f * progress), size.height * 0.9f),
+                    strokeWidth = size.width * 0.006f
+                )
+            }
         }
-        lines.forEach { line ->
-            Text(line, style = TextStyle(fontSize = 10.sp, lineHeight = 15.sp), color = INK.copy(alpha = 0.8f))
-        }
-        Spacer(Modifier.height(8.dp))
-        InkRule()
+
+        BasicTextField(
+            value = question,
+            onValueChange = onQuestion,
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                color = Color(0xFFEDE4D2),
+                fontFamily = FontFamily.Serif,
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp
+            ),
+            cursorBrush = SolidColor(FOIL),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 30.dp)
+                .height(72.dp),
+            maxLines = 3,
+            decorationBox = { inner ->
+                Box(contentAlignment = Alignment.Center) {
+                    if (question.isBlank()) {
+                        Text(
+                            text = if (ready) "вопрос" else "",
+                            style = TextStyle(fontSize = 15.sp, color = ASH.copy(alpha = 0.5f)),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    inner()
+                }
+            }
+        )
     }
 }
 
@@ -511,23 +429,14 @@ private fun CrashScreen(trace: String, onShare: () -> Unit, onClear: () -> Unit)
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(26.dp)
+            .padding(24.dp)
     ) {
-        Text("ПРОШЛЫЙ ЗАПУСК УПАЛ", style = TextStyle(fontSize = 15.sp, letterSpacing = 2.sp), color = Color(0xFF8C3B2E))
-        Spacer(Modifier.height(10.dp))
-        InkRule(strong = true)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            trace,
-            style = TextStyle(fontSize = 10.sp, lineHeight = 15.sp),
-            color = INK.copy(alpha = 0.8f)
-        )
+        Text("ПРОШЛЫЙ ЗАПУСК УПАЛ", style = TextStyle(fontSize = 13.sp, letterSpacing = 2.sp), color = Color(0xFFC97A6A))
+        Spacer(Modifier.height(12.dp))
+        Text(trace, style = TextStyle(fontSize = 9.sp, lineHeight = 14.sp), color = ASH)
         Spacer(Modifier.height(20.dp))
-        InkButton("отправить") { onShare() }
+        Text("отправить", style = TextStyle(fontSize = 13.sp), color = FOIL, modifier = Modifier.clickable { onShare() })
         Spacer(Modifier.height(14.dp))
-        InkButton("стереть и попробовать снова") { onClear() }
+        Text("стереть и попробовать снова", style = TextStyle(fontSize = 13.sp), color = FOIL, modifier = Modifier.clickable { onClear() })
     }
 }
-
-private fun formatMb(bytes: Long): String =
-    String.format(Locale.ROOT, "%.0f МБ", bytes / 1_000_000.0)
