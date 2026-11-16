@@ -41,17 +41,25 @@ object Reading {
         "невыносимая", "тихая", "поздняя", "слепая", "вечная",
         "чужая", "обратная", "глухая", "светлая", "тёмная"
     )
+    private val PLURAL = listOf(
+        "невыносимые", "тихие", "поздние", "слепые", "вечные",
+        "чужие", "обратные", "глухие", "светлые", "тёмные"
+    )
     private val NEUT = listOf(
         "невыносимое", "тихое", "позднее", "слепое", "вечное",
         "чужое", "обратное", "глухое", "светлое", "тёмное"
     )
 
+    /** 0 — мужской, 1 — женский, 2 — средний, 3 — множественное. */
     private fun genderOf(noun: String): Int {
-        val last = noun.lowercase().lastOrNull() ?: return 0
+        val word = noun.lowercase()
+        val last = word.lastOrNull() ?: return 0
+        // «новости», «перемены», «деньги» — множественное
+        if (last == 'и' || last == 'ы') return 3
         return when (last) {
-            'а', 'я', 'ь' -> 1   // женский
-            'о', 'е' -> 2        // средний
-            else -> 0            // мужской
+            'а', 'я', 'ь' -> 1
+            'о', 'е' -> 2
+            else -> 0
         }
     }
 
@@ -71,6 +79,7 @@ object Reading {
         val pool = when (genderOf(main)) {
             1 -> FEM
             2 -> NEUT
+            3 -> PLURAL
             else -> MASC
         }
         val adjective = pool[Math.floorMod(seed, pool.size)]
