@@ -236,7 +236,8 @@ fun TarotApp() {
                     )
                 }
         ) {
-            if (answer == null) {
+            val shown = answer
+            if (shown == null) {
                 CardBack(
                     question = question,
                     onQuestion = { question = it },
@@ -245,12 +246,12 @@ fun TarotApp() {
                     progress = progress
                 )
             } else {
-                val trio = listOf(answer.card) + answer.alternatives.map { it.first }
+                val trio = listOf(shown.card) + shown.alternatives.map { it.first }
                 CardStack(
                     context = context,
                     cards = trio,
-                    probabilities = listOf(answer.probability) + answer.alternatives.map { it.second },
-                    reversed = answer.lines.map { it.reversed },
+                    probabilities = listOf(shown.probability) + shown.alternatives.map { it.second },
+                    reversed = shown.lines.map { it.reversed },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -271,7 +272,7 @@ fun TarotApp() {
             )
             busy -> Text("смотрю…", style = TextStyle(fontSize = 12.sp, letterSpacing = 2.sp), color = ASH)
             answer != null -> {
-                val current = answer!!
+                val current = answer ?: return@Column
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true))
                     current.alternatives.forEachIndexed { index, (_, p) ->
