@@ -121,10 +121,20 @@ fun TarotApp() {
     }
     var diagRunning by remember { mutableStateOf(false) }
 
+    val scrollState = rememberScrollState()
+
+    // После ответа прокручиваем к карте: иначе она остаётся ниже границы экрана
+    LaunchedEffect(answer) {
+        if (answer != null) {
+            kotlinx.coroutines.delay(120)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(20.dp)
     ) {
         Text(
