@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.ui.unit.IntSize
 
 /**
