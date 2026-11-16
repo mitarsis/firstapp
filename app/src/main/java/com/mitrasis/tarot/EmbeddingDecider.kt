@@ -110,7 +110,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             probability = probabilities[winnerPosition],
             runnerUp = alternatives.firstOrNull(),
             topic = cards.meaningOf(winnerIndex),
-            alternatives = alternatives
+            alternatives = alternatives,
+            lines = lines
         )
     }
 
