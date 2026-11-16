@@ -180,6 +180,14 @@ fun CardStack(
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
         val width = size.width.toInt()
         val height = size.height.toInt()
+
+        // Тёмная подложка: штрихи карт светлые, иначе в светлой теме их не видно
+        drawRoundRect(
+            color = androidx.compose.ui.graphics.Color(0xFF14111C),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                size.width * 0.045f, size.width * 0.045f
+            )
+        )
         images.forEachIndexed { index, image ->
             if (image == null) return@forEachIndexed
             val isReversed = flipped.getOrElse(index) { false }
