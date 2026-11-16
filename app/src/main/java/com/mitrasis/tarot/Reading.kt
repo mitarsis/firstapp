@@ -33,11 +33,32 @@ object Reading {
         "Складывается в одно: %s."
     )
 
+    private val MASC = listOf(
+        "невыносимый", "тихий", "поздний", "слепой", "вечный",
+        "чужой", "обратный", "глухой", "светлый", "тёмный"
+    )
+    private val FEM = listOf(
+        "невыносимая", "тихая", "поздняя", "слепая", "вечная",
+        "чужая", "обратная", "глухая", "светлая", "тёмная"
+    )
+    private val NEUT = listOf(
+        "невыносимое", "тихое", "позднее", "слепое", "вечное",
+        "чужое", "обратное", "глухое", "светлое", "тёмное"
+    )
+
+    private fun genderOf(noun: String): Int {
+        val last = noun.lowercase().lastOrNull() ?: return 0
+        return when (last) {
+            'а', 'я', 'ь' -> 1   // женский
+            'о', 'е' -> 2        // средний
+            else -> 0            // мужской
+        }
+    }
+
     fun compose(answer: CardAnswer): List<String> {
         val lines = answer.lines
         if (lines.isEmpty()) return listOfNotNull(answer.summary.takeIf { it.isNotBlank() })
 
-        // Только значения трёх карт, без служебных слов и пояснений.
         val values = lines
             .map { it.keyword.substringBefore(',').substringBefore(' ').trim() }
             .filter { it.isNotBlank() }
@@ -45,11 +66,21 @@ object Reading {
 
         if (values.isEmpty()) return emptyList()
 
-        val sentence = when (values.size) {
-            1 -> values.first()
-            2 -> "${values[0]} и ${values[1]}"
-            else -> values.dropLast(1).joinToString(", ") + " и " + values.last()
+        val seed = (answer.card.title + values.joinToString()).hashCode()
+        val main = values.first()
+        val pool = when (genderOf(main)) {
+            1 -> FEM
+            2 -> NEUT
+            else -> MASC
         }
-        return listOf(sentence.replaceFirstChar { it.uppercase() } + ".")
+        val adjective = pool[Math.floorMod(seed, pool.size)]
+
+        val tail = when (values.size) {
+            1 -> ""
+            2 -> " и " + values[1]
+            else -> ", " + values.drop(1).dropLast(1).joinToString(", ") + " и " + values.last()
+        }
+
+        return listOf((adjective + " " + main + tail).replaceFirstChar { it.uppercase() } + ".")
     }
 }
