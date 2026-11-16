@@ -9,7 +9,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -40,7 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -53,6 +60,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -137,6 +145,13 @@ fun TarotApp() {
     var progress by remember { mutableFloatStateOf(0f) }
     var note by remember { mutableStateOf("") }
     var showDiag by remember { mutableStateOf(false) }
+    var offsetX by remember { mutableStateOf(0f) }
+    val flip by animateFloatAsState(
+        targetValue = if (answer != null) 180f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(420),
+        label = "flip"
+    )
+    val slide by animateFloatAsState(offsetX, label = "slide")
     var diag by remember { mutableStateOf<List<String>>(emptyList()) }
 
     fun draw() {
@@ -223,12 +238,44 @@ fun TarotApp() {
             modifier = Modifier
                 .fillMaxWidth(0.78f)
                 .aspectRatio(0.62f)
+                .graphicsLayer {
+                    translationX = slide
+                    rotationY = flip
+                    cameraDistance = 14f * density
+                }
+                .drawBehind {
+                    // мягкая тень под картой
+                    drawOval(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent),
+                            center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 1.02f),
+                            radius = size.width * 0.7f
+                        ),
+                        topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.1f, size.height * 0.86f),
+                        size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 0.3f)
+                    )
+                }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta -> offsetX += delta },
+                    onDragStopped = {
+                        if (abs(offsetX) > 150f) {
+                            offsetX = 0f
+                            answer = null
+                            question = ""
+                            note = ""
+                        } else {
+                            offsetX = 0f
+                        }
+                    }
+                )
                 .pointerInput(answer, ready, busy, question) {
                     detectTapGestures(
                         onTap = {
                             when {
                                 !ready -> download()
                                 busy -> Unit
+                                question.isBlank() && answer == null -> note = "сначала вопрос"
                                 else -> draw()
                             }
                         },
@@ -247,6 +294,9 @@ fun TarotApp() {
                 )
             } else {
                 val trio = listOf(shown.card) + shown.alternatives.map { it.first }
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier.fillMaxSize().graphicsLayer { rotationY = 180f }
+                ) {
                 CardStack(
                     context = context,
                     cards = trio,
@@ -254,6 +304,7 @@ fun TarotApp() {
                     reversed = shown.lines.map { it.reversed },
                     modifier = Modifier.fillMaxSize()
                 )
+                }
             }
         }
 
@@ -293,6 +344,12 @@ fun TarotApp() {
                     text = current.card.title.lowercase(),
                     style = TextStyle(fontSize = 11.sp, letterSpacing = 2.sp),
                     color = ASH
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "смахни карту, чтобы спросить другое",
+                    style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+                    color = ASH.copy(alpha = 0.45f)
                 )
             }
             else -> Text(
@@ -381,6 +438,36 @@ private fun CardBack(
             drawPath(path, FOIL.copy(alpha = 0.35f),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.003f))
 
+            // решётка «под тиснение»
+            val step = size.width / 9f
+            var offset = -size.height
+            while (offset < size.width + size.height) {
+                drawLine(
+                    color = FOIL.copy(alpha = 0.07f),
+                    start = Offset(offset, 0f),
+                    end = Offset(offset + size.height, size.height),
+                    strokeWidth = size.width * 0.002f
+                )
+                drawLine(
+                    color = FOIL.copy(alpha = 0.05f),
+                    start = Offset(offset, size.height),
+                    end = Offset(offset + size.height, 0f),
+                    strokeWidth = size.width * 0.002f
+                )
+                offset += step
+            }
+            // внутренняя рамка рубашки
+            drawRoundRect(
+                color = FOIL.copy(alpha = 0.3f),
+                topLeft = Offset(size.width * 0.045f, size.width * 0.045f),
+                size = androidx.compose.ui.geometry.Size(
+                    size.width - size.width * 0.09f,
+                    size.height - size.width * 0.09f
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.035f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.0035f)
+            )
+
             if (downloading) {
                 drawLine(
                     color = FOIL.copy(alpha = 0.6f),
@@ -405,8 +492,8 @@ private fun CardBack(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 30.dp)
-                .height(72.dp),
+                .padding(horizontal = 22.dp, vertical = 34.dp)
+                .heightIn(min = 48.dp, max = 116.dp),
             maxLines = 3,
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.Center) {
