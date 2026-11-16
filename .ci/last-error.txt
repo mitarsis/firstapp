@@ -3,7 +3,7 @@ Daemon will be stopped at the end of the build
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
-> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugBuildConfig FROM-CACHE
 > Task :app:generateDebugResValues FROM-CACHE
 > Task :app:checkDebugAarMetadata
 > Task :app:mapDebugSourceSetPaths
@@ -13,36 +13,19 @@ Daemon will be stopped at the end of the build
 > Task :app:parseDebugLocalResources FROM-CACHE
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug FROM-CACHE
-> Task :app:processDebugMainManifest
-> Task :app:processDebugManifest
+> Task :app:processDebugMainManifest FROM-CACHE
+> Task :app:processDebugManifest FROM-CACHE
+> Task :app:processDebugManifestForPackage FROM-CACHE
+> Task :app:processDebugResources FROM-CACHE
 > Task :app:javaPreCompileDebug FROM-CACHE
 > Task :app:preDebugUnitTestBuild UP-TO-DATE
 > Task :app:javaPreCompileDebugUnitTest FROM-CACHE
-> Task :app:processDebugManifestForPackage
-> Task :app:processDebugResources
+
+> Task :app:compileDebugKotlin
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:84:35 @Composable invocations can only happen from the context of a @Composable function
 
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:67:5 Unresolved reference 'Canvas'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:67:47 Unresolved reference 'drawRect'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:68:20 Unresolved reference 'size'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:68:32 None of the following candidates is applicable:
-fun BigDecimal.div(other: BigDecimal): BigDecimal
-fun BigInteger.div(other: BigInteger): BigInteger
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:70:20 Unresolved reference 'size'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:71:13 Unresolved reference 'drawLine'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:74:59 Unresolved reference 'size'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:79:9 Unresolved reference 'drawRect'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:83:35 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:85:62 Unresolved reference 'size'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:85:79 Unresolved reference 'size'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:85:91 None of the following candidates is applicable:
-fun BigDecimal.times(other: BigDecimal): BigDecimal
-fun BigInteger.times(other: BigInteger): BigInteger
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:86:26 Unresolved reference 'size'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/MainActivity.kt:86:38 None of the following candidates is applicable:
-fun BigDecimal.times(other: BigDecimal): BigDecimal
-fun BigInteger.times(other: BigInteger): BigInteger
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794848842087.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794849018994.json
 
 FAILURE: Build failed with an exception.
 
@@ -57,6 +40,6 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 29s
-17 actionable tasks: 9 executed, 8 from cache
+BUILD FAILED in 17s
+17 actionable tasks: 4 executed, 13 from cache
 === test mismatches ===
