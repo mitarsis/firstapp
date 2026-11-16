@@ -332,7 +332,7 @@ fun TarotApp() {
 
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "модель ${formatMb(ModelStore.installedBytes(context))} из ${formatMb(ModelStore.totalBytes)}",
+            text = "v${BuildConfig.VERSION_NAME} · модель ${formatMb(ModelStore.installedBytes(context))} из ${formatMb(ModelStore.totalBytes)}",
             style = MaterialTheme.typography.labelSmall
         )
     }
