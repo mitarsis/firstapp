@@ -78,44 +78,66 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: In
     val w = width.toFloat()
     val h = height.toFloat()
 
-    fun wobblyPath(inset: Float, amplitude: Float, seed: Int): androidx.compose.ui.graphics.Path {
-        val path = androidx.compose.ui.graphics.Path()
-        val steps = 48
-        var random = seed
-        fun jitter(): Float {
-            random = random * 1103515245 + 12345
-            return ((random ushr 16 and 0xFF) / 255f - 0.5f) * 2f * amplitude
+    /** Плавно изогнутая линия «от руки»: лёгкая дуга, а не рваная дрожь. */
+    fun bowedContour(inset: Float, bow: Float, r: Float, alpha: Float, strokeWidth: Float) {
+        val color = ink.copy(alpha = alpha)
+        val style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+
+        fun bowed(from: androidx.compose.ui.geometry.Offset, to: androidx.compose.ui.geometry.Offset, bend: Float) {
+            val midX = (from.x + to.x) / 2f
+            val midY = (from.y + to.y) / 2f
+            val dx = to.x - from.x
+            val dy = to.y - from.y
+            val length = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toFloat().coerceAtLeast(1f)
+            val normalX = -dy / length
+            val normalY = dx / length
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(from.x, from.y)
+                quadraticBezierTo(midX + normalX * bend, midY + normalY * bend, to.x, to.y)
+            }
+            drawPath(path, color, style = style)
         }
-        // верх
-        for (i in 0..steps) {
-            val x = inset + (w - inset * 2f) * i / steps
-            val y = inset + jitter()
-            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+
+        bowed(
+            androidx.compose.ui.geometry.Offset(inset + r, inset),
+            androidx.compose.ui.geometry.Offset(w - inset - r, inset), bow
+        )
+        bowed(
+            androidx.compose.ui.geometry.Offset(w - inset, inset + r),
+            androidx.compose.ui.geometry.Offset(w - inset, h - inset - r), -bow
+        )
+        bowed(
+            androidx.compose.ui.geometry.Offset(w - inset - r, h - inset),
+            androidx.compose.ui.geometry.Offset(inset + r, h - inset), bow
+        )
+        bowed(
+            androidx.compose.ui.geometry.Offset(inset, h - inset - r),
+            androidx.compose.ui.geometry.Offset(inset, inset + r), -bow
+        )
+
+        // скруглённые углы
+        val corners = listOf(
+            Triple(inset + r, inset + r, 180f),
+            Triple(w - inset - r, inset + r, 270f),
+            Triple(w - inset - r, h - inset - r, 0f),
+            Triple(inset + r, h - inset - r, 90f)
+        )
+        corners.forEach { (cx, cy, angle) ->
+            drawArc(
+                color = color,
+                startAngle = angle,
+                sweepAngle = 90f,
+                useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(cx - r, cy - r),
+                size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+                style = style
+            )
         }
-        // право
-        for (i in 0..steps) {
-            val y = inset + (h - inset * 2f) * i / steps
-            path.lineTo(w - inset + jitter(), y)
-        }
-        // низ
-        for (i in steps downTo 0) {
-            val x = inset + (w - inset * 2f) * i / steps
-            path.lineTo(x, h - inset + jitter())
-        }
-        // лево
-        for (i in steps downTo 0) {
-            val y = inset + (h - inset * 2f) * i / steps
-            path.lineTo(inset + jitter(), y)
-        }
-        path.close()
-        return path
     }
 
-    drawPath(wobblyPath(w * 0.02f, w * 0.0035f, 17), ink.copy(alpha = 0.55f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.006f))
-    val innerInset = w * 0.055f
-    drawPath(wobblyPath(innerInset, w * 0.0025f, 91), ink.copy(alpha = 0.28f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.003f))
+    // внешний и внутренний контуры
+    bowedContour(w * 0.018f, w * 0.006f, w * 0.055f, 0.55f, w * 0.006f)
+    bowedContour(w * 0.052f, w * 0.004f, w * 0.04f, 0.26f, w * 0.0028f)
 
     // глифы по кромке: солнце, луна, треугольник, квадрат, пентаграмма
     val glyphRadius = w * 0.013f
