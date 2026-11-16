@@ -37,51 +37,19 @@ object Reading {
         val lines = answer.lines
         if (lines.isEmpty()) return listOfNotNull(answer.summary.takeIf { it.isNotBlank() })
 
-        val seed = lines.joinToString("|") { it.title + it.keyword }.hashCode()
-        fun pick(variants: List<String>, salt: Int): String =
-            variants[Math.floorMod(seed + salt, variants.size)]
-
-        val result = mutableListOf<String>()
-
-        fun mark(line: CardLine): String = if (line.reversed) "${line.title} (перевёрнута)" else line.title
-
-        val first = lines.first()
-        result += "${mark(first)} — про ${first.keyword}."
-
-        lines.getOrNull(1)?.let { line ->
-            val template = pick(SECOND_LINE, 1)
-            result += template.replaceFirst("%s", mark(line)).replaceFirst("%s", line.keyword)
-        }
-
-        lines.getOrNull(2)?.let { line ->
-            val template = pick(THIRD_LINE, 2)
-            result += template.replaceFirst("%s", mark(line)).replaceFirst("%s", line.keyword)
-        }
-
-        // Связка трёх значений — без банка готовых фраз:
-        // просто собираем их в одну мысль.
-        // В перечисление берём только первое слово тега: иначе туда попадают
-        // целые обороты вроде «мысли режут своего же».
+        // Только значения трёх карт, без служебных слов и пояснений.
         val values = lines
             .map { it.keyword.substringBefore(',').substringBefore(' ').trim() }
             .filter { it.isNotBlank() }
-        if (values.size >= 2) {
-            val joined = if (values.size == 2) {
-                "${values[0]} и ${values[1]}"
-            } else {
-                values.dropLast(1).joinToString(", ") + " и " + values.last()
-            }
-            result += pick(
-                listOf(
-                    "Вместе это про $joined.",
-                    "Связка такая: $joined.",
-                    "Одна линия: $joined.",
-                    "Общая нить — $joined."
-                ),
-                3
-            )
-        }
+            .distinct()
 
-        return result
+        if (values.isEmpty()) return emptyList()
+
+        val sentence = when (values.size) {
+            1 -> values.first()
+            2 -> "${values[0]} и ${values[1]}"
+            else -> values.dropLast(1).joinToString(", ") + " и " + values.last()
+        }
+        return listOf(sentence.replaceFirstChar { it.uppercase() } + ".")
     }
 }
