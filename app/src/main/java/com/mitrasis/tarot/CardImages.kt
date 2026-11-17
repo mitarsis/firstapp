@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.IntSize
  */
 fun positionTint(index: Int, reversed: Boolean): Color {
     val base = when (index) {
-        0 -> Color(0xFFE7B15C)   // янтарь
-        1 -> Color(0xFF5EC9D6)   // бирюза
-        else -> Color(0xFFB07BE3) // пурпур
+        0 -> Color(0xFFFFD79A)   // янтарь
+        1 -> Color(0xFF8FE6F0)   // бирюза
+        else -> Color(0xFFD2AAF5) // пурпур
     }
     return if (reversed) {
         Color(
@@ -193,7 +193,7 @@ fun CardStack(
     val strongest = probabilities.maxOrNull()?.takeIf { it > 0f } ?: 1f
     val alphas = probabilities.map { probability ->
         val share = (probability / strongest).coerceIn(0f, 1f)
-        (0.30f + 0.70f * share).coerceIn(0.25f, 1f)
+        (0.55f + 0.45f * share).coerceIn(0.5f, 1f)
     }
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
@@ -238,8 +238,8 @@ fun CardStack(
             brush = androidx.compose.ui.graphics.Brush.radialGradient(
                 colors = listOf(
                     androidx.compose.ui.graphics.Color.Transparent,
-                    androidx.compose.ui.graphics.Color(0x880A0710),
-                    androidx.compose.ui.graphics.Color(0xE00A0710)
+                    androidx.compose.ui.graphics.Color(0x550A0710),
+                    androidx.compose.ui.graphics.Color(0xA00A0710)
                 ),
                 center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.45f),
                 radius = size.height * 0.62f

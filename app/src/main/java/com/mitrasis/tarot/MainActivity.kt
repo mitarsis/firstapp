@@ -189,7 +189,6 @@ fun TarotApp() {
         if (text.isEmpty() || busy) return
         note = ""
         busy = true
-        answer = null
         pulsingTap()
         scope.launch {
             try {
@@ -360,7 +359,11 @@ fun TarotApp() {
                 style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp),
                 color = ASH
             )
-            busy -> Text("смотрю…", style = TextStyle(fontSize = 12.sp, letterSpacing = 2.sp), color = ASH)
+            busy -> Text(
+                if (answer == null) "смотрю…" else "пересматриваю…",
+                style = TextStyle(fontSize = 12.sp, letterSpacing = 2.sp),
+                color = ASH
+            )
             answer != null -> {
                 val current = answer ?: return@Column
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
