@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.IntSize
  */
 fun positionTint(index: Int, reversed: Boolean): Color {
     val base = when (index) {
-        0 -> Color(0xFFFFD79A)   // янтарь
-        1 -> Color(0xFF8FE6F0)   // бирюза
-        else -> Color(0xFFD2AAF5) // пурпур
+        0 -> Color(0xFFF2A93B)   // янтарь
+        1 -> Color(0xFF3FC6DC)   // бирюза
+        else -> Color(0xFFA45BE8) // пурпур
     }
     return if (reversed) {
         Color(

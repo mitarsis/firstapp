@@ -366,6 +366,12 @@ fun TarotApp() {
             )
             answer != null -> {
                 val current = answer ?: return@Column
+                Text(
+                    text = "насколько созвучно вопросу",
+                    style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+                    color = ASH.copy(alpha = 0.5f)
+                )
+                Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true))
                     current.alternatives.forEachIndexed { index, (_, p) ->
@@ -443,10 +449,14 @@ fun TarotApp() {
 @Composable
 private fun Dots(number: Int, probability: Float, tint: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(6.dp).background(tint, CircleShape))
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(tint, CircleShape)
+        )
         Text(
-            text = " ${(probability * 100).toInt()}",
-            style = TextStyle(fontSize = 11.sp, letterSpacing = 0.5.sp),
+            text = " ${(probability * 100).toInt()}%",
+            style = TextStyle(fontSize = 12.sp, letterSpacing = 0.5.sp),
             color = ASH
         )
     }
