@@ -70,9 +70,13 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val random = kotlin.random.Random(System.nanoTime())
         val pool = (0 until cards.size).shuffled(random).take(POOL_SIZE)
 
+        val cardScores = cards.similarities(vector)
         val entries = pool.map { index ->
             val reversed = random.nextFloat() < REVERSED_PERCENT / 100f
-            val (keyword, score) = keywords.bestKeyword(index, vector, reversed)
+            val (keyword, keywordScore) = keywords.bestKeyword(index, vector, reversed)
+            // Карта с большим числом тегов имела бы преимущество только за счёт
+            // количества. Поэтому смешиваем лучший тег с близостью центроида карты.
+            val score = keywordScore * 0.65f + cardScores[index] * 0.35f
             val card = Deck.byId(index)
             Triple(
                 CardLine(

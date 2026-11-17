@@ -66,11 +66,9 @@ object Reading {
             }
             val seed = (answer.card.title + values.joinToString()).hashCode()
             val adjective = pool[Math.floorMod(seed, pool.size)]
-            val tail = when (values.size) {
-                1 -> ""
-                2 -> " и " + values[1]
-                else -> ", " + values.drop(1).dropLast(1).joinToString(", ") + " и " + values.last()
-            }
+            // Два слова в заголовке — предел живой русской конструкции;
+            // три и больше превращаются в перечисление.
+            val tail = if (values.size == 1) "" else " и " + values[1]
             result += (adjective + " " + values.first() + tail).replaceFirstChar { it.uppercase() } + "."
         }
 
