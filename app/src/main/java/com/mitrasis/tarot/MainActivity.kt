@@ -2,9 +2,12 @@ package com.mitrasis.tarot
 
 import android.content.Intent
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -93,20 +96,32 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Стол, а не фон приложения: тёмная поверхность с редкими искрами. */
+private data class Spark(val x: Float, val y: Float, val radius: Float, val alpha: Float)
+
 @Composable
 private fun TableBackdrop() {
+    val sparks = remember {
+        val random = Random(77)
+        List(90) {
+            Spark(
+                x = random.nextFloat(),
+                y = random.nextFloat(),
+                radius = 0.6f + random.nextFloat(),
+                alpha = 0.05f + random.nextFloat() * 0.12f
+            )
+        }
+    }
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(brush = Brush.radialGradient(
             colors = listOf(Color(0xFF1A1620), TABLE),
             center = Offset(size.width * 0.5f, size.height * 0.38f),
             radius = size.height * 0.75f
         ))
-        val random = Random(77)
-        repeat(90) {
+        sparks.forEach { spark ->
             drawCircle(
-                color = FOIL.copy(alpha = 0.05f + random.nextFloat() * 0.12f),
-                radius = 0.6f + random.nextFloat(),
-                center = Offset(random.nextFloat() * size.width, random.nextFloat() * size.height)
+                color = FOIL.copy(alpha = spark.alpha),
+                radius = spark.radius,
+                center = Offset(spark.x * size.width, spark.y * size.height)
             )
         }
     }
@@ -137,6 +152,16 @@ fun TarotApp() {
     }
 
     val scope = rememberCoroutineScope()
+    val vibrator = remember {
+        context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+    fun pulsingTap() {
+        if (vibrator == null || !vibrator.hasVibrator()) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(16, 90))
+        }
+    }
+
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf<CardAnswer?>(null) }
     var ready by remember { mutableStateOf(ModelStore.isReady(context)) }
@@ -158,11 +183,14 @@ fun TarotApp() {
         note = ""
         busy = true
         answer = null
+        pulsingTap()
         scope.launch {
             try {
                 answer = withContext(Dispatchers.Default) {
                     DeciderHolder.get(context).answer(text)
                 }
+            } catch (o: OutOfMemoryError) {
+                note = "не хватило памяти — закрой другие приложения"
             } catch (t: Throwable) {
                 note = "не смогла: ${t.javaClass.simpleName}"
             } finally {
@@ -221,6 +249,12 @@ fun TarotApp() {
                 say("ошибка: ${t.javaClass.simpleName}")
             }
         }
+    }
+
+    BackHandler(enabled = answer != null || question.isNotEmpty()) {
+        answer = null
+        question = ""
+        note = ""
     }
 
     Column(
@@ -328,6 +362,14 @@ fun TarotApp() {
                         Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true))
                     }
                 }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = (listOf(current.card) + current.alternatives.map { it.first })
+                        .joinToString("  ·  ") { it.title.lowercase() },
+                    style = TextStyle(fontSize = 9.sp, letterSpacing = 0.5.sp),
+                    color = ASH.copy(alpha = 0.55f),
+                    textAlign = TextAlign.Center
+                )
                 Spacer(Modifier.height(12.dp))
                 Reading.compose(current).forEach { line ->
                     Text(
