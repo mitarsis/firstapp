@@ -58,42 +58,30 @@ object Reading {
     }
 
     fun compose(answer: CardAnswer): List<String> {
-        val lines = answer.lines
-        if (lines.isEmpty()) return emptyList()
+        val values = answer.lines
+            .map { shortValue(it.keyword) }
+            .filter { it.isNotBlank() }
+            .distinct()
 
-        fun mark(line: CardLine): String =
-            if (line.reversed) "${line.title} (перевёрнута)" else line.title
+        if (values.isEmpty()) return emptyList()
 
-        val result = mutableListOf<String>()
-        val main = lines.first()
-        result += "${mark(main)} — ${main.keyword}."
+        val pool = when (genderOf(values.first())) {
+            1 -> FEM
+            2 -> NEUT
+            3 -> PLURAL
+            else -> MASC
+        }
+        val seed = (answer.card.title + values.joinToString()).hashCode()
+        // Эпитет приходит из модели (прилагательные из текста Уэйта);
+        // запасной вариант — детерминированный выбор из пула.
+        val adjective = answer.epithet.ifBlank { pool[Math.floorMod(seed, pool.size)] }
 
-        val background = lines.drop(1).filter { it.keyword.isNotBlank() }
-        if (background.isNotEmpty()) {
-            val parts = background.joinToString(" и ") { "${mark(it)} — ${it.keyword}" }
-            result += "Фон: $parts."
+        val tail = when {
+            values.size == 1 -> ""
+            values.size == 2 -> " и " + values[1]
+            else -> ", " + values[1] + " и " + values[2]
         }
 
-        val values = lines.map { shortValue(it.keyword) }.filter { it.isNotBlank() }.distinct()
-        if (values.isNotEmpty()) {
-            val pool = when (genderOf(values.first())) {
-                1 -> FEM
-                2 -> NEUT
-                3 -> PLURAL
-                else -> MASC
-            }
-            val seed = (answer.card.title + values.joinToString()).hashCode()
-            // Эпитет выбирает модель по смыслу вопроса; если его нет — по хешу
-            val adjective = answer.epithet.ifBlank { pool[Math.floorMod(seed, pool.size)] }
-            // Учитываем все карты: два слова — через «и», три — с запятой.
-            val tail = when {
-                values.size == 1 -> ""
-                values.size == 2 -> " и " + values[1]
-                else -> ", " + values[1] + " и " + values[2]
-            }
-            result += (adjective + " " + values.first() + tail).replaceFirstChar { it.uppercase() } + "."
-        }
-
-        return result
+        return listOf((adjective + " " + values.first() + tail).replaceFirstChar { it.uppercase() } + ".")
     }
 }
