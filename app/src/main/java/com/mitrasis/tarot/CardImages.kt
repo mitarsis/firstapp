@@ -211,8 +211,13 @@ fun CardStack(
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
+    // Три признака разделения слоёв: цвет, угол растра и его крупность.
     val halftone = remember {
-        listOf(buildHalftone(15f), buildHalftone(45f), buildHalftone(75f))
+        listOf(
+            buildHalftone(15f, cell = 6, dot = 1.8f),
+            buildHalftone(45f, cell = 9, dot = 2.3f),
+            buildHalftone(75f, cell = 12, dot = 2.9f)
+        )
     }
     val flipped = images.mapIndexed { index, _ -> reversed.getOrElse(index) { false } }
 
