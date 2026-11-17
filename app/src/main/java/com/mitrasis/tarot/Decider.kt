@@ -15,7 +15,7 @@ import kotlin.random.Random
  */
 interface CardDecider {
     val name: String
-    fun answer(question: String): CardAnswer
+    fun answer(question: String, layers: Int = 3): CardAnswer
 }
 
 /**
@@ -26,7 +26,7 @@ class StubCardDecider : CardDecider {
 
     override val name: String = "заглушка"
 
-    override fun answer(question: String): CardAnswer {
+    override fun answer(question: String, layers: Int = 3): CardAnswer {
         val normalized = question.trim().lowercase()
         val seed = if (normalized.isEmpty()) {
             0L

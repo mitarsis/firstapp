@@ -58,7 +58,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         env = environment
     }
 
-    override fun answer(question: String): CardAnswer {
+    override fun answer(question: String, layers: Int): CardAnswer {
         ensureLoaded()
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
@@ -90,7 +90,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
                 relevance(score),
                 index
             )
-        }.sortedByDescending { it.second }.take(3)
+        }.sortedByDescending { it.second }.take(layers.coerceIn(1, 3))
 
         val main = entries.first()
         return CardAnswer(

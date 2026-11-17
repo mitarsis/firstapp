@@ -33,19 +33,12 @@ import androidx.compose.ui.unit.IntSize
  * Перевёрнутая карта того же цвета, но притушенная и сдвинутая в фиолетовый.
  */
 fun positionTint(index: Int, reversed: Boolean): Color {
-    val base = when (index) {
-        0 -> Color(0xFFF2A93B)   // янтарь
-        1 -> Color(0xFF3FC6DC)   // бирюза
-        else -> Color(0xFFA45BE8) // пурпур
-    }
-    return if (reversed) {
-        Color(
-            red = base.red * 0.55f,
-            green = base.green * 0.5f,
-            blue = (base.blue * 0.85f).coerceAtLeast(0.5f)
-        )
-    } else {
-        base
+    // Цвет всегда принадлежит позиции; перевёрнутость показывается текстом,
+    // иначе две перевёрнутые карты дают два одинаковых пятна.
+    return when (index) {
+        0 -> Color(0xFFF2A93B)
+        1 -> Color(0xFF3FC6DC)
+        else -> Color(0xFFA45BE8)
     }
 }
 

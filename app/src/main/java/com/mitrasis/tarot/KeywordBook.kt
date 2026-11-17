@@ -21,7 +21,8 @@ class KeywordBook private constructor(
     private val keywords: List<String>,
     private val offsets: IntArray,
     private val countsLight: IntArray,
-    private val countsShadow: IntArray
+    private val countsShadow: IntArray,
+    private val frequency: IntArray
 ) {
 
     fun bestKeyword(cardIndex: Int, questionVector: FloatArray, reversed: Boolean): Pair<String, Float> {
@@ -39,8 +40,11 @@ class KeywordBook private constructor(
             for (dimension in vector.indices) {
                 dot += vector[dimension] * questionVector[dimension]
             }
-            if (dot > bestScore) {
-                bestScore = dot
+            // штраф за «общий» тег: «мысли режут своего же» есть у всей масти
+            // Мечей, и без штрафа он выигрывает у конкретного значения ранга
+            val adjusted = dot - 0.02f * (frequency[index] - 1)
+            if (adjusted > bestScore) {
+                bestScore = adjusted
                 bestIndex = index
             }
         }
@@ -89,7 +93,11 @@ class KeywordBook private constructor(
                 }
             }
 
-            return KeywordBook(vectors, shadowFlags, keywords, offsets, countsLight, countsShadow)
+            val freqMap = HashMap<String, Int>()
+            keywords.forEach { word -> freqMap[word] = (freqMap[word] ?: 0) + 1 }
+            val frequency = IntArray(rows) { freqMap[keywords[it]] ?: 1 }
+
+            return KeywordBook(vectors, shadowFlags, keywords, offsets, countsLight, countsShadow, frequency)
         }
     }
 }
