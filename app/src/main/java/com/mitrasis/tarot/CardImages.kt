@@ -289,6 +289,25 @@ fun CardStack(
             )
         }
 
+        // блик: свет скользит по поверхности вслед за наклоном
+        val sheenX = 0.5f + parallax.first * 0.35f
+        val sheenY = 0.5f + parallax.second * 0.35f
+        drawRoundRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.10f),
+                    androidx.compose.ui.graphics.Color.Transparent
+                ),
+                center = androidx.compose.ui.geometry.Offset(
+                    size.width * sheenX, size.height * sheenY
+                ),
+                radius = size.width * 0.75f
+            ),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                size.width * 0.045f, size.width * 0.045f
+            )
+        )
+
         drawFrame(width, height)
     }
 }
