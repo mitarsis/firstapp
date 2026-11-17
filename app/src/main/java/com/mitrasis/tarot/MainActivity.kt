@@ -180,6 +180,8 @@ fun TarotApp() {
     var note by remember { mutableStateOf("") }
     var showDiag by remember { mutableStateOf(false) }
     var focusLayer by remember { mutableStateOf(-1) }
+    var layers by remember { mutableStateOf(3) }
+    var showGallery by remember { mutableStateOf(false) }
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
         animationSpec = androidx.compose.animation.core.tween(420),
@@ -197,7 +199,7 @@ fun TarotApp() {
         scope.launch {
             try {
                 answer = withContext(Dispatchers.Default) {
-                    DeciderHolder.get(context).answer(text)
+                    DeciderHolder.get(context).answer(text, layers)
                 }
             } catch (o: OutOfMemoryError) {
                 note = "не хватило памяти — закрой другие приложения"
@@ -251,7 +253,7 @@ fun TarotApp() {
                         val decider = DeciderHolder.get(context)
                         decider.ensureLoaded()
                         say(decider.describeInputs())
-                        val probe = decider.answer("стоит ли мне уйти с работы?")
+                        val probe = decider.answer("стоит ли мне уйти с работы?", 3)
                         say("пробный ответ: ${probe.card.title} ${(probe.probability * 100).toInt()}%")
                     }
                 }
@@ -265,6 +267,11 @@ fun TarotApp() {
         answer = null
         question = ""
         note = ""
+    }
+
+    if (showGallery) {
+        CardGallery(onClose = { showGallery = false })
+        return
     }
 
     Column(
@@ -424,6 +431,22 @@ fun TarotApp() {
         }
 
         Spacer(Modifier.weight(1f))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = "галерея",
+                style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
+                color = ASH.copy(alpha = 0.6f),
+                modifier = Modifier.clickable { showGallery = true }
+            )
+            Text(
+                text = if (layers == 3) "три карты" else "две карты",
+                style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
+                color = ASH.copy(alpha = 0.6f),
+                modifier = Modifier.clickable { layers = if (layers == 3) 2 else 3 }
+            )
+        }
+        Spacer(Modifier.height(6.dp))
 
         Text(
             text = "v${BuildConfig.VERSION_NAME}",
