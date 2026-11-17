@@ -275,7 +275,7 @@ fun CardStack(
                     alpha = layerAlpha,
                     colorFilter = if (tinted) {
                         ColorFilter.tint(
-                            positionTint(index, reversed.getOrElse(index) { false }),
+                            positionTint(index, reversed.getOrElse(index) { false }, cards.size),
                             BlendMode.SrcIn
                         )
                     } else {
