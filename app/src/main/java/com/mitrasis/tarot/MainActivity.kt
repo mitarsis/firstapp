@@ -305,7 +305,10 @@ fun TarotApp() {
                                 answer == null -> {
                                     if (question.isBlank()) note = "сначала вопрос" else draw()
                                 }
-                                else -> focusLayer = (focusLayer + 2) % 4 - 1
+                                else -> {
+                                    focusLayer = (focusLayer + 2) % 4 - 1
+                                    pulsingTap()
+                                }
                             }
                         },
                         onLongPress = { diagnostics() }

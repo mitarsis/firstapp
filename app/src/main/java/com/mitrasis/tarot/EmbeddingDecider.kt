@@ -4,22 +4,22 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.content.Context
-import java.io.File
+import android.util.LruCache
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
 
 /**
- * Движок на эмбеддингах (multilingual-e5-small, int8, 384 измерения).
+ * Движок: e5-small (int8, 384 измерения).
  *
- * Идея проще предыдущей: вопрос кодируется один раз, векторы всех 78 карт
- * посчитаны заранее и лежат в assets/cards.bin. Ответ — косинусная близость.
- *
- * Почему так лучше прежнего: Gliner считала похожесть вопроса на текст метки
- * и на любом вопросе выдавала одну и ту же карту (Смерть, потом Жрицу, потом
- * Тройку Пентаклей). Здесь сравнение идёт между двумя векторами смысла,
- * а не между строкой вопроса и фразой метки.
+ * Порядок работы:
+ *  1. Вопрос кодируется в вектор (кэшируется: повторная вытяжка по тому же
+ *     вопросу не считает его заново).
+ *  2. Из колоды тасуются POOL_SIZE случайных карт — жребий.
+ *  3. Для каждой карты берётся её тег, ближайший к вопросу (светлый для прямой,
+ *     теневой для перевёрнутой), — это и есть вклад модели.
+ *  4. Три карты с лучшей близостью идут в ответ, первая — самая созвучная.
  */
 class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
@@ -37,9 +37,9 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         ctx.assets.open(KEYWORDS_ASSET).use { KeywordBook.fromStream(it) }
     }
 
-    private val summaries: SummaryBook by lazy {
-        val cardsMatrix = Array(cards.size) { cards.vectorOf(it) }
-        ctx.assets.open(SUMMARIES_ASSET).use { SummaryBook.fromStream(it, cardsMatrix) }
+    // Вектор вопроса переиспользуется при повторных вытяжках
+    private val vectorCache = object : LruCache<String, FloatArray>(8) {
+        override fun sizeOf(key: String, value: FloatArray): Int = value.size * 4 / 1024 + 1
     }
 
     private var env: OrtEnvironment? = null
@@ -58,31 +58,29 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         env = environment
     }
 
-    /**
-     * Жребий — действительно жребий: три карты вытягиваются случайно.
-     * Модель не выбирает карту, а оценивает, насколько выпавшая карта созвучна
-     * вопросу: берёт её тег, ближайший к вопросу, и показывает эту близость.
-     */
     override fun answer(question: String): CardAnswer {
         ensureLoaded()
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
-        val vector = embed(QUESTION_PREFIX + clean)
-        val random = kotlin.random.Random(System.nanoTime())
+        val vector = vectorCache.get(clean) ?: embed(QUESTION_PREFIX + clean).also {
+            vectorCache.put(clean, it)
+        }
 
-        // Жребий решает, из чего выбирать: двенадцать случайных карт.
-        // Модель решает, что из них ближе к вопросу: три самых созвучных.
+        val random = kotlin.random.Random(System.nanoTime())
         val pool = (0 until cards.size).shuffled(random).take(POOL_SIZE)
 
         val entries = pool.map { index ->
-            val (keyword, score) = keywords.bestKeywordWithScore(index, vector)
-            val card = Deck.byId(index)
             val reversed = random.nextFloat() < REVERSED_PERCENT / 100f
+            val (keyword, score) = keywords.bestKeyword(index, vector, reversed)
+            val card = Deck.byId(index)
             Triple(
                 CardLine(
                     title = card.title,
-                    keyword = if (reversed) card.shadow.firstOrNull().orEmpty() else keyword,
+                    keyword = keyword.ifBlank {
+                        if (reversed) card.shadow.firstOrNull().orEmpty()
+                        else card.light.firstOrNull().orEmpty()
+                    },
                     reversed = reversed
                 ),
                 relevance(score),
@@ -107,24 +105,6 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     private fun relevance(cosine: Float): Float =
         ((cosine - 0.62f) / 0.30f).coerceIn(0.02f, 1f)
 
-    /** Итог расклада: фраза, ближайшая к трём картам с учётом их веса. */
-    private fun summarize(trio: List<Pair<Int, Float>>): String {
-        val valid = trio.filter { it.first in 0 until cards.size }
-        if (valid.isEmpty()) return ""
-        val seed = valid.joinToString("|") { it.first.toString() }.hashCode() + valid.size
-        return summaries.nearestForCards(valid.map { cards.vectorOf(it.first) to it.second }, seed)
-    }
-
-    /**
-     * Ориентация карты. Модель её не предсказывает — это честный жребий,
-     * детерминированный от пары «вопрос + карта»: тот же вопрос даёт ту же
-     * ориентацию, но на разных вопросах распределение примерно 35/65.
-     */
-    private fun isReversed(question: String, cardMeaning: String): Boolean {
-        val hash = (question.lowercase().trim() + "|" + cardMeaning).hashCode()
-        return (hash and 0x7fffffff) % 100 < REVERSED_PERCENT
-    }
-
     /** Вектор текста: усреднение скрытых состояний по маске, потом нормировка. */
     private fun embed(text: String): FloatArray {
         val ids = tokenizer.encode(text).map { it.toLong() }.toLongArray()
@@ -146,17 +126,17 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
                 longArrayOf(1, length.toLong())
             ).use { maskTensor ->
                 val feeds = mutableMapOf("input_ids" to idsTensor, "attention_mask" to maskTensor)
-                if (session?.inputNames?.contains("token_type_ids") == true) {
+                if (ownSession.inputNames.contains("token_type_ids")) {
                     OnnxTensor.createTensor(
                         environment,
                         LongBuffer.wrap(LongArray(length) { 0L }),
                         longArrayOf(1, length.toLong())
                     ).use { typeTensor ->
                         feeds["token_type_ids"] = typeTensor
-                        hidden = runSession(ownSession, feeds, length)
+                        hidden = runSession(ownSession, feeds)
                     }
                 } else {
-                    hidden = runSession(ownSession, feeds, length)
+                    hidden = runSession(ownSession, feeds)
                 }
             }
         }
@@ -174,11 +154,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         return vector
     }
 
-    private fun runSession(
-        ownSession: OrtSession,
-        feeds: Map<String, OnnxTensor>,
-        length: Int
-    ): FloatArray {
+    private fun runSession(ownSession: OrtSession, feeds: Map<String, OnnxTensor>): FloatArray {
         ownSession.run(feeds).use { result ->
             val buffer = (result[0] as OnnxTensor).floatBuffer
             val flat = FloatArray(buffer.remaining())
@@ -189,7 +165,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
     fun describeInputs(): String = try {
         ensureLoaded()
-        "входы: ${session?.inputNames?.joinToString(",")} · карт: ${cards.size}"
+        "входы: ${session?.inputNames?.joinToString(",")} · карт: ${cards.size} · тегов: ${keywords.hashCode()}"
     } catch (t: Throwable) {
         "ошибка: ${t.javaClass.simpleName}: ${t.message}"
     }
@@ -198,26 +174,18 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
     override fun close() {
         session?.close()
         session = null
+        vectorCache.evictAll()
     }
 
     companion object {
         private const val TOKENIZER_ASSET = "tokenizer.bin"
         private const val CARDS_ASSET = "cards.bin"
-        private const val SUMMARIES_ASSET = "summaries.bin"
         private const val KEYWORDS_ASSET = "keywords.bin"
         private const val HIDDEN_SIZE = 384
         private const val MAX_TOKENS = 128
         private const val QUESTION_PREFIX = "query: "
-
-        /** Доля перевёрнутых карт, в процентах. */
-        private const val REVERSED_PERCENT = 35
-
-        /** Сколько близких карт участвует в распределении. */
-        private const val SHORTLIST = 5
         private const val POOL_SIZE = 12
-
-        /** Насколько резко разводим близкие косинусы в вероятности. */
-        private const val SHARPNESS = 120f
+        private const val REVERSED_PERCENT = 35
     }
 }
 
@@ -240,7 +208,6 @@ class CardsCloud private constructor(
         }
 
     fun meaningOf(index: Int): String = meanings.getOrElse(index) { "" }
-
     fun vectorOf(index: Int): FloatArray = vectors[index]
 
     companion object {
