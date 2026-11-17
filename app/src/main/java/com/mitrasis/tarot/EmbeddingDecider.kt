@@ -58,62 +58,51 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         env = environment
     }
 
+    /**
+     * Жребий — действительно жребий: три карты вытягиваются случайно.
+     * Модель не выбирает карту, а оценивает, насколько выпавшая карта созвучна
+     * вопросу: берёт её тег, ближайший к вопросу, и показывает эту близость.
+     */
     override fun answer(question: String): CardAnswer {
         ensureLoaded()
         val clean = question.trim()
         require(clean.isNotEmpty()) { "пустой вопрос" }
 
         val vector = embed(QUESTION_PREFIX + clean)
-        val similarities = cards.similarities(vector)
-        val order = similarities.indices.sortedByDescending { similarities[it] }
-        val best = order.first()
-        // Считаем распределение не по всем 78 картам, а по пяти самым близким:
-        // у остальных сходство почти одинаковое, и проценты превращались в шум.
-        val shortlist = order.take(SHORTLIST)
-        val scaled = FloatArray(shortlist.size) { similarities[shortlist[it]] * SHARPNESS }
-        val maxScaled = scaled.max()
-        val exps = FloatArray(scaled.size) {
-            kotlin.math.exp((scaled[it] - maxScaled).toDouble()).toFloat()
-        }
-        val sum = exps.sum().takeIf { it > 0f } ?: 1f
-        val probabilities = FloatArray(exps.size) { exps[it] / sum }
+        val random = kotlin.random.Random(System.nanoTime())
+        val drawn = (0 until cards.size).shuffled(random).take(3)
 
-        val ranked = shortlist.indices.sortedByDescending { probabilities[it] }
-        val winnerPosition = ranked.first()
-        val winnerIndex = shortlist[winnerPosition]
-
-        val alternatives = ranked.drop(1).take(2).map { position ->
-            Deck.byId(shortlist[position]) to probabilities[position]
-        }
-
-        val trio = listOf((winnerIndex to probabilities[winnerPosition])) +
-            alternatives.map { (card, probability) ->
-                Deck.labelsRu.indexOf(card.title) to probability
-            }
-        val summary = summarize(trio)
-        val lines = trio.map { (index, _) ->
+        val entries = drawn.map { index ->
+            val (keyword, score) = keywords.bestKeywordWithScore(index, vector)
             val card = Deck.byId(index)
-            val reversed = isReversed(clean, cards.meaningOf(index))
-            val keyword = if (reversed) {
-                card.shadow.firstOrNull().orEmpty()
-            } else {
-                keywords.bestKeyword(index, vector)
-            }
-            CardLine(card.title, keyword, reversed)
+            val reversed = random.nextFloat() < REVERSED_PERCENT / 100f
+            Triple(
+                CardLine(
+                    title = card.title,
+                    keyword = if (reversed) card.shadow.firstOrNull().orEmpty() else keyword,
+                    reversed = reversed
+                ),
+                relevance(score),
+                index
+            )
         }
 
+        val main = entries.first()
         return CardAnswer(
-            card = Deck.byId(winnerIndex),
-            variant = kotlin.random.Random.nextInt(1 shl 20),
-            summary = summary,
-            reversed = isReversed(clean, cards.meaningOf(winnerIndex)),
-            probability = probabilities[winnerPosition],
-            runnerUp = alternatives.firstOrNull(),
-            topic = cards.meaningOf(winnerIndex),
-            alternatives = alternatives,
-            lines = lines
+            card = Deck.byId(main.third),
+            reversed = main.first.reversed,
+            variant = random.nextInt(1 shl 20),
+            probability = main.second,
+            runnerUp = entries.getOrNull(1)?.let { Deck.byId(it.third) to it.second },
+            topic = CardMeanings.all.getOrNull(main.third)?.full.orEmpty(),
+            alternatives = entries.drop(1).map { Deck.byId(it.third) to it.second },
+            lines = entries.map { it.first }
         )
     }
+
+    /** Сырой косинус (обычно 0.62-0.92) превращаем в понятную долю. */
+    private fun relevance(cosine: Float): Float =
+        ((cosine - 0.62f) / 0.30f).coerceIn(0.02f, 1f)
 
     /** Итог расклада: фраза, ближайшая к трём картам с учётом их веса. */
     private fun summarize(trio: List<Pair<Int, Float>>): String {

@@ -19,6 +19,29 @@ class KeywordBook private constructor(
     private val keywords: List<String>
 ) {
 
+    /** Лучший тег карты и его близость к вопросу. */
+    fun bestKeywordWithScore(cardIndex: Int, questionVector: FloatArray): Pair<String, Float> {
+        if (cardIndex !in offsets.indices) return "" to 0f
+        val start = offsets[cardIndex]
+        val count = counts[cardIndex]
+        if (count <= 0) return "" to 0f
+
+        var bestOffset = start
+        var bestScore = -Float.MAX_VALUE
+        for (index in start until start + count) {
+            val vector = vectors[index]
+            var dot = 0f
+            for (dimension in vector.indices) {
+                dot += vector[dimension] * questionVector[dimension]
+            }
+            if (dot > bestScore) {
+                bestScore = dot
+                bestOffset = index
+            }
+        }
+        return keywords.getOrElse(bestOffset) { "" } to bestScore
+    }
+
     /** Лучший тег карты под данный вектор вопроса. */
     fun bestKeyword(cardIndex: Int, questionVector: FloatArray): String {
         if (cardIndex !in offsets.indices) return ""
