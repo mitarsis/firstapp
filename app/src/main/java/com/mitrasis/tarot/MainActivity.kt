@@ -544,11 +544,23 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
         val names = listOf(current.card) + current.alternatives.map { it.first }
         names.forEachIndexed { index, card ->
             val active = focusLayer < 0 || focusLayer == index
+            val tint = positionTint(
+                index,
+                current.lines.getOrNull(index)?.reversed == true,
+                names.size
+            )
             Text(
                 text = card.title.lowercase(),
-                style = TextStyle(fontSize = 10.sp, letterSpacing = 0.5.sp),
-                color = positionTint(index, current.lines.getOrNull(index)?.reversed == true)
-                    .copy(alpha = if (active) 0.95f else 0.3f)
+                style = TextStyle(
+                    fontSize = 10.sp,
+                    letterSpacing = 1.2.sp,
+                    // мягкое свечение вместо резкой плашки
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = tint.copy(alpha = 0.75f),
+                        blurRadius = 9f
+                    )
+                ),
+                color = tint.copy(alpha = if (active) 0.92f else 0.28f)
             )
         }
     }
