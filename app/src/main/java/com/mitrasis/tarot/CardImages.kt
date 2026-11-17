@@ -35,10 +35,12 @@ import androidx.compose.ui.unit.IntSize
 fun positionTint(index: Int, reversed: Boolean): Color {
     // Цвет всегда принадлежит позиции; перевёрнутость показывается текстом,
     // иначе две перевёрнутые карты дают два одинаковых пятна.
+    // канальные цвета: на чёрном фоне каждый слой читается своим тоном,
+    // а пересечения дают третий оттенок — как в анаглифе
     return when (index) {
-        0 -> Color(0xFFF2A93B)
-        1 -> Color(0xFF3FC6DC)
-        else -> Color(0xFFA45BE8)
+        0 -> Color(0xFFFFB020)   // янтарь
+        1 -> Color(0xFF20D8E8)   // циан
+        else -> Color(0xFFE040C0) // магента
     }
 }
 
@@ -234,7 +236,7 @@ fun CardStack(
                 } else {
                     null
                 },
-                blendMode = BlendMode.Screen
+                blendMode = BlendMode.Plus
             )
         }
 
