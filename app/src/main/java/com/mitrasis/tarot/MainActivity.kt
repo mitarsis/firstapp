@@ -452,7 +452,7 @@ private fun looksLikePentagram(points: List<Offset>, size: androidx.compose.ui.u
         val angle = Math.toDegrees(kotlin.math.acos(cos).toDouble())
         if (angle > 55.0) corners++
     }
-    val closed = (points.last() - points.first()).getDistance() < size.minDimension * 0.35f
+    val closed = (points.last() - points.first()).getDistance() < minOf(width, height) * 0.35f
     return corners in 4..7 && closed
 }
 
