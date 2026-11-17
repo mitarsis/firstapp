@@ -319,8 +319,13 @@ fun TarotApp() {
                 .fillMaxWidth(0.78f)
                 .aspectRatio(0.62f)
                 .graphicsLayer {
-                    rotationY = flip
-                    cameraDistance = 14f * density
+                    // объём: наклон всего блока вслед за телефоном
+                    val active = focusLayer < 0
+                    val tiltY = if (active) tilt.second else 0f
+                    val tiltX = if (active) tilt.first else 0f
+                    rotationY = flip + tiltX * 9f
+                    rotationX = -tiltY * 9f
+                    cameraDistance = 24f * density
                     val zoom = if (focusLayer >= 0) 1.03f else 1f
                     scaleX = zoom
                     scaleY = zoom
