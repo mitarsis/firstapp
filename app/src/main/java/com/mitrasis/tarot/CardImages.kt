@@ -207,18 +207,11 @@ fun CardStack(
     probabilities: List<Float>,
     reversed: List<Boolean> = emptyList(),
     focusIndex: Int = -1,
+    parallax: Pair<Float, Float> = 0f to 0f,
     tinted: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
-    // Три признака разделения слоёв: цвет, угол растра и его крупность.
-    val halftone = remember {
-        listOf(
-            buildHalftone(15f, cell = 6, dot = 1.8f),
-            buildHalftone(45f, cell = 9, dot = 2.3f),
-            buildHalftone(75f, cell = 12, dot = 2.9f)
-        )
-    }
     val flipped = images.mapIndexed { index, _ -> reversed.getOrElse(index) { false } }
 
     // Акцент на карте пропорционален её вероятности: главная всегда плотная,
@@ -271,36 +264,29 @@ fun CardStack(
             }
             val layerWidth = (width * depthScale).toInt()
             val layerHeight = (height * depthScale).toInt()
-            val dx = (width - layerWidth) / 2
-            val dy = (height - layerHeight) / 2
 
-            // изолируем слой, чтобы маска-растр не задела остальные
-            drawIntoCanvas { canvas ->
-                canvas.saveLayer(
-                    androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
-                    androidx.compose.ui.graphics.Paint()
-                )
-                drawImage(
-                    image = image,
-                    srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(image.width, image.height),
-                    dstOffset = IntOffset(dx, dy),
-                    dstSize = IntSize(layerWidth, layerHeight),
-                    alpha = layerAlpha,
-                    colorFilter = if (tinted) {
-                        ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
-                    } else {
-                        null
-                    },
-                    blendMode = BlendMode.SrcOver
-                )
-                // растр: точки под своим углом для каждого слоя
-                drawRect(
-                    brush = halftone[index % halftone.size],
-                    blendMode = BlendMode.DstIn
-                )
-                canvas.restore()
-            }
+            // параллакс: ближний слой сдвигается сильнее, дальний почти стоит
+            val weight = (3f - index) / 3f
+            val shiftX = parallax.first * size.width * 0.07f * weight
+            val shiftY = parallax.second * size.height * 0.04f * weight
+
+            val dx = (width - layerWidth) / 2 + shiftX.toInt()
+            val dy = (height - layerHeight) / 2 + shiftY.toInt()
+
+            drawImage(
+                image = image,
+                srcOffset = IntOffset.Zero,
+                srcSize = IntSize(image.width, image.height),
+                dstOffset = IntOffset(dx, dy),
+                dstSize = IntSize(layerWidth, layerHeight),
+                alpha = layerAlpha,
+                colorFilter = if (tinted) {
+                    ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
+                } else {
+                    null
+                },
+                blendMode = BlendMode.Plus
+            )
         }
 
         drawFrame(width, height)

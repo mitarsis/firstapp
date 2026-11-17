@@ -129,6 +129,36 @@ private fun TableBackdrop() {
     }
 }
 
+/** Наклон телефона: -1..1 по осям. Датчик акселерометра, разрешение не нужно. */
+@Composable
+private fun rememberTilt(): Pair<Float, Float> {
+    val context = LocalContext.current
+    var tilt by remember { mutableStateOf(0f to 0f) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val manager = context.getSystemService(android.content.Context.SENSOR_SERVICE)
+            as? android.hardware.SensorManager
+        val sensor = manager?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+        var smoothX = 0f
+        var smoothY = 0f
+        val listener = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(event: android.hardware.SensorEvent) {
+                val rawX = (-event.values[0] / 9.81f).coerceIn(-1f, 1f)
+                val rawY = (event.values[1] / 9.81f).coerceIn(-1f, 1f)
+                smoothX += (rawX - smoothX) * 0.15f
+                smoothY += (rawY - smoothY) * 0.15f
+                tilt = smoothX to smoothY
+            }
+
+            override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) = Unit
+        }
+        if (manager != null && sensor != null) {
+            manager.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_GAME)
+        }
+        onDispose { manager?.unregisterListener(listener) }
+    }
+    return tilt
+}
+
 @Composable
 fun TarotApp() {
     val context = LocalContext.current
@@ -182,6 +212,7 @@ fun TarotApp() {
     var focusLayer by remember { mutableStateOf(-1) }
     var layers by remember { mutableStateOf(3) }
     var showGallery by remember { mutableStateOf(false) }
+    val tilt = rememberTilt()
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
         animationSpec = androidx.compose.animation.core.tween(420),
@@ -365,6 +396,7 @@ fun TarotApp() {
                     probabilities = listOf(shown.probability) + shown.alternatives.map { it.second },
                     reversed = shown.lines.map { it.reversed },
                     focusIndex = focusLayer,
+                    parallax = tilt,
                     modifier = Modifier.fillMaxSize()
                 )
                 }
