@@ -71,9 +71,12 @@ object Reading {
             val seed = (answer.card.title + values.joinToString()).hashCode()
             // Эпитет выбирает модель по смыслу вопроса; если его нет — по хешу
             val adjective = answer.epithet.ifBlank { pool[Math.floorMod(seed, pool.size)] }
-            // Два слова в заголовке — предел живой русской конструкции;
-            // три и больше превращаются в перечисление.
-            val tail = if (values.size == 1) "" else " и " + values[1]
+            // Учитываем все карты: два слова — через «и», три — с запятой.
+            val tail = when {
+                values.size == 1 -> ""
+                values.size == 2 -> " и " + values[1]
+                else -> ", " + values[1] + " и " + values[2]
+            }
             result += (adjective + " " + values.first() + tail).replaceFirstChar { it.uppercase() } + "."
         }
 
