@@ -34,9 +34,10 @@ class ReadingTest {
     }
 
     @Test
-    fun `текст содержит главную карту и фон`() {
+    fun `текст — одна фраза со всеми картами`() {
         val paragraphs = Reading.compose(answer("уход", "переход", "обрыв"))
-        assertEquals(3, paragraphs.size)
-        assertTrue(paragraphs[1].startsWith("Фон:"))
+        assertEquals(1, paragraphs.size)
+        val text = paragraphs.first()
+        assertTrue("нет всех трёх значений: $text", text.contains("уход") && text.contains("переход") && text.contains("обрыв"))
     }
 }
