@@ -251,6 +251,23 @@ fun CardStack(
             )
         )
 
+        // всё содержимое карты живёт внутри обода, даже при параллаксе
+        val innerInset = size.width * 0.035f
+        val clipPath = androidx.compose.ui.graphics.Path().apply {
+            addRoundRect(
+                androidx.compose.ui.geometry.RoundRect(
+                    androidx.compose.ui.geometry.Rect(
+                        innerInset, innerInset,
+                        size.width - innerInset, size.height - innerInset
+                    ),
+                    androidx.compose.ui.geometry.CornerRadius(
+                        size.width * 0.04f, size.width * 0.04f
+                    )
+                )
+            )
+        }
+
+        androidx.compose.ui.graphics.drawscope.clipPath(clipPath) {
         images.forEachIndexed { index, image ->
             if (image == null) return@forEachIndexed
             val layerAlpha = alphas.getOrElse(index) { 1f }
@@ -287,6 +304,7 @@ fun CardStack(
                 },
                 blendMode = BlendMode.SrcOver
             )
+        }
         }
 
         // блик: свет скользит по поверхности вслед за наклоном
