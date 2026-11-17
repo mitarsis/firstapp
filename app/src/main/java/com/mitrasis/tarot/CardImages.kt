@@ -172,6 +172,32 @@ fun rememberCardImage(context: Context, cardId: Int): ImageBitmap? =
  * Наложение карт друг на друга: каждая следующая добавляется в режиме Screen,
  * поэтому штрихи не затирают друг друга, а складываются.
  */
+/** Три растровые сетки под углами 15°, 45°, 75° — своя на каждый слой. */
+private fun buildHalftone(angle: Float, cell: Int = 7, dot: Float = 2.1f): androidx.compose.ui.graphics.Brush {
+    val bitmap = androidx.compose.ui.graphics.ImageBitmap(96, 96)
+    val canvas = androidx.compose.ui.graphics.Canvas(bitmap)
+    val paint = androidx.compose.ui.graphics.Paint().apply {
+        color = androidx.compose.ui.graphics.Color.Black
+        isAntiAlias = true
+    }
+    val radians = Math.toRadians(angle.toDouble())
+    val cosA = kotlin.math.cos(radians).toFloat()
+    val sinA = kotlin.math.sin(radians).toFloat()
+    for (gx in -96..192 step cell) {
+        for (gy in -96..192 step cell) {
+            val x = gx * cosA - gy * sinA
+            val y = gx * sinA + gy * cosA
+            canvas.drawCircle(androidx.compose.ui.geometry.Offset(x, y), dot, paint)
+        }
+    }
+    val shader = androidx.compose.ui.graphics.ImageShader(
+        bitmap,
+        androidx.compose.ui.graphics.TileMode.Repeated,
+        androidx.compose.ui.graphics.TileMode.Repeated
+    )
+    return androidx.compose.ui.graphics.ShaderBrush(shader)
+}
+
 @Composable
 fun CardStack(
     context: Context,
@@ -183,6 +209,9 @@ fun CardStack(
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
+    val halftone = remember {
+        listOf(buildHalftone(15f), buildHalftone(45f), buildHalftone(75f))
+    }
     val flipped = images.mapIndexed { index, _ -> reversed.getOrElse(index) { false } }
 
     // Акцент на карте пропорционален её вероятности: главная всегда плотная,
@@ -209,10 +238,25 @@ fun CardStack(
                 size.width * 0.045f, size.width * 0.045f
             )
         )
+
+        val tilt = 0f
+        drawRoundRect(
+            brush = Brush.linearGradient(
+                colors = listOf(androidx.compose.ui.graphics.Color(0xFF1A1622), androidx.compose.ui.graphics.Color(0xFF0E0B12)),
+                start = androidx.compose.ui.geometry.Offset(tilt, 0f),
+                end = androidx.compose.ui.geometry.Offset(size.width - tilt, size.height)
+            ),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                size.width * 0.045f, size.width * 0.045f
+            )
+        )
+
         images.forEachIndexed { index, image ->
             if (image == null) return@forEachIndexed
+            val layerAlpha = alphas.getOrElse(index) { 1f }
+            if (layerAlpha <= 0.01f) return@forEachIndexed
             val isReversed = flipped.getOrElse(index) { false }
-            // глубина: чем дальше слой, тем он мельче — эффект вложенности
+
             val depthScale = when (index) {
                 0 -> 1f
                 1 -> 0.93f
@@ -223,45 +267,33 @@ fun CardStack(
             val dx = (width - layerWidth) / 2
             val dy = (height - layerHeight) / 2
 
-            if (alphas.getOrElse(index) { 1f } <= 0.01f) return@forEachIndexed
-            drawImage(
-                image = image,
-                srcOffset = IntOffset.Zero,
-                srcSize = IntSize(image.width, image.height),
-                dstOffset = IntOffset(dx, dy),
-                dstSize = IntSize(layerWidth, layerHeight),
-                alpha = alphas.getOrElse(index) { 1f },
-                colorFilter = if (tinted) {
-                    ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
-                } else {
-                    null
-                },
-                blendMode = BlendMode.Plus
-            )
-        }
-
-        // глубина: тёмный омут по краям, светлее к центру
-        drawRect(
-            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                colors = listOf(
-                    androidx.compose.ui.graphics.Color.Transparent,
-                    androidx.compose.ui.graphics.Color(0x550A0710),
-                    androidx.compose.ui.graphics.Color(0xA00A0710)
-                ),
-                center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.45f),
-                radius = size.height * 0.62f
-            )
-        )
-
-        // круги на воде — намёк на воронку
-        repeat(3) { ring ->
-            val radius = size.width * (0.30f + ring * 0.11f)
-            drawCircle(
-                color = androidx.compose.ui.graphics.Color(0xFFBFA37A).copy(alpha = 0.05f),
-                radius = radius,
-                center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.45f),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.002f)
-            )
+            // изолируем слой, чтобы маска-растр не задела остальные
+            drawIntoCanvas { canvas ->
+                canvas.saveLayer(
+                    androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
+                    androidx.compose.ui.graphics.Paint()
+                )
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset(dx, dy),
+                    dstSize = IntSize(layerWidth, layerHeight),
+                    alpha = layerAlpha,
+                    colorFilter = if (tinted) {
+                        ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
+                    } else {
+                        null
+                    },
+                    blendMode = BlendMode.SrcOver
+                )
+                // растр: точки под своим углом для каждого слоя
+                drawRect(
+                    brush = halftone[index % halftone.size],
+                    blendMode = BlendMode.DstIn
+                )
+                canvas.restore()
+            }
         }
 
         drawFrame(width, height)
