@@ -252,23 +252,6 @@ fun CardStack(
             )
         )
 
-        // всё содержимое карты живёт внутри обода, даже при параллаксе
-        val innerInset = size.width * 0.035f
-        val clipPath = androidx.compose.ui.graphics.Path().apply {
-            addRoundRect(
-                androidx.compose.ui.geometry.RoundRect(
-                    androidx.compose.ui.geometry.Rect(
-                        innerInset, innerInset,
-                        size.width - innerInset, size.height - innerInset
-                    ),
-                    androidx.compose.ui.geometry.CornerRadius(
-                        size.width * 0.04f, size.width * 0.04f
-                    )
-                )
-            )
-        }
-
-        androidx.compose.ui.graphics.drawscope.clipPath(clipPath) {
         // Обрезка по внутреннему контуру: параллакс не выедет за обод
         val innerInset = size.width * 0.03f
         val clipPath = androidx.compose.ui.graphics.Path().apply {
