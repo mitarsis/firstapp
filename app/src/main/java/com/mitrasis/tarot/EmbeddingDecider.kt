@@ -92,12 +92,14 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             )
         }.sortedByDescending { it.second }.take(layers.coerceIn(1, 3))
 
+        // Жребий не пересортировывается: карты идут в порядке вытяжки.
+        // Модель отвечает только за выбор оттенка смысла у каждой карты.
         val main = entries.first()
         return CardAnswer(
             card = Deck.byId(main.third),
             reversed = main.first.reversed,
             variant = random.nextInt(1 shl 20),
-            probability = main.second,
+            probability = 0f,
             runnerUp = entries.getOrNull(1)?.let { Deck.byId(it.third) to it.second },
             topic = CardMeanings.all.getOrNull(main.third)?.full.orEmpty(),
             alternatives = entries.drop(1).map { Deck.byId(it.third) to it.second },

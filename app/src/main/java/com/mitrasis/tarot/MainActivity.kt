@@ -502,21 +502,6 @@ private fun looksLikePentagram(points: List<Offset>, size: androidx.compose.ui.u
 private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
     val current = answer ?: return
 
-    Text(
-        text = "насколько созвучно вопросу",
-        style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
-        color = ASH.copy(alpha = 0.5f),
-        textAlign = TextAlign.Center
-    )
-    Spacer(Modifier.height(4.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true),
-            active = focusLayer < 0 || focusLayer == 0)
-        current.alternatives.forEachIndexed { index, (_, p) ->
-            Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true),
-                active = focusLayer < 0 || focusLayer == index + 1)
-        }
-    }
     Spacer(Modifier.height(6.dp))
     Text(
         text = (listOf(current.card) + current.alternatives.map { it.first })
