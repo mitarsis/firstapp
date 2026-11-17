@@ -103,7 +103,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val gender = EpithetBook.genderOf(
             firstKeyword.substringBefore(',').substringBefore(' ').trim()
         )
-        val epithet = EpithetBook.pick(vector, gender)
+        val epithet = EpithetBook.pick(vector, entries.first().third, gender)
 
         val main = entries.first()
         return CardAnswer(
