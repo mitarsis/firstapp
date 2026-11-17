@@ -103,6 +103,10 @@ object ModelStore {
                 tmp.copyTo(target, overwrite = true)
                 tmp.delete()
             }
+            if (!target.isFile || target.length() < MIN_MODEL_BYTES) {
+                target.delete()
+                throw java.io.IOException("файл модели пришёл битым")
+            }
         }
     }
 }
