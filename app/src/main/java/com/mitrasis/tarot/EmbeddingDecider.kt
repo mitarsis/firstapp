@@ -70,9 +70,12 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         val vector = embed(QUESTION_PREFIX + clean)
         val random = kotlin.random.Random(System.nanoTime())
-        val drawn = (0 until cards.size).shuffled(random).take(3)
 
-        val entries = drawn.map { index ->
+        // Жребий решает, из чего выбирать: двенадцать случайных карт.
+        // Модель решает, что из них ближе к вопросу: три самых созвучных.
+        val pool = (0 until cards.size).shuffled(random).take(POOL_SIZE)
+
+        val entries = pool.map { index ->
             val (keyword, score) = keywords.bestKeywordWithScore(index, vector)
             val card = Deck.byId(index)
             val reversed = random.nextFloat() < REVERSED_PERCENT / 100f
@@ -85,7 +88,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
                 relevance(score),
                 index
             )
-        }
+        }.sortedByDescending { it.second }.take(3)
 
         val main = entries.first()
         return CardAnswer(
@@ -211,6 +214,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
 
         /** Сколько близких карт участвует в распределении. */
         private const val SHORTLIST = 5
+        private const val POOL_SIZE = 12
 
         /** Насколько резко разводим близкие косинусы в вероятности. */
         private const val SHARPNESS = 120f
