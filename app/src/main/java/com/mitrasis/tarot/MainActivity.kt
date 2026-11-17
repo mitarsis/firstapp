@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -177,6 +178,7 @@ fun TarotApp() {
     var progress by remember { mutableFloatStateOf(0f) }
     var note by remember { mutableStateOf("") }
     var showDiag by remember { mutableStateOf(false) }
+    var showLabels by remember { mutableStateOf(true) }
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
         animationSpec = androidx.compose.animation.core.tween(420),
@@ -189,6 +191,7 @@ fun TarotApp() {
         if (text.isEmpty() || busy) return
         note = ""
         busy = true
+        showLabels = true
         pulsingTap()
         scope.launch {
             try {
@@ -297,31 +300,32 @@ fun TarotApp() {
                         onTap = {
                             when {
                                 !ready -> download()
-                                busy -> Unit
-                                question.isBlank() && answer == null -> note = "сначала вопрос"
-                                else -> draw()
+                                else -> showLabels = !showLabels
                             }
                         },
                         onLongPress = { diagnostics() }
                     )
                 }
+                .pointerInput(answer, ready, busy, question) {
+                    val trace = mutableListOf<Offset>()
+                    detectDragGestures(
+                        onDragStart = { offset -> trace.clear(); trace.add(offset) },
+                        onDrag = { change, _ ->
+                            val last = trace.lastOrNull()
+                            if (last == null || (change.position - last).getDistance() > 12f) {
+                                trace.add(change.position)
+                            }
+                        },
+                        onDragEnd = {
+                            if (ready && !busy && question.isNotBlank() && looksLikePentagram(trace, size)) {
+                                draw()
+                            }
+                            trace.clear()
+                        }
+                    )
+                }
         ) {
             val shown = answer
-            if (shown != null) {
-                Text(
-                    text = "↺",
-                    style = TextStyle(fontSize = 20.sp),
-                    color = FOIL.copy(alpha = 0.55f),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(14.dp)
-                        .clickable {
-                            answer = null
-                            question = ""
-                            note = ""
-                        }
-                )
-            }
             if (shown == null) {
                 CardBack(
                     question = question,
@@ -344,6 +348,24 @@ fun TarotApp() {
                 )
                 }
             }
+
+            // сброс — поверх карты, иначе его перекрывает рисунок
+            if (shown != null) {
+                Text(
+                    text = "↺",
+                    style = TextStyle(fontSize = 22.sp),
+                    color = FOIL.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .clickable {
+                            answer = null
+                            question = ""
+                            note = ""
+                            showLabels = true
+                        }
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -364,50 +386,7 @@ fun TarotApp() {
                 style = TextStyle(fontSize = 12.sp, letterSpacing = 2.sp),
                 color = ASH
             )
-            answer != null -> {
-                val current = answer ?: return@Column
-                Text(
-                    text = "насколько созвучно вопросу",
-                    style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
-                    color = ASH.copy(alpha = 0.5f)
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true))
-                    current.alternatives.forEachIndexed { index, (_, p) ->
-                        Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true))
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = (listOf(current.card) + current.alternatives.map { it.first })
-                        .joinToString("  ·  ") { it.title.lowercase() },
-                    style = TextStyle(fontSize = 9.sp, letterSpacing = 0.5.sp),
-                    color = ASH.copy(alpha = 0.55f),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(12.dp))
-                Reading.compose(current).forEach { line ->
-                    Text(
-                        text = line,
-                        style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
-                        color = Color(0xFFEDE4D2),
-                        textAlign = TextAlign.Center
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = current.card.title.lowercase(),
-                    style = TextStyle(fontSize = 11.sp, letterSpacing = 2.sp),
-                    color = ASH
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "коснись карты — новая вытяжка",
-                    style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
-                    color = ASH.copy(alpha = 0.45f)
-                )
-            }
+            answer != null -> AnswerLabels(answer, showLabels)
             else -> Text(
                 "напиши вопрос на карте и коснись её",
                 style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp),
@@ -444,6 +423,96 @@ fun TarotApp() {
             }
         )
     }
+}
+
+/**
+ * Грубое распознавание пентаграммы: пять-шесть резких поворотов,
+ * замкнутый контур и достаточная длина линии.
+ */
+private fun looksLikePentagram(points: List<Offset>, size: androidx.compose.ui.unit.IntSize): Boolean {
+    if (points.size < 8) return false
+    val width = size.width.toFloat()
+    val height = size.height.toFloat()
+    if (width <= 0f || height <= 0f) return false
+
+    var length = 0f
+    for (index in 1 until points.size) {
+        length += (points[index] - points[index - 1]).getDistance()
+    }
+    if (length < (width + height) * 1.2f) return false
+
+    var corners = 0
+    for (index in 1 until points.size - 1) {
+        val a = points[index] - points[index - 1]
+        val b = points[index + 1] - points[index]
+        val na = a.getDistance()
+        val nb = b.getDistance()
+        if (na < 1f || nb < 1f) continue
+        val cos = ((a.x * b.x + a.y * b.y) / (na * nb)).coerceIn(-1f, 1f)
+        val angle = Math.toDegrees(kotlin.math.acos(cos).toDouble())
+        if (angle > 55.0) corners++
+    }
+    val closed = (points.last() - points.first()).getDistance() < size.minDimension * 0.35f
+    return corners in 4..7 && closed
+}
+
+@Composable
+private fun AnswerLabels(answer: CardAnswer?, showLabels: Boolean) {
+    val current = answer ?: return
+    if (!showLabels) {
+        Text(
+            "коснись — подписи · нарисуй пентаграмму — заново",
+            style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+            color = ASH.copy(alpha = 0.4f),
+            textAlign = TextAlign.Center
+        )
+        return
+    }
+
+    Text(
+        text = "насколько созвучно вопросу",
+        style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+        color = ASH.copy(alpha = 0.5f),
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(4.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true))
+        current.alternatives.forEachIndexed { index, (_, p) ->
+            Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true))
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(
+        text = (listOf(current.card) + current.alternatives.map { it.first })
+            .joinToString("  ·  ") { it.title.lowercase() },
+        style = TextStyle(fontSize = 9.sp, letterSpacing = 0.5.sp),
+        color = ASH.copy(alpha = 0.55f),
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(12.dp))
+    Reading.compose(current).forEach { line ->
+        Text(
+            text = line,
+            style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+            color = Color(0xFFEDE4D2),
+            textAlign = TextAlign.Center
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = current.card.title.lowercase(),
+        style = TextStyle(fontSize = 11.sp, letterSpacing = 2.sp),
+        color = ASH,
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(6.dp))
+    Text(
+        text = "коснись — подписи · нарисуй пентаграмму — заново",
+        style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+        color = ASH.copy(alpha = 0.45f),
+        textAlign = TextAlign.Center
+    )
 }
 
 @Composable
