@@ -524,13 +524,6 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
             textAlign = TextAlign.Center
         )
     }
-    Spacer(Modifier.height(8.dp))
-    Text(
-        text = current.card.title.lowercase(),
-        style = TextStyle(fontSize = 11.sp, letterSpacing = 2.sp),
-        color = ASH,
-        textAlign = TextAlign.Center
-    )
     Spacer(Modifier.height(6.dp))
     Text(
         text = if (focusLayer < 0) "коснись — разложить слои · пентаграмма — заново"
