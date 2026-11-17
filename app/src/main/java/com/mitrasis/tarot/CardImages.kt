@@ -213,88 +213,57 @@ fun CardStack(
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
-    val flipped = images.mapIndexed { index, _ -> reversed.getOrElse(index) { false } }
 
-    // Акцент на карте пропорционален её вероятности: главная всегда плотная,
-    // остальные тем прозрачнее, чем слабее их шанс.
     val strongest = probabilities.maxOrNull()?.takeIf { it > 0f } ?: 1f
     val alphas = probabilities.mapIndexed { index, probability ->
         if (focusIndex >= 0) {
-            // разглядываем один слой: остальные погашены
             if (index == focusIndex) 1f else 0f
         } else {
             val share = (probability / strongest).coerceIn(0f, 1f)
-            (0.55f + 0.45f * share).coerceIn(0.5f, 1f)
+            (0.45f + 0.40f * share).coerceIn(0.45f, 0.85f)
         }
     }
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
-        val width = size.width.toInt()
-        val height = size.height.toInt()
+        val w = size.width
+        val h = size.height
+        val corner = androidx.compose.ui.geometry.CornerRadius(w * 0.045f, w * 0.045f)
 
-        // Тёмная подложка: штрихи карт светлые, иначе в светлой теме их не видно
-        drawRoundRect(
-            color = androidx.compose.ui.graphics.Color(0xFF14111C),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                size.width * 0.045f, size.width * 0.045f
-            )
-        )
-
-        val tilt = 0f
+        drawRoundRect(color = Color(0xFF14111C), cornerRadius = corner)
         drawRoundRect(
             brush = Brush.linearGradient(
-                colors = listOf(androidx.compose.ui.graphics.Color(0xFF1A1622), androidx.compose.ui.graphics.Color(0xFF0E0B12)),
-                start = androidx.compose.ui.geometry.Offset(tilt, 0f),
-                end = androidx.compose.ui.geometry.Offset(size.width - tilt, size.height)
+                colors = listOf(Color(0xFF1A1622), Color(0xFF0E0B12))
             ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                size.width * 0.045f, size.width * 0.045f
-            )
+            cornerRadius = corner
         )
 
-        // Обрезка по внутреннему контуру: параллакс не выедет за обод
-        val innerInset = size.width * 0.03f
-        val clipPath = androidx.compose.ui.graphics.Path().apply {
+        val clip = androidx.compose.ui.graphics.Path().apply {
             addRoundRect(
                 androidx.compose.ui.geometry.RoundRect(
-                    androidx.compose.ui.geometry.Rect(
-                        innerInset, innerInset,
-                        size.width - innerInset, size.height - innerInset
-                    ),
-                    androidx.compose.ui.geometry.CornerRadius(
-                        size.width * 0.04f, size.width * 0.04f
-                    )
+                    androidx.compose.ui.geometry.Rect(w * 0.03f, h * 0.03f, w - w * 0.03f, h - h * 0.03f),
+                    androidx.compose.ui.geometry.CornerRadius(w * 0.04f, w * 0.04f)
                 )
             )
         }
 
-        androidx.compose.ui.graphics.drawscope.clipPath(clipPath) {
+        clipPath(clip) {
             images.forEachIndexed { index, image ->
                 if (image == null) return@forEachIndexed
-                val layerAlpha = alphas.getOrElse(index) { 1f }
+                val layerAlpha = alphas.getOrElse(index) { 0f }
                 if (layerAlpha <= 0.01f) return@forEachIndexed
-                val isReversed = flipped.getOrElse(index) { false }
 
-                val depthScale = when (index) {
+                val depth = when (index) {
                     0 -> 1f
                     1 -> 0.93f
                     else -> 0.86f
                 }
-
-                // единый масштаб «вписать в рамку» — без перекоса по осям
-                val fit = minOf(
-                    size.width / image.width.toFloat(),
-                    size.height / image.height.toFloat()
-                ) * depthScale
+                val fit = minOf(w / image.width.toFloat(), h / image.height.toFloat()) * depth
                 val dstW = (image.width * fit).toInt()
                 val dstH = (image.height * fit).toInt()
 
                 val weight = (3f - index) / 3f
-                val shiftX = parallax.first * size.width * 0.10f * weight
-                val shiftY = parallax.second * size.height * 0.05f * weight
-
-                val dx = ((size.width - dstW) / 2f + shiftX).toInt()
-                val dy = ((size.height - dstH) / 2f + shiftY).toInt()
+                val dx = ((w - dstW) / 2f + parallax.first * w * 0.10f * weight).toInt()
+                val dy = ((h - dstH) / 2f + parallax.second * h * 0.05f * weight).toInt()
 
                 drawImage(
                     image = image,
@@ -304,7 +273,10 @@ fun CardStack(
                     dstSize = IntSize(dstW, dstH),
                     alpha = layerAlpha,
                     colorFilter = if (tinted) {
-                        ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
+                        ColorFilter.tint(
+                            positionTint(index, reversed.getOrElse(index) { false }),
+                            BlendMode.SrcIn
+                        )
                     } else {
                         null
                     },
@@ -313,25 +285,19 @@ fun CardStack(
             }
         }
 
-        // блик: свет скользит по поверхности вслед за наклоном
-        val sheenX = 0.5f + parallax.first * 0.35f
-        val sheenY = 0.5f + parallax.second * 0.35f
+        // блик, скользящий по поверхности
         drawRoundRect(
             brush = Brush.radialGradient(
-                colors = listOf(
-                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.06f),
-                    androidx.compose.ui.graphics.Color.Transparent
-                ),
+                colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
                 center = androidx.compose.ui.geometry.Offset(
-                    size.width * sheenX, size.height * sheenY
+                    w * (0.5f + parallax.first * 0.35f),
+                    h * (0.5f + parallax.second * 0.35f)
                 ),
-                radius = size.width * 0.75f
+                radius = w * 0.75f
             ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                size.width * 0.045f, size.width * 0.045f
-            )
+            cornerRadius = corner
         )
 
-        drawFrame(width, height)
+        drawFrame(w.toInt(), h.toInt())
     }
 }
