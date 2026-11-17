@@ -213,11 +213,18 @@ fun TarotApp() {
     var layers by remember { mutableStateOf(3) }
     var showGallery by remember { mutableStateOf(false) }
     val tilt = rememberTilt()
-    var channelTarget by remember { mutableFloatStateOf(0f) }
-    val channelShift by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = channelTarget,
-        animationSpec = androidx.compose.animation.core.tween(650),
-        label = "channels"
+    var channelsAnimating by remember { mutableStateOf(false) }
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "channels")
+    val rotatingChannels by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 3f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(
+                durationMillis = 2400,
+                easing = androidx.compose.animation.core.LinearEasing
+            )
+        ),
+        label = "channelRotation"
     )
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
@@ -364,9 +371,12 @@ fun TarotApp() {
                             }
                         },
                         onLongPress = {
-                            // меняем каналы местами
-                            channelTarget += 1f
-                            pulsingTap()
+                            // включаем/выключаем перелив каналов
+                            val multiple = (answer?.alternatives?.isNotEmpty() == true)
+                            if (multiple && focusLayer < 0) {
+                                channelsAnimating = !channelsAnimating
+                                pulsingTap()
+                            }
                         }
                     )
                 }
@@ -410,7 +420,13 @@ fun TarotApp() {
                     reversed = shown.lines.map { it.reversed },
                     focusIndex = focusLayer,
                     parallax = if (focusLayer >= 0) 0f to 0f else tilt,
-                    channelShift = channelShift,
+                    channelShift = if (
+                        channelsAnimating && shown.alternatives.isNotEmpty() && focusLayer < 0
+                    ) {
+                        rotatingChannels
+                    } else {
+                        0f
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
                 }
