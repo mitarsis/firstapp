@@ -268,43 +268,65 @@ fun CardStack(
         }
 
         androidx.compose.ui.graphics.drawscope.clipPath(clipPath) {
-        images.forEachIndexed { index, image ->
-            if (image == null) return@forEachIndexed
-            val layerAlpha = alphas.getOrElse(index) { 1f }
-            if (layerAlpha <= 0.01f) return@forEachIndexed
-            val isReversed = flipped.getOrElse(index) { false }
-
-            val depthScale = when (index) {
-                0 -> 1f
-                1 -> 0.93f
-                else -> 0.86f
-            }
-            val layerWidth = (width * depthScale).toInt()
-            val layerHeight = (height * depthScale).toInt()
-
-            // параллакс: ближний слой сдвигается сильнее, дальний почти стоит
-            val weight = (3f - index) / 3f
-            val shiftX = parallax.first * size.width * 0.16f * weight
-            val shiftY = parallax.second * size.height * 0.10f * weight
-
-            val dx = (width - layerWidth) / 2 + shiftX.toInt()
-            val dy = (height - layerHeight) / 2 + shiftY.toInt()
-
-            drawImage(
-                image = image,
-                srcOffset = IntOffset.Zero,
-                srcSize = IntSize(image.width, image.height),
-                dstOffset = IntOffset(dx, dy),
-                dstSize = IntSize(layerWidth, layerHeight),
-                alpha = layerAlpha,
-                colorFilter = if (tinted) {
-                    ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
-                } else {
-                    null
-                },
-                blendMode = BlendMode.SrcOver
+        // Обрезка по внутреннему контуру: параллакс не выедет за обод
+        val innerInset = size.width * 0.03f
+        val clipPath = androidx.compose.ui.graphics.Path().apply {
+            addRoundRect(
+                androidx.compose.ui.geometry.RoundRect(
+                    androidx.compose.ui.geometry.Rect(
+                        innerInset, innerInset,
+                        size.width - innerInset, size.height - innerInset
+                    ),
+                    androidx.compose.ui.geometry.CornerRadius(
+                        size.width * 0.04f, size.width * 0.04f
+                    )
+                )
             )
         }
+
+        androidx.compose.ui.graphics.drawscope.clipPath(clipPath) {
+            images.forEachIndexed { index, image ->
+                if (image == null) return@forEachIndexed
+                val layerAlpha = alphas.getOrElse(index) { 1f }
+                if (layerAlpha <= 0.01f) return@forEachIndexed
+                val isReversed = flipped.getOrElse(index) { false }
+
+                val depthScale = when (index) {
+                    0 -> 1f
+                    1 -> 0.93f
+                    else -> 0.86f
+                }
+
+                // единый масштаб «вписать в рамку» — без перекоса по осям
+                val fit = minOf(
+                    size.width / image.width.toFloat(),
+                    size.height / image.height.toFloat()
+                ) * depthScale
+                val dstW = (image.width * fit).toInt()
+                val dstH = (image.height * fit).toInt()
+
+                val weight = (3f - index) / 3f
+                val shiftX = parallax.first * size.width * 0.10f * weight
+                val shiftY = parallax.second * size.height * 0.05f * weight
+
+                val dx = ((size.width - dstW) / 2f + shiftX).toInt()
+                val dy = ((size.height - dstH) / 2f + shiftY).toInt()
+
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset(dx, dy),
+                    dstSize = IntSize(dstW, dstH),
+                    alpha = layerAlpha,
+                    colorFilter = if (tinted) {
+                        ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
+                    } else {
+                        null
+                    },
+                    blendMode = BlendMode.SrcOver
+                )
+            }
         }
 
         // блик: свет скользит по поверхности вслед за наклоном
