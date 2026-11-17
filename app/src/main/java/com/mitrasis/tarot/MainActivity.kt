@@ -213,6 +213,12 @@ fun TarotApp() {
     var layers by remember { mutableStateOf(3) }
     var showGallery by remember { mutableStateOf(false) }
     val tilt = rememberTilt()
+    var channelTarget by remember { mutableFloatStateOf(0f) }
+    val channelShift by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = channelTarget,
+        animationSpec = androidx.compose.animation.core.tween(650),
+        label = "channels"
+    )
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
         animationSpec = androidx.compose.animation.core.tween(420),
@@ -358,7 +364,9 @@ fun TarotApp() {
                             }
                         },
                         onLongPress = {
-                            if (ready && !busy && question.isNotBlank()) draw()
+                            // меняем каналы местами
+                            channelTarget += 1f
+                            pulsingTap()
                         }
                     )
                 }
@@ -402,6 +410,7 @@ fun TarotApp() {
                     reversed = shown.lines.map { it.reversed },
                     focusIndex = focusLayer,
                     parallax = if (focusLayer >= 0) 0f to 0f else tilt,
+                    channelShift = channelShift,
                     modifier = Modifier.fillMaxSize()
                 )
                 }

@@ -202,6 +202,27 @@ private fun buildHalftone(angle: Float, cell: Int = 7, dot: Float = 2.1f): andro
     return androidx.compose.ui.graphics.ShaderBrush(shader)
 }
 
+/**
+ * Цвет канала с учётом сдвига: при долгом нажатии каналы перетекают
+ * друг в друга, поэтому между двумя цветами интерполируем.
+ */
+private fun channelColor(index: Int, shift: Float, total: Int): Color {
+    val palette = if (total <= 2) {
+        listOf(Color(0xFFFF3B3B), Color(0xFF4C7BFF))
+    } else {
+        listOf(Color(0xFFFF3B3B), Color(0xFF3BFF7A), Color(0xFF4C7BFF))
+    }
+    val size = palette.size
+    val position = (((index + shift) % size) + size) % size
+    val base = position.toInt()
+    val fraction = position - base
+    return androidx.compose.ui.graphics.lerp(
+        palette[base % size],
+        palette[(base + 1) % size],
+        fraction
+    )
+}
+
 @Composable
 fun CardStack(
     context: Context,
@@ -210,6 +231,7 @@ fun CardStack(
     reversed: List<Boolean> = emptyList(),
     focusIndex: Int = -1,
     parallax: Pair<Float, Float> = 0f to 0f,
+    channelShift: Float = 0f,
     tinted: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -275,7 +297,7 @@ fun CardStack(
                     alpha = layerAlpha,
                     colorFilter = if (tinted) {
                         ColorFilter.tint(
-                            positionTint(index, reversed.getOrElse(index) { false }, cards.size),
+                            channelColor(index, channelShift, cards.size),
                             BlendMode.SrcIn
                         )
                     } else {
