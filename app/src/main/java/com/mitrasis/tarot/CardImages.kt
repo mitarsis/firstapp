@@ -177,6 +177,7 @@ fun CardStack(
     probabilities: List<Float>,
     reversed: List<Boolean> = emptyList(),
     focusIndex: Int = -1,
+    tinted: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
@@ -228,7 +229,11 @@ fun CardStack(
                 dstOffset = IntOffset(dx, dy),
                 dstSize = IntSize(layerWidth, layerHeight),
                 alpha = alphas.getOrElse(index) { 1f },
-                colorFilter = ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn),
+                colorFilter = if (tinted) {
+                    ColorFilter.tint(positionTint(index, isReversed), BlendMode.SrcIn)
+                } else {
+                    null
+                },
                 blendMode = BlendMode.Screen
             )
         }

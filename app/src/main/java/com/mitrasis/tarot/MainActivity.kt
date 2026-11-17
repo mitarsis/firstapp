@@ -503,13 +503,18 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
     val current = answer ?: return
 
     Spacer(Modifier.height(6.dp))
-    Text(
-        text = (listOf(current.card) + current.alternatives.map { it.first })
-            .joinToString("  ·  ") { it.title.lowercase() },
-        style = TextStyle(fontSize = 9.sp, letterSpacing = 0.5.sp),
-        color = ASH.copy(alpha = 0.55f),
-        textAlign = TextAlign.Center
-    )
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        val names = listOf(current.card) + current.alternatives.map { it.first }
+        names.forEachIndexed { index, card ->
+            val active = focusLayer < 0 || focusLayer == index
+            Text(
+                text = card.title.lowercase(),
+                style = TextStyle(fontSize = 10.sp, letterSpacing = 0.5.sp),
+                color = positionTint(index, current.lines.getOrNull(index)?.reversed == true)
+                    .copy(alpha = if (active) 0.95f else 0.3f)
+            )
+        }
+    }
     Spacer(Modifier.height(12.dp))
     Reading.compose(current).forEach { line ->
         Text(
