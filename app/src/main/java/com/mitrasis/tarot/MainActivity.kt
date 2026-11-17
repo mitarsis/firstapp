@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -178,7 +179,7 @@ fun TarotApp() {
     var progress by remember { mutableFloatStateOf(0f) }
     var note by remember { mutableStateOf("") }
     var showDiag by remember { mutableStateOf(false) }
-    var showLabels by remember { mutableStateOf(true) }
+    var focusLayer by remember { mutableStateOf(-1) }
     val flip by animateFloatAsState(
         targetValue = if (answer != null) 180f else 0f,
         animationSpec = androidx.compose.animation.core.tween(420),
@@ -191,7 +192,7 @@ fun TarotApp() {
         if (text.isEmpty() || busy) return
         note = ""
         busy = true
-        showLabels = true
+        focusLayer = -1
         pulsingTap()
         scope.launch {
             try {
@@ -300,7 +301,11 @@ fun TarotApp() {
                         onTap = {
                             when {
                                 !ready -> download()
-                                else -> showLabels = !showLabels
+                                busy -> Unit
+                                answer == null -> {
+                                    if (question.isBlank()) note = "сначала вопрос" else draw()
+                                }
+                                else -> focusLayer = (focusLayer + 2) % 4 - 1
                             }
                         },
                         onLongPress = { diagnostics() }
@@ -344,6 +349,7 @@ fun TarotApp() {
                     cards = trio,
                     probabilities = listOf(shown.probability) + shown.alternatives.map { it.second },
                     reversed = shown.lines.map { it.reversed },
+                    focusIndex = focusLayer,
                     modifier = Modifier.fillMaxSize()
                 )
                 }
@@ -362,7 +368,7 @@ fun TarotApp() {
                             answer = null
                             question = ""
                             note = ""
-                            showLabels = true
+                            focusLayer = -1
                         }
                 )
             }
@@ -386,7 +392,7 @@ fun TarotApp() {
                 style = TextStyle(fontSize = 12.sp, letterSpacing = 2.sp),
                 color = ASH
             )
-            answer != null -> AnswerLabels(answer, showLabels)
+            answer != null -> AnswerLabels(answer, focusLayer)
             else -> Text(
                 "напиши вопрос на карте и коснись её",
                 style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp),
@@ -457,17 +463,8 @@ private fun looksLikePentagram(points: List<Offset>, size: androidx.compose.ui.u
 }
 
 @Composable
-private fun AnswerLabels(answer: CardAnswer?, showLabels: Boolean) {
+private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
     val current = answer ?: return
-    if (!showLabels) {
-        Text(
-            "коснись — подписи · нарисуй пентаграмму — заново",
-            style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
-            color = ASH.copy(alpha = 0.4f),
-            textAlign = TextAlign.Center
-        )
-        return
-    }
 
     Text(
         text = "насколько созвучно вопросу",
@@ -477,9 +474,11 @@ private fun AnswerLabels(answer: CardAnswer?, showLabels: Boolean) {
     )
     Spacer(Modifier.height(4.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true))
+        Dots(1, current.probability, positionTint(0, current.lines.firstOrNull()?.reversed == true),
+            active = focusLayer < 0 || focusLayer == 0)
         current.alternatives.forEachIndexed { index, (_, p) ->
-            Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true))
+            Dots(index + 2, p, positionTint(index + 1, current.lines.getOrNull(index + 1)?.reversed == true),
+                active = focusLayer < 0 || focusLayer == index + 1)
         }
     }
     Spacer(Modifier.height(6.dp))
@@ -508,7 +507,8 @@ private fun AnswerLabels(answer: CardAnswer?, showLabels: Boolean) {
     )
     Spacer(Modifier.height(6.dp))
     Text(
-        text = "коснись — подписи · нарисуй пентаграмму — заново",
+        text = if (focusLayer < 0) "коснись — разложить слои · пентаграмма — заново"
+        else "слой ${focusLayer + 1} · коснись ещё раз",
         style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
         color = ASH.copy(alpha = 0.45f),
         textAlign = TextAlign.Center
@@ -516,8 +516,8 @@ private fun AnswerLabels(answer: CardAnswer?, showLabels: Boolean) {
 }
 
 @Composable
-private fun Dots(number: Int, probability: Float, tint: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun Dots(number: Int, probability: Float, tint: Color, active: Boolean = true) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (active) 1f else 0.35f)) {
         Box(
             modifier = Modifier
                 .size(8.dp)

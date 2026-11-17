@@ -183,6 +183,7 @@ fun CardStack(
     cards: List<TarotCard>,
     probabilities: List<Float>,
     reversed: List<Boolean> = emptyList(),
+    focusIndex: Int = -1,
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
@@ -191,9 +192,14 @@ fun CardStack(
     // Акцент на карте пропорционален её вероятности: главная всегда плотная,
     // остальные тем прозрачнее, чем слабее их шанс.
     val strongest = probabilities.maxOrNull()?.takeIf { it > 0f } ?: 1f
-    val alphas = probabilities.map { probability ->
-        val share = (probability / strongest).coerceIn(0f, 1f)
-        (0.55f + 0.45f * share).coerceIn(0.5f, 1f)
+    val alphas = probabilities.mapIndexed { index, probability ->
+        if (focusIndex >= 0) {
+            // разглядываем один слой: остальные погашены
+            if (index == focusIndex) 1f else 0f
+        } else {
+            val share = (probability / strongest).coerceIn(0f, 1f)
+            (0.55f + 0.45f * share).coerceIn(0.5f, 1f)
+        }
     }
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
@@ -221,6 +227,7 @@ fun CardStack(
             val dx = (width - layerWidth) / 2
             val dy = (height - layerHeight) / 2
 
+            if (alphas.getOrElse(index) { 1f } <= 0.01f) return@forEachIndexed
             drawImage(
                 image = image,
                 srcOffset = IntOffset.Zero,
