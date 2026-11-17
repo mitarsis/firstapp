@@ -100,9 +100,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         // Модель отвечает только за выбор оттенка смысла у каждой карты.
         epithetsLoaded
         val firstKeyword = entries.first().first.keyword
-        val gender = EpithetBook.genderOf(
-            firstKeyword.substringBefore(',').substringBefore(' ').trim()
-        )
+        val gender = EpithetBook.genderOf(Reading.shortValue(firstKeyword))
         val epithet = EpithetBook.pick(vector, entries.first().third, gender)
 
         val main = entries.first()

@@ -40,8 +40,22 @@ object Reading {
         }
     }
 
-    private fun shortValue(keyword: String): String =
-        keyword.substringBefore(',').substringBefore(' ').trim()
+    private val ADJECTIVE_ENDINGS = listOf(
+        "ый", "ий", "ой", "ая", "яя", "ое", "ее", "ые", "ие",
+        "ого", "ому", "ым", "ых", "ую", "ей"
+    )
+
+    /**
+     * Короткое значение для строки: существительное, а не прилагательное.
+     * Теги вроде «мнимая стабильность» иначе давали «полная мнимая».
+     */
+    fun shortValue(keyword: String): String {
+        val words = keyword.substringBefore(',').trim().split(" ").filter { it.isNotBlank() }
+        if (words.isEmpty()) return ""
+        val first = words.first()
+        val firstIsAdjective = ADJECTIVE_ENDINGS.any { first.endsWith(it, ignoreCase = true) }
+        return if (firstIsAdjective && words.size > 1) words[1] else first
+    }
 
     fun compose(answer: CardAnswer): List<String> {
         val lines = answer.lines
