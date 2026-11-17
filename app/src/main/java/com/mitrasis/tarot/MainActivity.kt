@@ -396,7 +396,7 @@ fun TarotApp() {
                     probabilities = listOf(shown.probability) + shown.alternatives.map { it.second },
                     reversed = shown.lines.map { it.reversed },
                     focusIndex = focusLayer,
-                    parallax = tilt,
+                    parallax = if (focusLayer >= 0) 0f to 0f else tilt,
                     modifier = Modifier.fillMaxSize()
                 )
                 }

@@ -267,8 +267,8 @@ fun CardStack(
 
             // параллакс: ближний слой сдвигается сильнее, дальний почти стоит
             val weight = (3f - index) / 3f
-            val shiftX = parallax.first * size.width * 0.07f * weight
-            val shiftY = parallax.second * size.height * 0.04f * weight
+            val shiftX = parallax.first * size.width * 0.16f * weight
+            val shiftY = parallax.second * size.height * 0.10f * weight
 
             val dx = (width - layerWidth) / 2 + shiftX.toInt()
             val dy = (height - layerHeight) / 2 + shiftY.toInt()
