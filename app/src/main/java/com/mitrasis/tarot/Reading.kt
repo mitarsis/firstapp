@@ -69,7 +69,8 @@ object Reading {
                 else -> MASC
             }
             val seed = (answer.card.title + values.joinToString()).hashCode()
-            val adjective = pool[Math.floorMod(seed, pool.size)]
+            // Эпитет выбирает модель по смыслу вопроса; если его нет — по хешу
+            val adjective = answer.epithet.ifBlank { pool[Math.floorMod(seed, pool.size)] }
             // Два слова в заголовке — предел живой русской конструкции;
             // три и больше превращаются в перечисление.
             val tail = if (values.size == 1) "" else " и " + values[1]
