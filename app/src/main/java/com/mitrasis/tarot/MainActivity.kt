@@ -156,9 +156,16 @@ fun TarotApp() {
         context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
     }
     fun pulsingTap() {
-        if (vibrator == null || !vibrator.hasVibrator()) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(16, 90))
+        try {
+            if (vibrator == null || !vibrator.hasVibrator()) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(16, 90))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(16)
+            }
+        } catch (t: Throwable) {
+            // вибрация — украшение, из-за неё падать нельзя
         }
     }
 
