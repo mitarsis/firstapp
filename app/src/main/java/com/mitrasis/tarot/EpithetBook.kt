@@ -5,33 +5,11 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Эпитеты: прилагательное выбирается не по хешу, а по близости к вектору
- * вопроса, и согласуется с родом первого значения.
- *
- * Порядок форм совпадает с assets/epithets.bin (16 masculine-основ).
+ * Эпитет берётся из тех прилагательных, которые действительно встречаются
+ * в тексте этой карты у Уэйта, и выбирается тот, что ближе к вопросу.
+ * Формы (род, число) лежат в EpithetsData, порядок совпадает с epithets.bin.
  */
 object EpithetBook {
-
-    private val MASC = listOf(
-        "невыносимый", "тихий", "поздний", "слепой", "вечный", "чужой",
-        "обратный", "глухой", "светлый", "тёмный", "ломкий", "зрячий",
-        "беглый", "зимний", "узкий", "последний"
-    )
-    private val FEM = listOf(
-        "невыносимая", "тихая", "поздняя", "слепая", "вечная", "чужая",
-        "обратная", "глухая", "светлая", "тёмная", "ломкая", "зрячая",
-        "беглая", "зимняя", "узкая", "последняя"
-    )
-    private val NEUT = listOf(
-        "невыносимое", "тихое", "позднее", "слепое", "вечное", "чужое",
-        "обратное", "глухое", "светлое", "тёмное", "ломкое", "зрячее",
-        "беглое", "зимнее", "узкое", "последнее"
-    )
-    private val PLURAL = listOf(
-        "невыносимые", "тихие", "поздние", "слепые", "вечные", "чужие",
-        "обратные", "глухие", "светлые", "тёмные", "ломкие", "зрячие",
-        "беглые", "зимние", "узкие", "последние"
-    )
 
     private var vectors: Array<FloatArray>? = null
 
@@ -65,27 +43,24 @@ object EpithetBook {
         }
     }
 
-    fun pick(questionVector: FloatArray, gender: Int): String {
+    fun pick(questionVector: FloatArray, cardIndex: Int, gender: Int): String {
         val table = vectors ?: return ""
-        var bestIndex = 0
+        val candidates = EpithetsData.perCard.getOrNull(cardIndex) ?: return ""
+        var bestId = candidates.firstOrNull() ?: return ""
         var bestScore = -Float.MAX_VALUE
-        for (index in table.indices) {
-            val vector = table[index]
+        for (id in candidates) {
+            if (id !in table.indices) continue
+            val vector = table[id]
             var dot = 0f
             for (dimension in vector.indices) {
                 dot += vector[dimension] * questionVector[dimension]
             }
             if (dot > bestScore) {
                 bestScore = dot
-                bestIndex = index
+                bestId = id
             }
         }
-        val forms = when (gender) {
-            1 -> FEM
-            2 -> NEUT
-            3 -> PLURAL
-            else -> MASC
-        }
-        return forms.getOrElse(bestIndex) { MASC.first() }
+        val forms = EpithetsData.forms.getOrNull(bestId) ?: return ""
+        return forms.getOrElse(gender) { forms.first() }
     }
 }
