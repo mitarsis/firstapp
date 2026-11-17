@@ -40,10 +40,11 @@ fun positionTint(index: Int, reversed: Boolean): Color {
     // иначе две перевёрнутые карты дают два одинаковых пятна.
     // канальные цвета: на чёрном фоне каждый слой читается своим тоном,
     // а пересечения дают третий оттенок — как в анаглифе
+    // чистые каналы: слои не перекрывают друг друга, а складываются по цвету
     return when (index) {
-        0 -> Color(0xFFFFB020)   // янтарь
-        1 -> Color(0xFF20D8E8)   // циан
-        else -> Color(0xFFE040C0) // магента
+        0 -> Color(0xFFFF3B3B)   // красный канал
+        1 -> Color(0xFF3BFF7A)   // зелёный канал
+        else -> Color(0xFF4C7BFF) // синий канал
     }
 }
 
@@ -280,7 +281,7 @@ fun CardStack(
                     } else {
                         null
                     },
-                    blendMode = BlendMode.SrcOver
+                    blendMode = BlendMode.Plus
                 )
             }
         }
