@@ -283,6 +283,9 @@ fun TarotApp() {
                 .graphicsLayer {
                     rotationY = flip
                     cameraDistance = 14f * density
+                    val zoom = if (focusLayer >= 0) 1.03f else 1f
+                    scaleX = zoom
+                    scaleY = zoom
                 }
                 .drawBehind {
                     // мягкая тень под картой
@@ -311,7 +314,9 @@ fun TarotApp() {
                                 }
                             }
                         },
-                        onLongPress = { diagnostics() }
+                        onLongPress = {
+                            if (ready && !busy && question.isNotBlank()) draw()
+                        }
                     )
                 }
                 .pointerInput(answer, ready, busy, question) {
@@ -424,11 +429,16 @@ fun TarotApp() {
             text = "v${BuildConfig.VERSION_NAME}",
             style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
             color = ASH.copy(alpha = 0.35f),
-            modifier = Modifier.clickable {
-                scope.launch {
-                    withContext(Dispatchers.Default) { DeciderHolder.close() }
-                    answer = null
-                }
+            modifier = Modifier.pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        scope.launch {
+                            withContext(Dispatchers.Default) { DeciderHolder.close() }
+                            answer = null
+                        }
+                    },
+                    onLongPress = { diagnostics() }
+                )
             }
         )
     }
