@@ -22,10 +22,10 @@ Daemon will be stopped at the end of the build
 > Task :app:javaPreCompileDebugUnitTest FROM-CACHE
 
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/CardImages.kt:270:48 Unresolved reference 'clipPath'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/CardImages.kt:287:48 Unresolved reference 'clipPath'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/CardImages.kt:353:2 Syntax error: Expecting '}'.
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794946812131.json
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/CardImages.kt:271:48 Unresolved reference 'clipPath'.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/CardImages.kt:288:48 Unresolved reference 'clipPath'.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/CardImages.kt:354:2 Syntax error: Expecting '}'.
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794947157307.json
 
 FAILURE: Build failed with an exception.
 
@@ -40,6 +40,6 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 17s
+BUILD FAILED in 16s
 17 actionable tasks: 4 executed, 13 from cache
 === test mismatches ===
