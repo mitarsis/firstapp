@@ -26,7 +26,7 @@ class StubCardDecider : CardDecider {
 
     override val name: String = "заглушка"
 
-    override fun answer(question: String, layers: Int = 3): CardAnswer {
+    override fun answer(question: String, layers: Int): CardAnswer {
         val normalized = question.trim().lowercase()
         val seed = if (normalized.isEmpty()) {
             0L
