@@ -30,7 +30,8 @@ data class CardAnswer(
     val noAnswer: Boolean = false,
     val variant: Int = 0,
     val summary: String = "",
-    val lines: List<CardLine> = emptyList()
+    val lines: List<CardLine> = emptyList(),
+    val epithet: String = ""
 )
 
 object Deck {
