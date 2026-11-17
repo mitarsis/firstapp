@@ -90,7 +90,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
                 relevance(score),
                 index
             )
-        }.sortedByDescending { it.second }.take(layers.coerceIn(1, 3))
+        }.take(layers.coerceIn(1, 3))
 
         // Жребий не пересортировывается: карты идут в порядке вытяжки.
         // Модель отвечает только за выбор оттенка смысла у каждой карты.
