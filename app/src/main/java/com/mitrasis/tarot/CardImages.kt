@@ -285,7 +285,7 @@ fun CardStack(
                 } else {
                     null
                 },
-                blendMode = BlendMode.Plus
+                blendMode = BlendMode.SrcOver
             )
         }
 
@@ -295,7 +295,7 @@ fun CardStack(
         drawRoundRect(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.10f),
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.06f),
                     androidx.compose.ui.graphics.Color.Transparent
                 ),
                 center = androidx.compose.ui.geometry.Offset(
