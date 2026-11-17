@@ -51,16 +51,22 @@ fun positionTint(index: Int, reversed: Boolean): Color {
 
 object CardImages {
 
-    private val cache = HashMap<Int, ImageBitmap>()
+    // Ограниченный кэш: 78 карт по 300×520 в память целиком не нужны.
+    private val cache = object : android.util.LruCache<Int, ImageBitmap>(MEMORY_BUDGET_KB) {
+        override fun sizeOf(key: Int, value: ImageBitmap): Int =
+            value.width * value.height * 4 / 1024
+    }
+
+    private const val MEMORY_BUDGET_KB = 12 * 1024
 
     fun load(context: Context, cardId: Int): ImageBitmap? {
-        cache[cardId]?.let { return it }
+        cache.get(cardId)?.let { return it }
         val name = "cards/%02d.webp".format(cardId)
         return try {
             context.assets.open(name).use { stream ->
                 val bitmap = BitmapFactory.decodeStream(stream) ?: return null
                 val image = bitmap.asImageBitmap()
-                cache[cardId] = image
+                cache.put(cardId, image)
                 image
             }
         } catch (t: Throwable) {
