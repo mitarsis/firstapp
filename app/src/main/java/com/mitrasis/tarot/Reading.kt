@@ -49,12 +49,22 @@ object Reading {
      * Короткое значение для строки: существительное, а не прилагательное.
      * Теги вроде «мнимая стабильность» иначе давали «полная мнимая».
      */
+    private val STOP_WORDS = setOf(
+        "в", "во", "на", "с", "со", "к", "ко", "о", "об", "из", "от", "до",
+        "по", "за", "под", "над", "при", "для", "без", "через", "и", "а", "но"
+    )
+
     fun shortValue(keyword: String): String {
         val words = keyword.substringBefore(',').trim().split(" ").filter { it.isNotBlank() }
         if (words.isEmpty()) return ""
-        val first = words.first()
-        val firstIsAdjective = ADJECTIVE_ENDINGS.any { first.endsWith(it, ignoreCase = true) }
-        return if (firstIsAdjective && words.size > 1) words[1] else first
+        // пропускаем предлоги и короткие служебные слова
+        var index = 0
+        while (index < words.size - 1 && (words[index].length <= 2 || words[index].lowercase() in STOP_WORDS)) {
+            index++
+        }
+        val candidate = words[index]
+        val isAdjective = ADJECTIVE_ENDINGS.any { candidate.endsWith(it, ignoreCase = true) }
+        return if (isAdjective && index + 1 < words.size) words[index + 1] else candidate
     }
 
     fun compose(answer: CardAnswer): List<String> {
