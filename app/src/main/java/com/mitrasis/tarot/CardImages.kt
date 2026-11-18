@@ -273,10 +273,15 @@ fun CardStack(
                 val layerAlpha = alphas.getOrElse(index) { 0f }
                 if (layerAlpha <= 0.01f) return@forEachIndexed
 
-                val depth = when (index) {
-                    0 -> 1f
-                    1 -> 0.93f
-                    else -> 0.86f
+                // при разборе одного слоя глубина не нужна: карта занимает всю рамку
+                val depth = if (focusIndex >= 0) {
+                    1f
+                } else {
+                    when (index) {
+                        0 -> 1f
+                        1 -> 0.93f
+                        else -> 0.86f
+                    }
                 }
                 val fit = minOf(w / image.width.toFloat(), h / image.height.toFloat()) * depth
                 val dstW = (image.width * fit).toInt()
