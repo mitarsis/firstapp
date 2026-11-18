@@ -208,9 +208,9 @@ private fun buildHalftone(angle: Float, cell: Int = 7, dot: Float = 2.1f): andro
  */
 private fun channelColor(index: Int, shift: Float, total: Int): Color {
     val palette = if (total <= 2) {
-        listOf(Color(0xFFFFB020), Color(0xFF20D8E8))
+        listOf(Color(0xFFF2A93B), Color(0xFF3FC6DC))
     } else {
-        listOf(Color(0xFFFFB020), Color(0xFF20D8E8), Color(0xFFE040C0))
+        listOf(Color(0xFFF2A93B), Color(0xFF3FC6DC), Color(0xFFA45BE8))
     }
     val size = palette.size
     val position = (((index + shift) % size) + size) % size
@@ -243,7 +243,7 @@ fun CardStack(
             if (index == focusIndex) 1f else 0f
         } else {
             val share = (probability / strongest).coerceIn(0f, 1f)
-            (0.45f + 0.40f * share).coerceIn(0.45f, 0.85f)
+            (0.55f + 0.45f * share).coerceIn(0.5f, 1f)
         }
     }
 
@@ -298,7 +298,7 @@ fun CardStack(
                     } else {
                         null
                     },
-                    blendMode = BlendMode.SrcOver
+                    blendMode = BlendMode.Screen
                 )
             }
         }
