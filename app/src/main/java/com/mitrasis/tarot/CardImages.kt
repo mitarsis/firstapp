@@ -236,16 +236,7 @@ fun CardStack(
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
-
-    val strongest = probabilities.maxOrNull()?.takeIf { it > 0f } ?: 1f
-    val alphas = probabilities.mapIndexed { index, probability ->
-        if (focusIndex >= 0) {
-            if (index == focusIndex) 1f else 0f
-        } else {
-            val share = (probability / strongest).coerceIn(0f, 1f)
-            (0.45f + 0.40f * share).coerceIn(0.45f, 0.85f)
-        }
-    }
+    val current = if (focusIndex in cards.indices) focusIndex else 0
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
         val w = size.width
@@ -253,57 +244,31 @@ fun CardStack(
         val corner = androidx.compose.ui.geometry.CornerRadius(w * 0.045f, w * 0.045f)
 
         drawRoundRect(color = Color(0xFF14111C), cornerRadius = corner)
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(Color(0xFF1A1622), Color(0xFF0E0B12))
-            ),
-            cornerRadius = corner
-        )
 
         val clip = androidx.compose.ui.graphics.Path().apply {
             addRoundRect(
                 androidx.compose.ui.geometry.RoundRect(
                     androidx.compose.ui.geometry.Rect(w * 0.03f, h * 0.03f, w - w * 0.03f, h - h * 0.03f),
-                    androidx.compose.ui.geometry.CornerRadius(w * 0.04f, w * 0.04f)
+                    androidx.compose.ui.geometry.CornerRadius(w * 0.035f, w * 0.035f)
                 )
             )
         }
 
         clipPath(clip) {
-            images.forEachIndexed { index, image ->
-                if (image == null) return@forEachIndexed
-                val layerAlpha = alphas.getOrElse(index) { 0f }
-                if (layerAlpha <= 0.01f) return@forEachIndexed
-
-                val depth = when (index) {
-                    0 -> 1f
-                    1 -> 0.93f
-                    else -> 0.86f
-                }
-                val fit = minOf(w / image.width.toFloat(), h / image.height.toFloat()) * depth
+            val image = images.getOrNull(current)
+            if (image != null) {
+                val fit = minOf(w / image.width.toFloat(), h / image.height.toFloat())
                 val dstW = (image.width * fit).toInt()
                 val dstH = (image.height * fit).toInt()
-
-                val weight = (3f - index) / 3f
-                val dx = ((w - dstW) / 2f + parallax.first * w * 0.10f * weight).toInt()
-                val dy = ((h - dstH) / 2f + parallax.second * h * 0.05f * weight).toInt()
-
                 drawImage(
                     image = image,
                     srcOffset = IntOffset.Zero,
                     srcSize = IntSize(image.width, image.height),
-                    dstOffset = IntOffset(dx, dy),
+                    dstOffset = IntOffset(((w - dstW) / 2f).toInt(), ((h - dstH) / 2f).toInt()),
                     dstSize = IntSize(dstW, dstH),
-                    alpha = layerAlpha,
-                    colorFilter = if (tinted) {
-                        ColorFilter.tint(
-                            channelColor(index, channelShift, cards.size),
-                            BlendMode.SrcIn
-                        )
-                    } else {
-                        null
-                    },
-                    blendMode = BlendMode.Plus
+                    alpha = 1f,
+                    colorFilter = null,
+                    blendMode = BlendMode.SrcOver
                 )
             }
         }
@@ -311,7 +276,7 @@ fun CardStack(
         // блик, скользящий по поверхности
         drawRoundRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                colors = listOf(Color.White.copy(alpha = 0.05f), Color.Transparent),
                 center = androidx.compose.ui.geometry.Offset(
                     w * (0.5f + parallax.first * 0.35f),
                     h * (0.5f + parallax.second * 0.35f)
