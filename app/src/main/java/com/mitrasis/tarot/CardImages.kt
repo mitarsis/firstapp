@@ -273,29 +273,21 @@ fun CardStack(
                 val layerAlpha = alphas.getOrElse(index) { 0f }
                 if (layerAlpha <= 0.01f) return@forEachIndexed
 
-                // при разборе одного слоя глубина не нужна: карта занимает всю рамку
-                val depth = if (focusIndex >= 0) {
-                    1f
-                } else {
-                    when (index) {
-                        0 -> 1f
-                        1 -> 0.93f
-                        else -> 0.86f
-                    }
-                }
-                val fit = minOf(w / image.width.toFloat(), h / image.height.toFloat()) * depth
+                // все слои одного размера: различаются цветом и прозрачностью,
+                // а не масштабом — иначе третья карта выглядит сдвинутой
+                val fit = minOf(w / image.width.toFloat(), h / image.height.toFloat())
                 val dstW = (image.width * fit).toInt()
                 val dstH = (image.height * fit).toInt()
 
-                val weight = (3f - index) / 3f
-                val dx = ((w - dstW) / 2f + parallax.first * w * 0.10f * weight).toInt()
-                val dy = ((h - dstH) / 2f + parallax.second * h * 0.05f * weight).toInt()
+                // слои ходят вместе с блоком, без относительного смещения
+                val dx = (w - dstW) / 2f
+                val dy = (h - dstH) / 2f
 
                 drawImage(
                     image = image,
                     srcOffset = IntOffset.Zero,
                     srcSize = IntSize(image.width, image.height),
-                    dstOffset = IntOffset(dx, dy),
+                    dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                     dstSize = IntSize(dstW, dstH),
                     alpha = layerAlpha,
                     colorFilter = if (tinted) {
