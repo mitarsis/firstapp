@@ -279,9 +279,11 @@ fun CardStack(
                 val dstW = (image.width * fit).toInt()
                 val dstH = (image.height * fit).toInt()
 
-                // слои ходят вместе с блоком, без относительного смещения
-                val dx = (w - dstW) / 2f
-                val dy = (h - dstH) / 2f
+                // параллакс: слои смещаются с разной силой, но умеренно,
+                // чтобы не было ощущения «третья карта уехала»
+                val weight = 1f - index * 0.20f
+                val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight
+                val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight
 
                 drawImage(
                     image = image,
