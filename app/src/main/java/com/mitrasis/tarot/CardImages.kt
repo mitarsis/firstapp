@@ -208,9 +208,9 @@ private fun buildHalftone(angle: Float, cell: Int = 7, dot: Float = 2.1f): andro
  */
 private fun channelColor(index: Int, shift: Float, total: Int): Color {
     val palette = if (total <= 2) {
-        listOf(Color(0xFFFF3B3B), Color(0xFF4C7BFF))
+        listOf(Color(0xFFFFB020), Color(0xFF20D8E8))
     } else {
-        listOf(Color(0xFFFF3B3B), Color(0xFF3BFF7A), Color(0xFF4C7BFF))
+        listOf(Color(0xFFFFB020), Color(0xFF20D8E8), Color(0xFFE040C0))
     }
     val size = palette.size
     val position = (((index + shift) % size) + size) % size
