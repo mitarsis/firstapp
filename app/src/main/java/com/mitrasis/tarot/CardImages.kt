@@ -258,7 +258,7 @@ fun CardStack(
     val phase by drift.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(13000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(19000, easing = LinearEasing)),
         label = "phase"
     )
 
@@ -297,8 +297,12 @@ fun CardStack(
                 // параллакс: слои смещаются с разной силой, но умеренно,
                 // чтобы не было ощущения «третья карта уехала»
                 val weight = 1f - index * 0.20f
-                val floatX = sin(phase + index * 0.9f) * 0.012f * weight
-                val floatY = cos(phase * 0.8f + index * 1.3f) * 0.007f * weight
+                // сумма двух синусов: движение не повторяется по кругу и не дёргается
+                val driftScale = if (cards.size > 1 && focusIndex < 0) 1f else 0f
+                val s1 = sin(phase + index * 0.9f) + 0.35f * sin(2f * phase + index * 1.7f)
+                val c1 = cos(phase * 0.8f + index * 1.3f) + 0.35f * cos(2f * phase * 0.8f + index * 0.6f)
+                val floatX = s1 / 1.35f * 0.006f * weight * driftScale
+                val floatY = c1 / 1.35f * 0.0035f * weight * driftScale
                 val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight + floatX * w
                 val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight + floatY * h
 

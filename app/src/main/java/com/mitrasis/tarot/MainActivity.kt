@@ -420,7 +420,7 @@ fun TarotApp() {
                     probabilities = listOf(shown.probability) + shown.alternatives.map { it.second },
                     reversed = shown.lines.map { it.reversed },
                     focusIndex = focusLayer,
-                    parallax = if (focusLayer >= 0) 0f to 0f else (tilt.first * 0.45f) to (tilt.second * 0.45f),
+                    parallax = if (focusLayer >= 0) 0f to 0f else (tilt.first * 0.3f) to (tilt.second * 0.3f),
                     channelShift = if (
                         channelsAnimating && shown.alternatives.isNotEmpty() && focusLayer < 0
                     ) {
