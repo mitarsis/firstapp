@@ -236,6 +236,18 @@ object Reading {
             filler["$prefix.pre"] = Morph.form(word, Morph.Case.PRE)
             filler["$prefix.genpl"] = Morph.form(word, Morph.Case.GEN, plural = true)
         }
+        fun adjectiveFor(word: String): String {
+            val bank = when (genderOf(word)) {
+                1 -> FEM
+                2 -> NEUT
+                3 -> PLURAL
+                else -> MASC
+            }
+            return bank[Math.floorMod(word.hashCode() + seed / 3, bank.size)]
+        }
+        filler["adj1"] = adjectiveFor(v1)
+        filler["adj2"] = adjectiveFor(v2)
+        filler["adj3"] = adjectiveFor(v3)
         addCases("v1", v1)
         addCases("v2", v2)
         addCases("v3", v3)
@@ -303,6 +315,16 @@ object Reading {
             "v2" to distinct.getOrElse(1) { distinct.first() },
             "v3" to distinct.getOrElse(2) { distinct.first() }
         )).ifBlank { verdictFallback })
+
+        val cardTitle = lines.first().title.lowercase()
+        val suitSlot = when {
+            cardTitle.contains("жезл") -> "wands"
+            cardTitle.contains("кубк") -> "cups"
+            cardTitle.contains("меч") -> "swords"
+            cardTitle.contains("пентакл") -> "pentacles"
+            else -> "major"
+        }
+        emit("suit", fromSlot("suit:$suitSlot"))
 
         emit("close", fromSlot("close").ifBlank { "Карты не решают, они показывают." })
         emit("cause", fromSlot("cause"))
