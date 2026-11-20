@@ -226,10 +226,22 @@ object Reading {
         val v2 = values.getOrNull(1) ?: v1
         val v3 = values.getOrNull(2) ?: v2
 
-        val filler = mapOf(
-            "v1" to v1, "v2" to v2, "v3" to v3,
-            "d2" to dative(v2), "d3" to dative(v3), "g1" to genitive(v1)
-        )
+        val filler = HashMap<String, String>()
+        fun addCases(prefix: String, word: String) {
+            filler[prefix] = word
+            filler["$prefix.gen"] = Morph.form(word, Morph.Case.GEN)
+            filler["$prefix.dat"] = Morph.form(word, Morph.Case.DAT)
+            filler["$prefix.acc"] = Morph.form(word, Morph.Case.ACC)
+            filler["$prefix.ins"] = Morph.form(word, Morph.Case.INS)
+            filler["$prefix.pre"] = Morph.form(word, Morph.Case.PRE)
+            filler["$prefix.genpl"] = Morph.form(word, Morph.Case.GEN, plural = true)
+        }
+        addCases("v1", v1)
+        addCases("v2", v2)
+        addCases("v3", v3)
+        filler["d2"] = dative(v2)
+        filler["d3"] = dative(v3)
+        filler["g1"] = genitive(v1)
         fun fromSlot(slot: String, extra: Map<String, String> = emptyMap()): String {
             val bank = Phrases.of(slot)
             if (bank.isEmpty()) return ""
@@ -258,8 +270,12 @@ object Reading {
             if (text.isNotBlank()) slotLines[name] = text
         }
 
-        emit("chain", fromSlot("chain").ifBlank {
-            "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}."
+        emit("chain", if (v1.equals(v3, ignoreCase = true)) {
+            "${capital(v1)} начинается и заканчивается одним и тем же — это не случайность."
+        } else {
+            fromSlot("chain").ifBlank {
+                "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}."
+            }
         })
 
         val imageSource = listOf(v3, v2, v1).firstOrNull { SCENES.containsKey(it.lowercase()) }
