@@ -229,7 +229,7 @@ object Reading {
         out += fromSlot("scene", mapOf("scene" to scene(v3))).ifBlank {
             "${capital(scene(v1))} — вот с чего это начинается."
         }
-        if (out.last().length < 40) {
+        if (out.last().endsWith(".") && out.last().length < 30) {
             out[out.size - 1] = "${capital(scene(v3))} — вот чем это кончится."
         }
 
@@ -273,7 +273,7 @@ object Reading {
             "${capital(adjective)} ${distinct.first()}$tail — ${verdicts[Math.floorMod(seed, verdicts.size)]}."
         }
         if (distinct.size > 1) {
-            out += fromSlot("close")
+            out += fromSlot("close").ifBlank { "Карты не решают, они показывают." }
         }
         return out
     }
