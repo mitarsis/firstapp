@@ -31,7 +31,9 @@ data class CardAnswer(
     val variant: Int = 0,
     val summary: String = "",
     val lines: List<CardLine> = emptyList(),
-    val epithet: String = ""
+    val epithet: String = "",
+    val genre: Genre = Genre.FORECAST,
+    val axis: Axis = Axis.MOVEMENT
 )
 
 object Deck {
