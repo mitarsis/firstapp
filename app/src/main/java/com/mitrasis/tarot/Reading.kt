@@ -151,6 +151,32 @@ object Reading {
         return repeats <= 4
     }
 
+    /** Дательный падеж: «к испытанию», «к чести». */
+    fun dative(noun: String): String {
+        val word = noun.lowercase()
+        return when {
+            word.endsWith("а") -> word.dropLast(1) + "е"
+            word.endsWith("я") -> word.dropLast(1) + "е"
+            word.endsWith("о") -> word.dropLast(1) + "у"
+            word.endsWith("е") -> word.dropLast(1) + "ю"
+            word.endsWith("ь") -> word.dropLast(1) + "и"
+            word.endsWith("и") || word.endsWith("ы") -> word
+            else -> word + "у"
+        }
+    }
+
+    /** Вывод по оси: то, ради чего текст вообще написан. */
+    private fun axisVerdict(axis: Axis): String = when (axis) {
+        Axis.BOUNDARIES -> "всё держится на том, где провести черту"
+        Axis.MOVEMENT -> "дорога важнее точки, в которой стоишь"
+        Axis.LOSS -> "цена уже уплачена, и назад её не вернуть"
+        Axis.EXCHANGE -> "в одиночку это не решается"
+        Axis.WAITING -> "срок важнее выбора"
+    }
+
+    private fun capital(text: String): String =
+        text.replaceFirstChar { it.uppercase() }
+
     private fun build(
         answer: CardAnswer,
         lines: List<CardLine>,
@@ -159,63 +185,23 @@ object Reading {
     ): List<String> {
         val seed = (answer.card.title + values.joinToString() + answer.variant).hashCode() + attempt * 7919
         val out = mutableListOf<String>()
-        val first = lines.first()
-        val second = lines.getOrNull(1)
-        val third = lines.getOrNull(2)
+        val v1 = values.first()
+        val v2 = values.getOrNull(1) ?: v1
+        val v3 = values.getOrNull(2) ?: v2
 
-        // зачин: короткая фраза, задаёт жанр
-        out += when (answer.genre) {
-            Genre.FORECAST -> pick(seed, "${first.title} — ${values.first()}.",
-                "Сходу: ${values.first()}.", "Ответ короткий — ${values.first()}.")
-            Genre.DIAGNOSIS -> pick(seed, "Корень в том, что ${scene(values.first())}.",
-                "Началось с ${first.title.lowercase()}: ${values.first()}.")
-            Genre.ADVICE -> pick(seed, "Первый шаг — ${values.first()}.",
-                "Твой ход: ${scene(values.first())}.")
-            Genre.TIMING -> pick(seed, "Счёт идёт на ${values.first()}.",
-                "Срок задаёт ${first.title.lowercase()} — ${values.first()}.")
-        }
+        // 1. Цепочка: как одно переходит в другое
+        out += pick(seed,
+            "Сначала $v1, потом $v2, и только затем $v3.",
+            "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}.",
+            "От ${genitive(v1)} к ${dative(v2)}, и дальше — $v3.")
 
-        // ось разбора: одна тема на весь текст
-        out += when (answer.axis) {
-            Axis.BOUNDARIES -> "Тут всё про границы: где твоё, а где уже чужое."
-            Axis.MOVEMENT -> "Ось разбора — движение: стоять на месте не выйдет."
-            Axis.LOSS -> "Ось разбора — утрата: что-то уже не вернуть в прежнем виде."
-            Axis.EXCHANGE -> "Ось разбора — обмен: без второй стороны ничего не решается."
-            Axis.WAITING -> "Ось разбора — ожидание: время здесь работает на тебя."
-        }
+        // 2. Один конкретный образ вместо пояснений
+        out += pick(seed + 1,
+            "${capital(scene(v1))} — вот с чего это начинается.",
+            "${capital(scene(v3))} — вот чем это кончится.",
+            "По сути речь про ${scene(v3)}.")
 
-        if (second != null && second.keyword.isNotBlank()) {
-            val value = shortValue(second.keyword)
-            out += pick(seed + 1,
-                "Но ${second.title.lowercase()} тянет в сторону: $value.",
-                "При этом рядом — ${second.title.lowercase()}, а это $value.",
-                "Мешает ${second.title.lowercase()} — $value.")
-        }
-
-        if (third != null && third.keyword.isNotBlank()) {
-            val value = shortValue(third.keyword)
-            out += pick(seed + 2,
-                "Замыкает ${third.title.lowercase()}: $value.",
-                "А ${third.title.lowercase()} показывает исход — $value.",
-                "И упирается всё в ${third.title.lowercase()}: $value.")
-            out += pick(seed + 3,
-                "Без ${genitive(values.first())} это не соберётся.",
-                "Связка простая: ${values.first()} держится на $value.",
-                "Одно без другого не живёт: ${values.first()} и $value — одна линия.")
-        }
-
-        // напряжение: противоположности внутри расклада
-        val joined = lines.joinToString(" ") { it.keyword.lowercase() }
-        ANTAGONISTS.firstOrNull { (a, b) -> joined.contains(a) && joined.contains(b) }
-            ?.let { (a, b) -> out += "Здесь спорят $a и $b — вот на чём всё держится." }
-
-        // совет только там, где его просят
-        if (answer.genre == Genre.ADVICE && values.size >= 2) {
-            out += pick(seed + 4,
-                "Держись за ${values.first()} и не спорь с ${values.last()}.",
-                "Практически: сохранить ${values.first()}, а ${values.last()} принять как условие.")
-        }
-
+        // 3. Формула с выводом по оси
         val distinct = values.distinct()
         val pool = when (genderOf(distinct.first())) {
             1 -> FEM
@@ -229,7 +215,7 @@ object Reading {
             distinct.size == 2 -> " и " + distinct[1]
             else -> ", " + distinct[1] + " и " + distinct[2]
         }
-        out += (adjective + " " + distinct.first() + tail).replaceFirstChar { it.uppercase() } + "."
+        out += "${capital(adjective)} ${distinct.first()}$tail — ${axisVerdict(answer.axis)}."
         return out
     }
 }
