@@ -222,7 +222,6 @@ object Reading {
         attempt: Int
     ): List<String> {
         val seed = (answer.card.title + values.joinToString() + answer.variant).hashCode() + attempt * 7919
-        val out = mutableListOf<String>()
         val v1 = values.first()
         val v2 = values.getOrNull(1) ?: v1
         val v3 = values.getOrNull(2) ?: v2
@@ -234,33 +233,10 @@ object Reading {
         fun fromSlot(slot: String, extra: Map<String, String> = emptyMap()): String {
             val bank = Phrases.of(slot)
             if (bank.isEmpty()) return ""
-            val template = bank[Math.floorMod(seed + slot.hashCode(), bank.size)]
+            val template = bank[Math.floorMod(seed + slot.hashCode() + attempt * 31, bank.size)]
             return Phrases.fill(template, filler + extra)
         }
 
-        // 1. Цепочка: как одно переходит в другое
-        out += fromSlot("chain").ifBlank {
-            "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}."
-        }
-
-        // 2. Один конкретный образ — только если он действительно другой
-        val imageSource = listOf(v3, v2, v1).firstOrNull { SCENES.containsKey(it.lowercase()) }
-        if (imageSource != null) {
-            val image = SCENES.getValue(imageSource.lowercase())
-            out += fromSlot("scene", mapOf("scene" to image)).ifBlank {
-                "${capital(image)} — вот что за этим стоит."
-            }
-        }
-
-        // напряжение: если внутри расклада есть противоположности
-        val joinedKeywords = lines.joinToString(" ") { it.keyword.lowercase() }
-        ANTAGONISTS.firstOrNull { (a, b) -> joinedKeywords.contains(a) && joinedKeywords.contains(b) }
-            ?.let { (a, b) ->
-                val line = fromSlot("tension", mapOf("a" to a, "b" to b))
-                if (line.isNotBlank()) out += line
-            }
-
-        // 3. Формула с выводом по оси
         val distinct = values.distinct()
         val pool = when (genderOf(distinct.first())) {
             1 -> FEM
@@ -269,11 +245,6 @@ object Reading {
             else -> MASC
         }
         val adjective = answer.epithet.ifBlank { pool[Math.floorMod(seed, pool.size)] }
-        val tail = when {
-            distinct.size == 1 -> ""
-            distinct.size == 2 -> " и " + distinct[1]
-            else -> ", " + distinct[1] + " и " + distinct[2]
-        }
         val axisKey = when (answer.axis) {
             Axis.BOUNDARIES -> "verdict:boundaries"
             Axis.MOVEMENT -> "verdict:movement"
@@ -281,19 +252,54 @@ object Reading {
             Axis.EXCHANGE -> "verdict:exchange"
             Axis.WAITING -> "verdict:waiting"
         }
-        val verdictText = fromSlot(axisKey, mapOf(
+
+        val slotLines = LinkedHashMap<String, String>()
+        fun emit(name: String, text: String) {
+            if (text.isNotBlank()) slotLines[name] = text
+        }
+
+        emit("chain", fromSlot("chain").ifBlank {
+            "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}."
+        })
+
+        val imageSource = listOf(v3, v2, v1).firstOrNull { SCENES.containsKey(it.lowercase()) }
+        if (imageSource != null) {
+            val image = SCENES.getValue(imageSource.lowercase())
+            emit("scene", fromSlot("scene", mapOf("scene" to image))
+                .ifBlank { "${capital(image)} — вот что за этим стоит." })
+        }
+
+        val joinedKeywords = lines.joinToString(" ") { it.keyword.lowercase() }
+        ANTAGONISTS.firstOrNull { (a, b) -> joinedKeywords.contains(a) && joinedKeywords.contains(b) }
+            ?.let { (a, b) -> emit("tension", fromSlot("tension", mapOf("a" to a, "b" to b))) }
+
+        val verdictFallback = "${capital(adjective)} ${distinct.first()}" +
+            when {
+                distinct.size == 1 -> ""
+                distinct.size == 2 -> " и " + distinct[1]
+                else -> ", " + distinct[1] + " и " + distinct[2]
+            } + " — " + axisVerdicts(answer.axis)[Math.floorMod(seed, 3)] + "."
+        emit("verdict", fromSlot(axisKey, mapOf(
             "adj" to capital(adjective),
             "v1" to distinct.first(),
             "v2" to distinct.getOrElse(1) { distinct.first() },
             "v3" to distinct.getOrElse(2) { distinct.first() }
-        ))
-        out += verdictText.ifBlank {
-            val verdicts = axisVerdicts(answer.axis)
-            "${capital(adjective)} ${distinct.first()}$tail — ${verdicts[Math.floorMod(seed, verdicts.size)]}."
+        )).ifBlank { verdictFallback })
+
+        emit("close", fromSlot("close").ifBlank { "Карты не решают, они показывают." })
+        emit("cause", fromSlot("cause"))
+        emit("advice", fromSlot("advice"))
+        emit("time", fromSlot("time"))
+        emit("cost", fromSlot("cost"))
+        emit("pivot", fromSlot("pivot"))
+        emit("second", fromSlot("second"))
+
+        val order = Phrases.skeleton(answer.genre.name.lowercase(), seed)
+        val assembled = order.mapNotNull { slotLines[it] }.toMutableList()
+        if (assembled.size < 3) {
+            assembled.clear()
+            assembled.addAll(slotLines.values)
         }
-        if (distinct.size > 1) {
-            out += fromSlot("close").ifBlank { "Карты не решают, они показывают." }
-        }
-        return out
+        return assembled
     }
 }
