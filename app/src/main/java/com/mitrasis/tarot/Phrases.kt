@@ -64,6 +64,10 @@ object Phrases {
         var text = template
         for ((key, value) in values) {
             text = text.replace("{$key}", value)
+            // падежные подстановки пишутся через двоеточие: {v1:pre}
+            if (key.contains('.')) {
+                text = text.replace("{" + key.replace('.', ':') + "}", value)
+            }
         }
         return text
     }
