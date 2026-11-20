@@ -267,7 +267,9 @@ object Reading {
 
         val slotLines = LinkedHashMap<String, String>()
         fun emit(name: String, text: String) {
-            if (text.isNotBlank()) slotLines[name] = text
+            if (text.isBlank()) return
+            // фраза может начинаться со значения карты — поднимаем регистр
+            slotLines[name] = text.replaceFirstChar { it.titlecase() }
         }
 
         emit("chain", if (v1.equals(v3, ignoreCase = true)) {
