@@ -209,17 +209,37 @@ object Reading {
         val v2 = values.getOrNull(1) ?: v1
         val v3 = values.getOrNull(2) ?: v2
 
+        val filler = mapOf(
+            "v1" to v1, "v2" to v2, "v3" to v3,
+            "d2" to dative(v2), "d3" to dative(v3), "g1" to genitive(v1)
+        )
+        fun fromSlot(slot: String, extra: Map<String, String> = emptyMap()): String {
+            val bank = Phrases.of(slot)
+            if (bank.isEmpty()) return ""
+            val template = bank[Math.floorMod(seed + slot.hashCode(), bank.size)]
+            return Phrases.fill(template, filler + extra)
+        }
+
         // 1. Цепочка: как одно переходит в другое
-        out += pick(seed,
-            "Сначала $v1, потом $v2, и только затем $v3.",
-            "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}.",
-            "От ${genitive(v1)} к ${dative(v2)}, и дальше — $v3.")
+        out += fromSlot("chain").ifBlank {
+            "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}."
+        }
 
         // 2. Один конкретный образ вместо пояснений
-        out += pick(seed + 1,
-            "${capital(scene(v1))} — вот с чего это начинается.",
-            "${capital(scene(v3))} — вот чем это кончится.",
-            "Всё упирается в простое: ${scene(v3)}.")
+        out += fromSlot("scene", mapOf("scene" to scene(v3))).ifBlank {
+            "${capital(scene(v1))} — вот с чего это начинается."
+        }
+        if (out.last().length < 40) {
+            out[out.size - 1] = "${capital(scene(v3))} — вот чем это кончится."
+        }
+
+        // напряжение: если внутри расклада есть противоположности
+        val joinedKeywords = lines.joinToString(" ") { it.keyword.lowercase() }
+        ANTAGONISTS.firstOrNull { (a, b) -> joinedKeywords.contains(a) && joinedKeywords.contains(b) }
+            ?.let { (a, b) ->
+                val line = fromSlot("tension", mapOf("a" to a, "b" to b))
+                if (line.isNotBlank()) out += line
+            }
 
         // 3. Формула с выводом по оси
         val distinct = values.distinct()
@@ -235,8 +255,26 @@ object Reading {
             distinct.size == 2 -> " и " + distinct[1]
             else -> ", " + distinct[1] + " и " + distinct[2]
         }
-        val verdicts = axisVerdicts(answer.axis)
-        out += "${capital(adjective)} ${distinct.first()}$tail — ${verdicts[Math.floorMod(seed, verdicts.size)]}."
+        val axisKey = when (answer.axis) {
+            Axis.BOUNDARIES -> "verdict:boundaries"
+            Axis.MOVEMENT -> "verdict:movement"
+            Axis.LOSS -> "verdict:loss"
+            Axis.EXCHANGE -> "verdict:exchange"
+            Axis.WAITING -> "verdict:waiting"
+        }
+        val verdictText = fromSlot(axisKey, mapOf(
+            "adj" to capital(adjective),
+            "v1" to distinct.first(),
+            "v2" to distinct.getOrElse(1) { distinct.first() },
+            "v3" to distinct.getOrElse(2) { distinct.first() }
+        ))
+        out += verdictText.ifBlank {
+            val verdicts = axisVerdicts(answer.axis)
+            "${capital(adjective)} ${distinct.first()}$tail — ${verdicts[Math.floorMod(seed, verdicts.size)]}."
+        }
+        if (distinct.size > 1) {
+            out += fromSlot("close")
+        }
         return out
     }
 }
