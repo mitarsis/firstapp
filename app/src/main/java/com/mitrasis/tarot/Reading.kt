@@ -165,13 +165,33 @@ object Reading {
         }
     }
 
-    /** Вывод по оси: то, ради чего текст вообще написан. */
-    private fun axisVerdict(axis: Axis): String = when (axis) {
-        Axis.BOUNDARIES -> "всё держится на том, где провести черту"
-        Axis.MOVEMENT -> "дорога важнее точки, в которой стоишь"
-        Axis.LOSS -> "цена уже уплачена, и назад её не вернуть"
-        Axis.EXCHANGE -> "в одиночку это не решается"
-        Axis.WAITING -> "срок важнее выбора"
+    /** Вывод по оси: несколько формулировок, чтобы не приедалась одна. */
+    private fun axisVerdicts(axis: Axis): List<String> = when (axis) {
+        Axis.BOUNDARIES -> listOf(
+            "всё решает, где провести черту",
+            "чужое от своего отделяет один разговор",
+            "пока границы не названы, их продавливают"
+        )
+        Axis.MOVEMENT -> listOf(
+            "дорога важнее точки, в которой стоишь",
+            "стоять на месте дороже, чем идти",
+            "шаг уже сделан, осталось его признать"
+        )
+        Axis.LOSS -> listOf(
+            "цена уплачена, и назад её не вернуть",
+            "что-то ушло, и это не восстановить",
+            "держать прошлое дороже, чем отпустить"
+        )
+        Axis.EXCHANGE -> listOf(
+            "в одиночку это не решается",
+            "второй стороны не обойти",
+            "всё держится на чужом согласии"
+        )
+        Axis.WAITING -> listOf(
+            "срок важнее выбора",
+            "время здесь работает на тебя",
+            "поспешишь — потеряешь больше, чем ждёшь"
+        )
     }
 
     private fun capital(text: String): String =
@@ -199,7 +219,7 @@ object Reading {
         out += pick(seed + 1,
             "${capital(scene(v1))} — вот с чего это начинается.",
             "${capital(scene(v3))} — вот чем это кончится.",
-            "По сути речь про ${scene(v3)}.")
+            "Всё упирается в простое: ${scene(v3)}.")
 
         // 3. Формула с выводом по оси
         val distinct = values.distinct()
@@ -215,7 +235,8 @@ object Reading {
             distinct.size == 2 -> " и " + distinct[1]
             else -> ", " + distinct[1] + " и " + distinct[2]
         }
-        out += "${capital(adjective)} ${distinct.first()}$tail — ${axisVerdict(answer.axis)}."
+        val verdicts = axisVerdicts(answer.axis)
+        out += "${capital(adjective)} ${distinct.first()}$tail — ${verdicts[Math.floorMod(seed, verdicts.size)]}."
         return out
     }
 }
