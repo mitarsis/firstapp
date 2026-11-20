@@ -3,10 +3,8 @@ package com.mitrasis.tarot
 /**
  * Текст расклада.
  *
- * Задача — не перечислить три значения, а собрать из них одну мысль:
- *  1. роли: что действует сейчас, что мешает, куда идёт;
- *  2. напряжение: если среди значений есть противоположности — назвать их;
- *  3. синтез: короткая формула из прилагательного и значений.
+ * Форма зависит от жанра вопроса (GenreGate): прогноз, диагноз, совет, срок.
+ * Внутри — роли карт, противопоставления, ось разбора и один вывод.
  */
 object Reading {
 
@@ -33,26 +31,44 @@ object Reading {
 
     /** Пары, которые действительно спорят друг с другом. */
     private val ANTAGONISTS = listOf(
-        "свет" to "тьма",
-        "порядок" to "хаос",
-        "начало" to "конец",
-        "любовь" to "разлука",
-        "сила" to "слабость",
-        "деньги" to "нужда",
-        "движение" to "застой",
-        "правда" to "обман",
-        "надежда" to "отчаяние",
-        "рост" to "упадок",
-        "близость" to "дистанция",
-        "победа" to "поражение",
-        "терпение" to "спешка",
-        "щедрость" to "скупость",
-        "ясность" to "туман",
-        "доверие" to "ревность",
-        "свобода" to "зависимость",
-        "верность" to "измена",
-        "покой" to "тревога",
-        "прошлое" to "будущее"
+        "свет" to "тьма", "порядок" to "хаос", "начало" to "конец",
+        "любовь" to "разлука", "сила" to "слабость", "деньги" to "нужда",
+        "движение" to "застой", "правда" to "обман", "надежда" to "отчаяние",
+        "рост" to "упадок", "близость" to "дистанция", "победа" to "поражение",
+        "терпение" to "спешка", "щедрость" to "скупость", "ясность" to "туман",
+        "доверие" to "ревность", "свобода" to "зависимость", "верность" to "измена",
+        "покой" to "тревога", "прошлое" to "будущее", "воля" to "принуждение",
+        "открытость" to "закрытость", "тепло" to "холод", "дар" to "долг",
+        "вера" to "сомнение", "целое" to "раскол", "слово" to "молчание",
+        "путь" to "стоянка", "огонь" to "пепел", "взлёт" to "падение",
+        "своё" to "чужое", "простота" to "хитрость", "игра" to "расчёт",
+        "смелость" to "страх", "радость" to "горе", "встреча" to "разрыв",
+        "мера" to "излишество", "тишина" to "шум", "память" to "забвение",
+        "зрелость" to "детство"
+    )
+
+    /** Абстракция — конкретика: сцена вместо термина. */
+    private val SCENES = mapOf(
+        "воля" to "решение, принятое в одиночку",
+        "судьба" to "то, что уже решено за тебя",
+        "гармония" to "ровный разговор без напряга",
+        "потеря" to "пустая полка после уборки",
+        "граница" to "закрытая дверь",
+        "границы" to "закрытые двери",
+        "обмен" to "разговор, где каждый что-то отдаёт",
+        "ожидание" to "долгий звонок без ответа",
+        "тревога" to "мысли в четыре утра",
+        "движение" to "дорога, на которую уже вышел",
+        "застой" to "комната без окон",
+        "рост" to "работа, которую видно только через полгода",
+        "любовь" to "кто-то ждёт тебя дома",
+        "разлука" to "пустая сторона кровати",
+        "деньги" to "счёт, который надо закрыть",
+        "выбор" to "две двери и один ключ",
+        "молчание" to "разговор, который не начали",
+        "прошлое" to "чемодан, который не распаковали",
+        "маска" to "лицо для чужих",
+        "контроль" to "руки, сжатые в кулак"
     )
 
     private val ADJECTIVE_ENDINGS = listOf(
@@ -79,7 +95,7 @@ object Reading {
         return if (isAdjective && index + 1 < words.size) words[index + 1] else candidate
     }
 
-    private fun genderOf(noun: String): Int {
+    fun genderOf(noun: String): Int {
         val word = noun.lowercase()
         val last = word.lastOrNull() ?: return 0
         if (last == 'и' || last == 'ы') return 3
@@ -90,69 +106,116 @@ object Reading {
         }
     }
 
+    /** Склонение в родительный падеж: «без границы», «без денег». */
+    fun genitive(noun: String): String {
+        val word = noun.lowercase()
+        return when {
+            word.endsWith("ы") || word.endsWith("и") -> word
+            word.endsWith("а") -> word.dropLast(1) + "ы"
+            word.endsWith("я") -> word.dropLast(1) + "и"
+            word.endsWith("ь") -> word.dropLast(1) + "и"
+            word.endsWith("о") || word.endsWith("е") -> word.dropLast(1) + "а"
+            word.endsWith("й") -> word.dropLast(1) + "я"
+            else -> word + "а"
+        }
+    }
+
+    private fun scene(value: String): String = SCENES[value.lowercase()] ?: value
+
+    private fun pick(seed: Int, vararg options: String): String =
+        options[Math.floorMod(seed, options.size)]
+
+    /** Форма текста зависит от жанра вопроса. */
     fun compose(answer: CardAnswer): List<String> {
         val lines = answer.lines
         if (lines.isEmpty()) return emptyList()
-
         val values = lines.map { shortValue(it.keyword) }.filter { it.isNotBlank() }
         if (values.isEmpty()) return emptyList()
 
-        val result = mutableListOf<String>()
+        var best: List<String> = emptyList()
+        for (attempt in 0 until 3) {
+            best = build(answer, lines, values, attempt)
+            if (looksWhole(best)) return best
+        }
+        return best
+    }
 
-        // 1. Роли: карты как этапы мысли, а не список
-        val seedBase = (answer.card.title + values.joinToString()).hashCode()
-        fun pick(vararg options: String) = options[Math.floorMod(seedBase / 7 + options.size, options.size)]
+    /** Самокритика: короткий или зацикленный текст пересобираем. */
+    private fun looksWhole(text: List<String>): Boolean {
+        val words = text.joinToString(" ").split(" ").filter { it.isNotBlank() }
+        if (words.size < 40) return false
+        val repeats = words
+            .map { it.lowercase().trim('.', ',') }
+            .filter { it.length > 3 && it !in STOP_WORDS }
+            .groupingBy { it }.eachCount().values.maxOrNull() ?: 0
+        return repeats <= 4
+    }
 
+    private fun build(
+        answer: CardAnswer,
+        lines: List<CardLine>,
+        values: List<String>,
+        attempt: Int
+    ): List<String> {
+        val seed = (answer.card.title + values.joinToString() + answer.variant).hashCode() + attempt * 7919
+        val out = mutableListOf<String>()
         val first = lines.first()
-        result += pick(
-            "${first.title} задаёт тон: ${values.first()}.",
-            "Начинается всё с ${first.title.lowercase()}: ${values.first()}.",
-            "${first.title} — ${values.first()}. Отсюда и пляшем."
-        )
-
         val second = lines.getOrNull(1)
         val third = lines.getOrNull(2)
+
+        // зачин: короткая фраза, задаёт жанр
+        out += when (answer.genre) {
+            Genre.FORECAST -> pick(seed, "${first.title} — ${values.first()}.",
+                "Сходу: ${values.first()}.", "Ответ короткий — ${values.first()}.")
+            Genre.DIAGNOSIS -> pick(seed, "Корень в том, что ${scene(values.first())}.",
+                "Началось с ${first.title.lowercase()}: ${values.first()}.")
+            Genre.ADVICE -> pick(seed, "Первый шаг — ${values.first()}.",
+                "Твой ход: ${scene(values.first())}.")
+            Genre.TIMING -> pick(seed, "Счёт идёт на ${values.first()}.",
+                "Срок задаёт ${first.title.lowercase()} — ${values.first()}.")
+        }
+
+        // ось разбора: одна тема на весь текст
+        out += when (answer.axis) {
+            Axis.BOUNDARIES -> "Тут всё про границы: где твоё, а где уже чужое."
+            Axis.MOVEMENT -> "Ось разбора — движение: стоять на месте не выйдет."
+            Axis.LOSS -> "Ось разбора — утрата: что-то уже не вернуть в прежнем виде."
+            Axis.EXCHANGE -> "Ось разбора — обмен: без второй стороны ничего не решается."
+            Axis.WAITING -> "Ось разбора — ожидание: время здесь работает на тебя."
+        }
+
         if (second != null && second.keyword.isNotBlank()) {
             val value = shortValue(second.keyword)
-            result += pick(
+            out += pick(seed + 1,
                 "Но ${second.title.lowercase()} тянет в сторону: $value.",
-                "При этом ${second.title.lowercase()} — $value.",
-                "${second.title} уточняет: $value."
-            )
+                "При этом рядом — ${second.title.lowercase()}, а это $value.",
+                "Мешает ${second.title.lowercase()} — $value.")
         }
+
         if (third != null && third.keyword.isNotBlank()) {
             val value = shortValue(third.keyword)
-            result += pick(
+            out += pick(seed + 2,
                 "Замыкает ${third.title.lowercase()}: $value.",
-                "А ${third.title.lowercase()} показывает, чем это кончится — $value.",
-                "И всё упирается в ${third.title.lowercase()}: $value."
-            )
-            // связка крайних карт: главное, чего не хватало
-            result += pick(
-                "${values.first()} без $value не работает — это одна и та же линия.",
+                "А ${third.title.lowercase()} показывает исход — $value.",
+                "И упирается всё в ${third.title.lowercase()}: $value.")
+            out += pick(seed + 3,
+                "Без ${genitive(values.first())} это не соберётся.",
                 "Связка простая: ${values.first()} держится на $value.",
-                "Если убрать $value, первое значение рассыпается."
-            )
+                "Одно без другого не живёт: ${values.first()} и $value — одна линия.")
         }
 
-        // 2. Напряжение: противоположности внутри расклада
+        // напряжение: противоположности внутри расклада
         val joined = lines.joinToString(" ") { it.keyword.lowercase() }
-        val clash = ANTAGONISTS.firstOrNull { (a, b) -> joined.contains(a) && joined.contains(b) }
-        if (clash != null) {
-            result += "Здесь спорят ${clash.first} и ${clash.second} — вот на чём всё держится."
+        ANTAGONISTS.firstOrNull { (a, b) -> joined.contains(a) && joined.contains(b) }
+            ?.let { (a, b) -> out += "Здесь спорят $a и $b — вот на чём всё держится." }
+
+        // совет только там, где его просят
+        if (answer.genre == Genre.ADVICE && values.size >= 2) {
+            out += pick(seed + 4,
+                "Держись за ${values.first()} и не спорь с ${values.last()}.",
+                "Практически: сохранить ${values.first()}, а ${values.last()} принять как условие.")
         }
 
-        // 2a. Совет: трактовка без вывода — просто описание
-        if (values.size >= 2) {
-            val last = values.last()
-            result += pick(
-                "Держись за ${values.first()} и не спорь с «$last».",
-                "Практически: сохранить ${values.first()}, а «$last» принять как условие.",
-                "Твой ход — ${values.first()}; «$last» от тебя не зависит."
-            )
-        }
-
-        // 3. Синтез одной формулой
         val distinct = values.distinct()
         val pool = when (genderOf(distinct.first())) {
             1 -> FEM
@@ -160,15 +223,13 @@ object Reading {
             3 -> PLURAL
             else -> MASC
         }
-        val seed = (answer.card.title + distinct.joinToString()).hashCode()
         val adjective = answer.epithet.ifBlank { pool[Math.floorMod(seed, pool.size)] }
         val tail = when {
             distinct.size == 1 -> ""
             distinct.size == 2 -> " и " + distinct[1]
             else -> ", " + distinct[1] + " и " + distinct[2]
         }
-        result += (adjective + " " + distinct.first() + tail).replaceFirstChar { it.uppercase() } + "."
-
-        return result
+        out += (adjective + " " + distinct.first() + tail).replaceFirstChar { it.uppercase() } + "."
+        return out
     }
 }

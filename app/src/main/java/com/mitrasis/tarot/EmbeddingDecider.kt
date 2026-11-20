@@ -104,6 +104,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val epithet = EpithetBook.pick(vector, entries.first().third, gender)
 
         val main = entries.first()
+        GenreGate.load(ctx)
+        val (genre, axis) = GenreGate.decide(vector)
         return CardAnswer(
             card = Deck.byId(main.third),
             reversed = main.first.reversed,
@@ -113,7 +115,9 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             topic = CardMeanings.all.getOrNull(main.third)?.full.orEmpty(),
             alternatives = entries.drop(1).map { Deck.byId(it.third) to it.second },
             lines = entries.map { it.first },
-            epithet = epithet
+            epithet = epithet,
+            genre = genre,
+            axis = axis
         )
     }
 
