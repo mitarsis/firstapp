@@ -106,6 +106,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val main = entries.first()
         GenreGate.load(ctx)
         Phrases.load(ctx)
+        Morph.load(ctx)
         val (genre, axis) = GenreGate.decide(vector)
         return CardAnswer(
             card = Deck.byId(main.third),
