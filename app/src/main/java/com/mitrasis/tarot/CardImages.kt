@@ -5,6 +5,12 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -247,6 +253,15 @@ fun CardStack(
         }
     }
 
+    // бесконечное плаванье слоёв: не зависит от телефона и не дёргается
+    val drift = rememberInfiniteTransition(label = "drift")
+    val phase by drift.animateFloat(
+        initialValue = 0f,
+        targetValue = (2.0 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(13000, easing = LinearEasing)),
+        label = "phase"
+    )
+
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
         val w = size.width
         val h = size.height
@@ -282,8 +297,10 @@ fun CardStack(
                 // параллакс: слои смещаются с разной силой, но умеренно,
                 // чтобы не было ощущения «третья карта уехала»
                 val weight = 1f - index * 0.20f
-                val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight
-                val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight
+                val floatX = sin(phase + index * 0.9f) * 0.012f * weight
+                val floatY = cos(phase * 0.8f + index * 1.3f) * 0.007f * weight
+                val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight + floatX * w
+                val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight + floatY * h
 
                 // мягкое свечение: тот же слой, чуть крупнее и прозрачнее
                 drawImage(
