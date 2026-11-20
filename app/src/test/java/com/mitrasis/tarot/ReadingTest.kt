@@ -34,10 +34,13 @@ class ReadingTest {
     }
 
     @Test
-    fun `текст — одна фраза со всеми картами`() {
+    fun `текст содержит роли всех трёх карт и синтез`() {
         val paragraphs = Reading.compose(answer("уход", "переход", "обрыв"))
-        assertEquals(1, paragraphs.size)
-        val text = paragraphs.first()
-        assertTrue("нет всех трёх значений: $text", text.contains("уход") && text.contains("переход") && text.contains("обрыв"))
+        assertTrue("слишком коротко: $paragraphs", paragraphs.size >= 3)
+        val text = paragraphs.joinToString(" ")
+        assertTrue("нет всех трёх значений: $text", text.contains("уход"))
+        assertTrue("нет второго значения: $text", text.contains("переход"))
+        assertTrue("нет третьего значения: $text", text.contains("обрыв"))
+        assertTrue("нет синтеза в конце: $text", paragraphs.last().endsWith("."))
     }
 }
