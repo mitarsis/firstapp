@@ -335,25 +335,30 @@ object Reading {
         emit("second", fromSlot("second"))
 
         val order = Phrases.skeleton(answer.genre.name.lowercase(), seed)
-        // одно и то же значение не должно звучать дважды
+        // значение может звучать дважды, но не больше; весь текст — не длиннее пяти строк
         val usedValues = HashMap<String, Int>()
         val assembled = mutableListOf<String>()
         for (slot in order) {
+            if (assembled.size >= 5) break
             val line = slotLines[slot] ?: continue
             val words = line.lowercase().split(Regex("[^а-яё]+"))
-            val hits = values.count { value -> words.contains(value.lowercase()) }
             val repeats = values.any { value ->
-                words.contains(value.lowercase()) && (usedValues[value] ?: 0) > 0
+                words.contains(value.lowercase()) && (usedValues[value] ?: 0) >= 2
             }
             if (repeats) continue
             for (value in values) {
-                if (words.contains(value.lowercase())) usedValues[value] = (usedValues[value] ?: 0) + 1
+                if (words.contains(value.lowercase())) {
+                    usedValues[value] = (usedValues[value] ?: 0) + 1
+                }
             }
-            if (hits > 0 || slot == "close" || assembled.isEmpty()) assembled += line
+            assembled += line
         }
         if (assembled.size < 3) {
-            assembled.clear()
-            assembled.addAll(slotLines.values)
+            for (slot in listOf("chain", "verdict", "suit", "close")) {
+                val line = slotLines[slot] ?: continue
+                if (assembled.none { it == line }) assembled += line
+                if (assembled.size >= 4) break
+            }
         }
         return assembled
     }
