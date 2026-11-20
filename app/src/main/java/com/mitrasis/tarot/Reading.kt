@@ -100,16 +100,39 @@ object Reading {
         val result = mutableListOf<String>()
 
         // 1. Роли: карты как этапы мысли, а не список
+        val seedBase = (answer.card.title + values.joinToString()).hashCode()
+        fun pick(vararg options: String) = options[Math.floorMod(seedBase / 7 + options.size, options.size)]
+
         val first = lines.first()
-        result += "${first.title} задаёт тон: ${values.first()}."
+        result += pick(
+            "${first.title} задаёт тон: ${values.first()}.",
+            "Начинается всё с ${first.title.lowercase()}: ${values.first()}.",
+            "${first.title} — ${values.first()}. Отсюда и пляшем."
+        )
 
         val second = lines.getOrNull(1)
         val third = lines.getOrNull(2)
         if (second != null && second.keyword.isNotBlank()) {
-            result += "Дальше ${second.title} — ${shortValue(second.keyword)}."
+            val value = shortValue(second.keyword)
+            result += pick(
+                "Но ${second.title.lowercase()} тянет в сторону: $value.",
+                "При этом ${second.title.lowercase()} — $value.",
+                "${second.title} уточняет: $value."
+            )
         }
         if (third != null && third.keyword.isNotBlank()) {
-            result += "Замыкает ${third.title}: ${shortValue(third.keyword)}."
+            val value = shortValue(third.keyword)
+            result += pick(
+                "Замыкает ${third.title.lowercase()}: $value.",
+                "А ${third.title.lowercase()} показывает, чем это кончится — $value.",
+                "И всё упирается в ${third.title.lowercase()}: $value."
+            )
+            // связка крайних карт: главное, чего не хватало
+            result += pick(
+                "${values.first()} без $value не работает — это одна и та же линия.",
+                "Связка простая: ${values.first()} держится на $value.",
+                "Если убрать $value, первое значение рассыпается."
+            )
         }
 
         // 2. Напряжение: противоположности внутри расклада
@@ -117,6 +140,16 @@ object Reading {
         val clash = ANTAGONISTS.firstOrNull { (a, b) -> joined.contains(a) && joined.contains(b) }
         if (clash != null) {
             result += "Здесь спорят ${clash.first} и ${clash.second} — вот на чём всё держится."
+        }
+
+        // 2a. Совет: трактовка без вывода — просто описание
+        if (values.size >= 2) {
+            val last = values.last()
+            result += pick(
+                "Держись за ${values.first()} и не спорь с «$last».",
+                "Практически: сохранить ${values.first()}, а «$last» принять как условие.",
+                "Твой ход — ${values.first()}; «$last» от тебя не зависит."
+            )
         }
 
         // 3. Синтез одной формулой
