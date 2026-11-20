@@ -129,15 +129,33 @@ object Reading {
     fun compose(answer: CardAnswer): List<String> {
         val lines = answer.lines
         if (lines.isEmpty()) return emptyList()
-        val values = lines.map { shortValue(it.keyword) }.filter { it.isNotBlank() }
+        // значение короче трёх букв — это обрывок тега, а не смысл
+        val values = lines.map { shortValue(it.keyword) }
+            .filter { it.isNotBlank() && it.length >= 3 && it.lowercase() !in STOP_WORDS }
         if (values.isEmpty()) return emptyList()
 
         var best: List<String> = emptyList()
         for (attempt in 0 until 3) {
-            best = build(answer, lines, values, attempt)
+            best = dedupe(build(answer, lines, values, attempt))
             if (looksWhole(best)) return best
         }
         return best
+    }
+
+    /** Убирает строки, которые повторяют уже сказанное. */
+    private fun dedupe(lines: List<String>): List<String> {
+        val seen = mutableSetOf<String>()
+        val kept = mutableListOf<String>()
+        for (line in lines) {
+            val words = line.lowercase().split(Regex("[^а-яё]+"))
+                .filter { it.length > 3 && it !in STOP_WORDS }
+            val fresh = words.count { it !in seen }
+            if (words.isEmpty() || fresh * 2 >= words.size) {
+                kept += line
+                seen += words
+            }
+        }
+        return if (kept.size >= 3) kept else lines
     }
 
     /** Самокритика: короткий или зацикленный текст пересобираем. */
@@ -225,12 +243,13 @@ object Reading {
             "${capital(v1)} ведёт к ${dative(v2)}, а $v2 — к ${dative(v3)}."
         }
 
-        // 2. Один конкретный образ вместо пояснений
-        out += fromSlot("scene", mapOf("scene" to scene(v3))).ifBlank {
-            "${capital(scene(v1))} — вот с чего это начинается."
-        }
-        if (out.last().endsWith(".") && out.last().length < 30) {
-            out[out.size - 1] = "${capital(scene(v3))} — вот чем это кончится."
+        // 2. Один конкретный образ — только если он действительно другой
+        val imageSource = listOf(v3, v2, v1).firstOrNull { SCENES.containsKey(it.lowercase()) }
+        if (imageSource != null) {
+            val image = SCENES.getValue(imageSource.lowercase())
+            out += fromSlot("scene", mapOf("scene" to image)).ifBlank {
+                "${capital(image)} — вот что за этим стоит."
+            }
         }
 
         // напряжение: если внутри расклада есть противоположности
