@@ -313,7 +313,22 @@ object Reading {
         emit("second", fromSlot("second"))
 
         val order = Phrases.skeleton(answer.genre.name.lowercase(), seed)
-        val assembled = order.mapNotNull { slotLines[it] }.toMutableList()
+        // одно и то же значение не должно звучать дважды
+        val usedValues = HashMap<String, Int>()
+        val assembled = mutableListOf<String>()
+        for (slot in order) {
+            val line = slotLines[slot] ?: continue
+            val words = line.lowercase().split(Regex("[^а-яё]+"))
+            val hits = values.count { value -> words.contains(value.lowercase()) }
+            val repeats = values.any { value ->
+                words.contains(value.lowercase()) && (usedValues[value] ?: 0) > 0
+            }
+            if (repeats) continue
+            for (value in values) {
+                if (words.contains(value.lowercase())) usedValues[value] = (usedValues[value] ?: 0) + 1
+            }
+            if (hits > 0 || slot == "close" || assembled.isEmpty()) assembled += line
+        }
         if (assembled.size < 3) {
             assembled.clear()
             assembled.addAll(slotLines.values)
