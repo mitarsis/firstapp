@@ -221,8 +221,8 @@ fun TarotApp() {
         targetValue = 3f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
             animation = androidx.compose.animation.core.tween(
-                durationMillis = 2400,
-                easing = androidx.compose.animation.core.LinearEasing
+                durationMillis = 4200,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
             )
         ),
         label = "channelRotation"

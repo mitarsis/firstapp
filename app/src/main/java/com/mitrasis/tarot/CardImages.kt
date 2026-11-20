@@ -285,6 +285,25 @@ fun CardStack(
                 val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight
                 val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight
 
+                // мягкое свечение: тот же слой, чуть крупнее и прозрачнее
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset((dx - dstW * 0.012f).toInt(), (dy - dstH * 0.012f).toInt()),
+                    dstSize = IntSize((dstW * 1.024f).toInt(), (dstH * 1.024f).toInt()),
+                    alpha = layerAlpha * 0.35f,
+                    colorFilter = if (tinted) {
+                        ColorFilter.tint(
+                            channelColor(index, channelShift, cards.size).copy(alpha = 0.55f),
+                            BlendMode.SrcIn
+                        )
+                    } else {
+                        null
+                    },
+                    blendMode = BlendMode.Screen
+                )
+
                 drawImage(
                     image = image,
                     srcOffset = IntOffset.Zero,
