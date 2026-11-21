@@ -33,6 +33,7 @@ data class CardAnswer(
     val lines: List<CardLine> = emptyList(),
     val epithet: String = "",
     val shared: List<String> = emptyList(),
+    val sharedScores: List<Float> = emptyList(),
     val agreement: Float = 0f,
     val genre: Genre = Genre.FORECAST,
     val axis: Axis = Axis.MOVEMENT

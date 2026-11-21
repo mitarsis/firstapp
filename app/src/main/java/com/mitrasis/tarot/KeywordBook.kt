@@ -67,14 +67,14 @@ class KeywordBook private constructor(
      * Такой тег не может относиться только к одной карте: он обязан
      * подходить каждой, иначе минимум падает.
      */
-    data class SharedCore(val tags: List<String>, val agreement: Float)
+    data class SharedCore(val tags: List<String>, val scores: List<Float>, val agreement: Float)
 
     fun sharedTags(
         cards: List<Pair<Int, Boolean>>,
         questionVector: FloatArray,
         limit: Int = 6
     ): SharedCore {
-        if (cards.isEmpty() || vectors.isEmpty()) return SharedCore(emptyList(), 0f)
+        if (cards.isEmpty() || vectors.isEmpty()) return SharedCore(emptyList(), emptyList(), 0f)
         val dimension = vectors[0].size
 
         val centres = ArrayList<FloatArray>()
@@ -95,7 +95,7 @@ class KeywordBook private constructor(
             for (d in 0 until dimension) centre[d] /= norm
             centres += centre
         }
-        if (centres.isEmpty()) return SharedCore(emptyList(), 0f)
+        if (centres.isEmpty()) return SharedCore(emptyList(), emptyList(), 0f)
 
         // 1. триангуляция: худшее совпадение с картами
         val question = centred(questionVector)
@@ -125,14 +125,14 @@ class KeywordBook private constructor(
         for (d in 0 until dimension) topic[d] /= topicNorm
 
         // 2. «плоская вершина»: все теги, почти равные лучшему
-        fun choose(slack: Float): List<String> {
+        fun choose(slack: Float): List<Pair<String, Float>> {
             val top = worst.max()
             val candidates = vectors.indices.filter { worst[it] >= top - slack }
             if (candidates.isEmpty()) return emptyList<String>()
             // 3. вопрос решает, какие из равных взять
             val ordered = candidates.sortedByDescending { dot(centredAt(it), topic) }
             val chosen = ArrayList<Int>()
-            val out = LinkedHashMap<String, String>()
+            val out = LinkedHashMap<String, Pair<String, Float>>()
             for (index in ordered) {
                 if (out.size >= limit) break
                 val vector = centredAt(index)
@@ -140,7 +140,7 @@ class KeywordBook private constructor(
                 if (chosen.any { dot(vector, centredAt(it)) > 0.55f }) continue
                 val root = keywords[index].lowercase().take(5)
                 if (out.containsKey(root)) continue
-                out[root] = keywords[index]
+                out[root] = keywords[index] to worst[index]
                 chosen += index
             }
             return out.values.toList()
@@ -150,7 +150,7 @@ class KeywordBook private constructor(
         if (result.size < 3) result = choose(0.12f)
         // согласие: насколько высоко худшее совпадение у лучших тегов
         val agreement = if (result.isEmpty()) 0f else worst.max()
-        return SharedCore(result, agreement)
+        return SharedCore(result.map { it.first }, result.map { it.second }, agreement)
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
