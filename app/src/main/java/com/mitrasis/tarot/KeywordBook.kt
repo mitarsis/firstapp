@@ -107,13 +107,27 @@ class KeywordBook private constructor(
             worst[index] = low - 0.02f * (frequency[index] - 1)
         }
 
+        // тема вопроса: сам вопрос проецируем в пространство тегов,
+        // усредняем ближайшие восемь — это и есть тема, а не формулировка
+        val topic = FloatArray(dimension)
+        vectors.indices
+            .map { it to dot(centred(vectors[it]), question) }
+            .sortedByDescending { it.second }
+            .take(8)
+            .forEach { (index, _) ->
+                val vector = centred(vectors[index])
+                for (d in 0 until dimension) topic[d] += vector[d]
+            }
+        val topicNorm = kotlin.math.sqrt(topic.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
+        for (d in 0 until dimension) topic[d] /= topicNorm
+
         // 2. «плоская вершина»: все теги, почти равные лучшему
         fun choose(slack: Float): List<String> {
             val top = worst.max()
             val candidates = vectors.indices.filter { worst[it] >= top - slack }
             if (candidates.isEmpty()) return emptyList()
             // 3. вопрос решает, какие из равных взять
-            val ordered = candidates.sortedByDescending { dot(centred(vectors[it]), question) }
+            val ordered = candidates.sortedByDescending { dot(centred(vectors[it]), topic) }
             val chosen = ArrayList<Int>()
             val out = LinkedHashMap<String, String>()
             for (index in ordered) {
