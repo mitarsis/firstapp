@@ -60,6 +60,12 @@ class KeywordBook private constructor(
      * Берём теги всех карт, усредняем их векторы, подмешиваем вопрос
      * и достаём ближайшие теги из всей колоды — по одному на корень слова.
      */
+    /**
+     * Триангуляция смыслов: три карты задают три направления, а теги —
+     * точка, максимально близкая ко всем сразу (максимум минимума сходства).
+     * Такой тег не может относиться только к одной карте: он обязан
+     * подходить каждой, иначе минимум падает.
+     */
     fun sharedTags(
         cards: List<Pair<Int, Boolean>>,
         questionVector: FloatArray,
@@ -67,10 +73,7 @@ class KeywordBook private constructor(
     ): List<String> {
         if (cards.isEmpty() || vectors.isEmpty()) return emptyList()
         val dimension = vectors[0].size
-        val question = centred(questionVector)
 
-        // по каждой карте берём её собственные ближайшие теги к вопросу
-        val picked = LinkedHashSet<Int>()
         val centres = ArrayList<FloatArray>()
         for ((card, reversed) in cards) {
             if (card !in offsets.indices) continue
@@ -80,7 +83,6 @@ class KeywordBook private constructor(
             val range = if (reversed) (start + light) until (start + light + shadow)
             else start until (start + light)
             if (range.isEmpty()) continue
-
             val centre = FloatArray(dimension)
             for (index in range) {
                 val vector = centred(vectors[index])
@@ -89,40 +91,33 @@ class KeywordBook private constructor(
             val norm = kotlin.math.sqrt(centre.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
             for (d in 0 until dimension) centre[d] /= norm
             centres += centre
-
-            range.map { index -> index to dot(centred(vectors[index]), question) }
-                .sortedByDescending { it.second }
-                .take(12)
-                .forEach { picked += it.first }
         }
-        if (picked.isEmpty() || centres.isEmpty()) return emptyList()
+        if (centres.isEmpty()) return emptyList()
 
-        // тег должен подходить всем картам: считаем худшее совпадение.
-        // порог смягчается, пока не наберётся хотя бы три тега
-        val thresholds = floatArrayOf(0.02f, -0.02f, -0.06f, -0.12f)
-        var result = emptyList<String>()
-        for (threshold in thresholds) {
-            val scored = picked.mapNotNull { index ->
-                val vector = centred(vectors[index])
-                val sims = centres.map { dot(vector, it) }
-                val worst = sims.min()
-                if (worst < threshold) return@mapNotNull null
-                val mean = sims.average().toFloat()
-                val score = 0.5f * mean + 0.5f * worst - 0.03f * (frequency[index] - 1)
-                Triple(index, score, keywords[index])
-            }.sortedByDescending { it.second }
-
-            val out = LinkedHashMap<String, String>()
-            for ((_, _, word) in scored) {
-                val root = word.lowercase().take(5)
-                if (out.containsKey(root)) continue
-                out[root] = word
-                if (out.size >= limit) break
+        val question = centred(questionVector)
+        val scored = ArrayList<Triple<Int, Float, String>>(vectors.size)
+        for (index in vectors.indices) {
+            val vector = centred(vectors[index])
+            var worst = Float.MAX_VALUE
+            for (centre in centres) {
+                val value = dot(vector, centre)
+                if (value < worst) worst = value
             }
-            result = out.values.toList()
-            if (result.size >= 3) break
+            // вопрос слегка подмешиваем: он задаёт, какой из равных смыслов взять
+            val bias = dot(vector, question) * 0.15f
+            val score = worst + bias - 0.02f * (frequency[index] - 1)
+            scored += Triple(index, score, keywords[index])
         }
-        return result
+        scored.sortByDescending { it.second }
+
+        val out = LinkedHashMap<String, String>()
+        for ((_, _, word) in scored) {
+            val root = word.lowercase().take(5)
+            if (out.containsKey(root)) continue
+            out[root] = word
+            if (out.size >= limit) break
+        }
+        return out.values.toList()
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
