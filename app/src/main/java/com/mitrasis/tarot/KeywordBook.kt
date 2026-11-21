@@ -52,6 +52,61 @@ class KeywordBook private constructor(
         return keywords.getOrElse(bestIndex) { "" } to bestScore
     }
 
+
+    /**
+     * Общее ядро расклада: теги, близкие по смыслу сразу ко всем картам.
+     *
+     * Берём теги всех карт, усредняем их векторы, подмешиваем вопрос
+     * и достаём ближайшие теги из всей колоды — по одному на корень слова.
+     */
+    fun sharedTags(
+        cards: List<Pair<Int, Boolean>>,
+        questionVector: FloatArray,
+        limit: Int = 6
+    ): List<String> {
+        if (cards.isEmpty() || vectors.isEmpty()) return emptyList()
+        val collected = ArrayList<Int>()
+        for ((card, reversed) in cards) {
+            if (card !in offsets.indices) continue
+            val start = offsets[card]
+            val total = countsLight[card] + countsShadow[card]
+            for (i in start until start + total) {
+                if (shadowFlags[i] == reversed) collected += i
+            }
+        }
+        if (collected.isEmpty()) return emptyList()
+
+        val dimension = vectors[0].size
+        val centre = FloatArray(dimension)
+        for (index in collected) {
+            val vector = vectors[index]
+            for (d in 0 until dimension) centre[d] += vector[d]
+        }
+        for (d in 0 until dimension) {
+            centre[d] = centre[d] / collected.size * 0.65f + questionVector[d] * 0.35f
+        }
+        var norm = 0f
+        for (d in 0 until dimension) norm += centre[d] * centre[d]
+        norm = kotlin.math.sqrt(norm) + 1e-9f
+        for (d in 0 until dimension) centre[d] /= norm
+
+        val scored = (vectors.indices).map { index ->
+            var dot = 0f
+            val vector = vectors[index]
+            for (d in 0 until dimension) dot += vector[d] * centre[d]
+            Triple(index, dot - 0.02f * (frequency[index] - 1), keywords[index])
+        }.sortedByDescending { it.second }
+
+        val out = LinkedHashMap<String, String>()
+        for ((index, _, word) in scored) {
+            val root = word.lowercase().take(5)
+            if (out.containsKey(root)) continue
+            out[root] = word
+            if (out.size >= limit) break
+        }
+        return out.values.toList()
+    }
+
     companion object {
         fun fromStream(stream: InputStream): KeywordBook {
             val bytes = stream.readBytes()

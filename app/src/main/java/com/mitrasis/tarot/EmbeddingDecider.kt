@@ -108,6 +108,10 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         Phrases.load(ctx)
         Morph.load(ctx)
         val (genre, axis) = GenreGate.decide(vector)
+        val shared = keywords.sharedTags(
+            entries.map { it.third to it.first.reversed },
+            vector
+        )
         return CardAnswer(
             card = Deck.byId(main.third),
             reversed = main.first.reversed,
@@ -118,6 +122,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             alternatives = entries.drop(1).map { Deck.byId(it.third) to it.second },
             lines = entries.map { it.first },
             epithet = epithet,
+            shared = shared,
             genre = genre,
             axis = axis
         )
