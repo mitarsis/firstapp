@@ -570,8 +570,11 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
         val names = listOf(current.card) + current.alternatives.map { it.first }
         names.forEachIndexed { index, card ->
             val active = focusLayer < 0 || focusLayer == index
+            val reversed = current.lines.getOrNull(index)?.reversed
+                ?: (index == 0 && current.reversed)
             Text(
-                text = card.title.lowercase(),
+                text = if (reversed) card.title.lowercase() + " ↓"
+                else card.title.lowercase() + " ↑",
                 style = TextStyle(
                     fontSize = 10.sp,
                     letterSpacing = 1.2.sp,
