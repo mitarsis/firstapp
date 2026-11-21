@@ -22,7 +22,8 @@ class KeywordBook private constructor(
     private val offsets: IntArray,
     private val countsLight: IntArray,
     private val countsShadow: IntArray,
-    private val frequency: IntArray
+    private val frequency: IntArray,
+    private val mean: FloatArray?
 ) {
 
     fun bestKeyword(cardIndex: Int, questionVector: FloatArray, reversed: Boolean): Pair<String, Float> {
@@ -65,46 +66,62 @@ class KeywordBook private constructor(
         limit: Int = 6
     ): List<String> {
         if (cards.isEmpty() || vectors.isEmpty()) return emptyList()
-        val collected = ArrayList<Int>()
+        val dimension = vectors[0].size
+        val question = centred(questionVector)
+
+        // по каждой карте берём её собственные ближайшие теги к вопросу
+        val picked = ArrayList<Int>()
         for ((card, reversed) in cards) {
             if (card !in offsets.indices) continue
             val start = offsets[card]
-            val total = countsLight[card] + countsShadow[card]
-            for (i in start until start + total) {
-                if (shadowFlags[i] == reversed) collected += i
-            }
+            val light = countsLight[card]
+            val shadow = countsShadow[card]
+            val range = if (reversed) (start + light) until (start + light + shadow)
+            else start until (start + light)
+            val scored = range.map { index -> index to dot(centred(vectors[index]), question) }
+                .sortedByDescending { it.second }
+                .take(3)
+            scored.forEach { picked += it.first }
         }
-        if (collected.isEmpty()) return emptyList()
+        if (picked.isEmpty()) return emptyList()
 
-        val dimension = vectors[0].size
+        // согласие между выбранными: центр из них, а не из всей колоды
         val centre = FloatArray(dimension)
-        for (index in collected) {
-            val vector = vectors[index]
+        for (index in picked) {
+            val vector = centred(vectors[index])
             for (d in 0 until dimension) centre[d] += vector[d]
         }
-        for (d in 0 until dimension) {
-            centre[d] = centre[d] / collected.size * 0.65f + questionVector[d] * 0.35f
-        }
-        var norm = 0f
-        for (d in 0 until dimension) norm += centre[d] * centre[d]
-        norm = kotlin.math.sqrt(norm) + 1e-9f
+        val norm = kotlin.math.sqrt(centre.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
         for (d in 0 until dimension) centre[d] /= norm
 
-        val scored = (vectors.indices).map { index ->
-            var dot = 0f
-            val vector = vectors[index]
-            for (d in 0 until dimension) dot += vector[d] * centre[d]
-            Triple(index, dot - 0.02f * (frequency[index] - 1), keywords[index])
+        val scored = picked.map { index ->
+            Triple(index, dot(centred(vectors[index]), centre) - 0.03f * (frequency[index] - 1), keywords[index])
         }.sortedByDescending { it.second }
 
         val out = LinkedHashMap<String, String>()
-        for ((index, _, word) in scored) {
+        for ((_, _, word) in scored) {
             val root = word.lowercase().take(5)
             if (out.containsKey(root)) continue
             out[root] = word
             if (out.size >= limit) break
         }
         return out.values.toList()
+    }
+
+    /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
+    private fun centred(vector: FloatArray): FloatArray {
+        if (mean == null) return vector
+        val out = FloatArray(vector.size)
+        for (i in vector.indices) out[i] = vector[i] - mean[i]
+        val norm = kotlin.math.sqrt(out.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
+        for (i in out.indices) out[i] /= norm
+        return out
+    }
+
+    private fun dot(a: FloatArray, b: FloatArray): Float {
+        var sum = 0f
+        for (i in a.indices) sum += a[i] * b[i]
+        return sum
     }
 
     companion object {
@@ -152,7 +169,11 @@ class KeywordBook private constructor(
             keywords.forEach { word -> freqMap[word] = (freqMap[word] ?: 0) + 1 }
             val frequency = IntArray(rows) { freqMap[keywords[it]] ?: 1 }
 
-            return KeywordBook(vectors, shadowFlags, keywords, offsets, countsLight, countsShadow, frequency)
+            val mean = FloatArray(cols)
+            for (row in 0 until rows) for (column in 0 until cols) mean[column] += vectors[row][column]
+            for (column in 0 until cols) mean[column] /= rows.toFloat()
+
+            return KeywordBook(vectors, shadowFlags, keywords, offsets, countsLight, countsShadow, frequency, mean)
         }
     }
 }
