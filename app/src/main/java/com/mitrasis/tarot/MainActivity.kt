@@ -602,6 +602,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
                 .height(220.dp)
         )
         val agreementText = when {
+            current.lines.size == 2 -> "старший задаёт поле, младший — что в нём возможно"
             current.agreement >= 0.125f -> "карты говорят об одном"
             current.agreement >= 0.065f -> "карты близки по смыслу"
             else -> "карты расходятся"

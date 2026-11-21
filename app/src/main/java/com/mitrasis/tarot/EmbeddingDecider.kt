@@ -75,10 +75,20 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         // Колода из 156 положений: каждая карта лежит дважды — прямой и перевёрнутой.
         // Жребий один и тот же для всех: перевёрнутых выходит ровно половина,
         // как если бы колоду тасовали и половина карт легла вверх ногами.
-        val deckSize = cards.size * 2
-        val entries = (0 until deckSize).shuffled(random).take(layers.coerceIn(1, 3)).map { slot ->
-            val index = slot % cards.size
-            val reversed = slot >= cards.size
+        // Две карты — всегда пара «Старший + Младший»: Старший задаёт поле,
+        // Младший говорит внутри него. Три карты — чистый жребий из 156 положений.
+        val picks: List<Pair<Int, Boolean>> = if (layers == 2) {
+            val major = random.nextInt(MAJOR_COUNT)
+            val minor = MAJOR_COUNT + random.nextInt(cards.size - MAJOR_COUNT)
+            listOf(major to (random.nextFloat() < 0.5f), minor to (random.nextFloat() < 0.5f))
+        } else {
+            val deckSize = cards.size * 2
+            (0 until deckSize).shuffled(random).take(layers.coerceIn(1, 3)).map { slot ->
+                (slot % cards.size) to (slot >= cards.size)
+            }
+        }
+
+        val entries = picks.map { (index, reversed) ->
             val card = Deck.byId(index)
             Triple(
                 CardLine(
@@ -202,6 +212,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         session = null
         vectorCache.evictAll()
     }
+
+    private val MAJOR_COUNT = 22
 
     companion object {
         private const val TOKENIZER_ASSET = "tokenizer.bin"

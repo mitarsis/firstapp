@@ -69,12 +69,21 @@ class KeywordBook private constructor(
      */
     data class SharedCore(val tags: List<String>, val scores: List<Float>, val agreement: Float)
 
+    private val MAJOR_CARDS = 22
+
     fun sharedTags(
         cards: List<Pair<Int, Boolean>>,
         questionVector: FloatArray,
         limit: Int = 6
     ): SharedCore {
         if (cards.isEmpty() || vectors.isEmpty()) return SharedCore(emptyList(), emptyList(), 0f)
+        if (cards.size == 2) {
+            val major = cards.firstOrNull { it.first < MAJOR_CARDS }
+            val minor = cards.firstOrNull { it.first >= MAJOR_CARDS }
+            if (major != null && minor != null) {
+                return domainCore(major, minor, questionVector, limit)
+            }
+        }
         val dimension = vectors[0].size
 
         val centres = ArrayList<FloatArray>()
@@ -151,6 +160,66 @@ class KeywordBook private constructor(
         // согласие: насколько высоко худшее совпадение у лучших тегов
         val agreement = if (result.isEmpty()) 0f else worst.max()
         return SharedCore(result.map { it.first }, result.map { it.second }, agreement)
+    }
+
+
+    /**
+     * Старший задаёт поле, Младший говорит внутри него.
+     * Из слов Младшего остаются только те, что совместимы с полем.
+     */
+    private fun domainCore(
+        major: Pair<Int, Boolean>,
+        minor: Pair<Int, Boolean>,
+        questionVector: FloatArray,
+        limit: Int
+    ): SharedCore {
+        val dimension = vectors[0].size
+        fun rangeOf(card: Int, reversed: Boolean): IntRange {
+            val start = offsets[card]
+            val light = countsLight[card]
+            val shadow = countsShadow[card]
+            return if (reversed) (start + light) until (start + light + shadow)
+            else start until (start + light)
+        }
+        fun centreOf(card: Int, reversed: Boolean): FloatArray {
+            val centre = FloatArray(dimension)
+            for (index in rangeOf(card, reversed)) {
+                val vector = centredAt(index)
+                for (d in 0 until dimension) centre[d] += vector[d]
+            }
+            val norm = kotlin.math.sqrt(centre.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
+            for (d in 0 until dimension) centre[d] /= norm
+            return centre
+        }
+
+        val domainCentre = centreOf(major.first, major.second)
+        val contentCentre = centreOf(minor.first, minor.second)
+        val question = centred(questionVector)
+
+        // поле: слово Старшего, ближайшее к теме вопроса
+        val domainPick = rangeOf(major.first, major.second)
+            .maxByOrNull { dot(centredAt(it), question) } ?: return SharedCore(emptyList(), emptyList(), 0f)
+        val fieldScore = dot(centredAt(domainPick), domainCentre)
+
+        // содержание: слово Младшего, уместное в этом поле
+        val ranked = rangeOf(minor.first, minor.second).map { index ->
+            val vector = centredAt(index)
+            Triple(index, 0.6f * dot(vector, contentCentre) + 0.4f * dot(vector, domainCentre), dot(vector, domainCentre))
+        }.sortedByDescending { it.second }
+
+        val threshold = ranked.map { it.third }.sorted()[ranked.size * 2 / 5]
+        val out = LinkedHashMap<String, String>()
+        out[keywords[domainPick].lowercase().take(5)] = keywords[domainPick]
+        for ((index, _, inField) in ranked) {
+            if (inField < threshold) continue
+            val root = keywords[index].lowercase().take(5)
+            if (out.containsKey(root)) continue
+            out[root] = keywords[index]
+            if (out.size >= limit) break
+        }
+        val tags = out.values.toList()
+        val scores = List(tags.size) { fieldScore }
+        return SharedCore(tags, scores, fieldScore)
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
