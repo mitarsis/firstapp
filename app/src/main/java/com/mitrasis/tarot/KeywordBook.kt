@@ -128,7 +128,7 @@ class KeywordBook private constructor(
         fun choose(slack: Float): List<Pair<String, Float>> {
             val top = worst.max()
             val candidates = vectors.indices.filter { worst[it] >= top - slack }
-            if (candidates.isEmpty()) return emptyList<String>()
+            if (candidates.isEmpty()) return emptyList()
             // 3. вопрос решает, какие из равных взять
             val ordered = candidates.sortedByDescending { dot(centredAt(it), topic) }
             val chosen = ArrayList<Int>()
