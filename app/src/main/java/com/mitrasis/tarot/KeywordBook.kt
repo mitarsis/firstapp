@@ -92,30 +92,37 @@ class KeywordBook private constructor(
 
             range.map { index -> index to dot(centred(vectors[index]), question) }
                 .sortedByDescending { it.second }
-                .take(3)
+                .take(12)
                 .forEach { picked += it.first }
         }
         if (picked.isEmpty() || centres.isEmpty()) return emptyList()
 
-        // тег должен подходить всем картам, а не одной: считаем худшее совпадение
-        val scored = picked.mapNotNull { index ->
-            val vector = centred(vectors[index])
-            val sims = centres.map { dot(vector, it) }
-            val worst = sims.min()
-            if (worst < -0.10f) return@mapNotNull null
-            val mean = sims.average().toFloat()
-            val score = 0.6f * mean + 0.4f * worst - 0.03f * (frequency[index] - 1)
-            Triple(index, score, keywords[index])
-        }.sortedByDescending { it.second }
+        // тег должен подходить всем картам: считаем худшее совпадение.
+        // порог смягчается, пока не наберётся хотя бы три тега
+        val thresholds = floatArrayOf(0.02f, -0.02f, -0.06f, -0.12f)
+        var result = emptyList<String>()
+        for (threshold in thresholds) {
+            val scored = picked.mapNotNull { index ->
+                val vector = centred(vectors[index])
+                val sims = centres.map { dot(vector, it) }
+                val worst = sims.min()
+                if (worst < threshold) return@mapNotNull null
+                val mean = sims.average().toFloat()
+                val score = 0.5f * mean + 0.5f * worst - 0.03f * (frequency[index] - 1)
+                Triple(index, score, keywords[index])
+            }.sortedByDescending { it.second }
 
-        val out = LinkedHashMap<String, String>()
-        for ((_, _, word) in scored) {
-            val root = word.lowercase().take(5)
-            if (out.containsKey(root)) continue
-            out[root] = word
-            if (out.size >= limit) break
+            val out = LinkedHashMap<String, String>()
+            for ((_, _, word) in scored) {
+                val root = word.lowercase().take(5)
+                if (out.containsKey(root)) continue
+                out[root] = word
+                if (out.size >= limit) break
+            }
+            result = out.values.toList()
+            if (result.size >= 3) break
         }
-        return out.values.toList()
+        return result
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
