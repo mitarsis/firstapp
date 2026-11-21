@@ -15,8 +15,8 @@ android {
         applicationId = "com.mitrasis.tarot"
         minSdk = 24
         targetSdk = 35
-        versionCode = 103
-        versionName = "14.2"
+        versionCode = 104
+        versionName = "14.3"
     }
 
     signingConfigs {

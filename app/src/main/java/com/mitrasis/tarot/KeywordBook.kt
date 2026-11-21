@@ -137,7 +137,7 @@ class KeywordBook private constructor(
                 if (out.size >= limit) break
                 val vector = centredAt(index)
                 // 4. разнообразие: близнецы по смыслу не нужны
-                if (chosen.any { dot(vector, centredAt(it)) > 0.55f }) continue
+                if (chosen.any { dot(vector, centredAt(it)) > 0.72f }) continue
                 val root = keywords[index].lowercase().take(5)
                 if (out.containsKey(root)) continue
                 out[root] = keywords[index] to worst[index]
@@ -146,8 +146,8 @@ class KeywordBook private constructor(
             return out.values.toList()
         }
 
-        var result = choose(0.06f)
-        if (result.size < 3) result = choose(0.12f)
+        var result = choose(0.12f)
+        if (result.size < 3) result = choose(0.20f)
         // согласие: насколько высоко худшее совпадение у лучших тегов
         val agreement = if (result.isEmpty()) 0f else worst.max()
         return SharedCore(result.map { it.first }, result.map { it.second }, agreement)
