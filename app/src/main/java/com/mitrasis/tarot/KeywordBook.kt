@@ -94,30 +94,44 @@ class KeywordBook private constructor(
         }
         if (centres.isEmpty()) return emptyList()
 
+        // 1. триангуляция: худшее совпадение с картами
         val question = centred(questionVector)
-        val scored = ArrayList<Triple<Int, Float, String>>(vectors.size)
+        val worst = FloatArray(vectors.size)
         for (index in vectors.indices) {
             val vector = centred(vectors[index])
-            var worst = Float.MAX_VALUE
+            var low = Float.MAX_VALUE
             for (centre in centres) {
                 val value = dot(vector, centre)
-                if (value < worst) worst = value
+                if (value < low) low = value
             }
-            // вопрос слегка подмешиваем: он задаёт, какой из равных смыслов взять
-            val bias = dot(vector, question) * 0.15f
-            val score = worst + bias - 0.02f * (frequency[index] - 1)
-            scored += Triple(index, score, keywords[index])
+            worst[index] = low - 0.02f * (frequency[index] - 1)
         }
-        scored.sortByDescending { it.second }
 
-        val out = LinkedHashMap<String, String>()
-        for ((_, _, word) in scored) {
-            val root = word.lowercase().take(5)
-            if (out.containsKey(root)) continue
-            out[root] = word
-            if (out.size >= limit) break
+        // 2. «плоская вершина»: все теги, почти равные лучшему
+        fun choose(slack: Float): List<String> {
+            val top = worst.max()
+            val candidates = vectors.indices.filter { worst[it] >= top - slack }
+            if (candidates.isEmpty()) return emptyList()
+            // 3. вопрос решает, какие из равных взять
+            val ordered = candidates.sortedByDescending { dot(centred(vectors[it]), question) }
+            val chosen = ArrayList<Int>()
+            val out = LinkedHashMap<String, String>()
+            for (index in ordered) {
+                if (out.size >= limit) break
+                val vector = centred(vectors[index])
+                // 4. разнообразие: близнецы по смыслу не нужны
+                if (chosen.any { dot(vector, centred(vectors[it])) > 0.55f }) continue
+                val root = keywords[index].lowercase().take(5)
+                if (out.containsKey(root)) continue
+                out[root] = keywords[index]
+                chosen += index
+            }
+            return out.values.toList()
         }
-        return out.values.toList()
+
+        var result = choose(0.06f)
+        if (result.size < 3) result = choose(0.12f)
+        return result
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
