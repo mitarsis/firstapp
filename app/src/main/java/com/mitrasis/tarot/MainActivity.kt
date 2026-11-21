@@ -590,11 +590,11 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
     }
     Spacer(Modifier.height(12.dp))
     if (current.shared.isNotEmpty()) {
-        Text(
-            text = current.shared.joinToString("  ·  "),
-            style = TextStyle(fontSize = 19.sp, lineHeight = 27.sp),
-            color = Color(0xFFEDE4D2),
-            textAlign = TextAlign.Center
+        TagCloud(
+            tags = current.shared,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
         )
     } else {
         Reading.compose(current).forEach { line ->
