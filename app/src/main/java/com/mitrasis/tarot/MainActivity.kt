@@ -600,6 +600,17 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
                 .fillMaxWidth()
                 .height(220.dp)
         )
+        val agreementText = when {
+            current.agreement >= 0.15f -> "карты говорят об одном"
+            current.agreement >= 0.05f -> "карты близки по смыслу"
+            else -> "карты расходятся"
+        }
+        Text(
+            text = agreementText,
+            style = TextStyle(fontSize = 9.sp, letterSpacing = 1.sp),
+            color = ASH.copy(alpha = 0.5f),
+            textAlign = TextAlign.Center
+        )
     } else {
         Reading.compose(current).forEach { line ->
             Text(

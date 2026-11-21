@@ -23,7 +23,8 @@ class KeywordBook private constructor(
     private val countsLight: IntArray,
     private val countsShadow: IntArray,
     private val frequency: IntArray,
-    private val mean: FloatArray?
+    private val mean: FloatArray?,
+    private val centredVectors: Array<FloatArray>
 ) {
 
     fun bestKeyword(cardIndex: Int, questionVector: FloatArray, reversed: Boolean): Pair<String, Float> {
@@ -66,12 +67,14 @@ class KeywordBook private constructor(
      * Такой тег не может относиться только к одной карте: он обязан
      * подходить каждой, иначе минимум падает.
      */
+    data class SharedCore(val tags: List<String>, val agreement: Float)
+
     fun sharedTags(
         cards: List<Pair<Int, Boolean>>,
         questionVector: FloatArray,
         limit: Int = 6
-    ): List<String> {
-        if (cards.isEmpty() || vectors.isEmpty()) return emptyList()
+    ): SharedCore {
+        if (cards.isEmpty() || vectors.isEmpty()) return SharedCore(emptyList(), 0f)
         val dimension = vectors[0].size
 
         val centres = ArrayList<FloatArray>()
@@ -85,20 +88,20 @@ class KeywordBook private constructor(
             if (range.isEmpty()) continue
             val centre = FloatArray(dimension)
             for (index in range) {
-                val vector = centred(vectors[index])
+                val vector = centredAt(index)
                 for (d in 0 until dimension) centre[d] += vector[d]
             }
             val norm = kotlin.math.sqrt(centre.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
             for (d in 0 until dimension) centre[d] /= norm
             centres += centre
         }
-        if (centres.isEmpty()) return emptyList()
+        if (centres.isEmpty()) return SharedCore(emptyList(), 0f)
 
         // 1. триангуляция: худшее совпадение с картами
         val question = centred(questionVector)
         val worst = FloatArray(vectors.size)
         for (index in vectors.indices) {
-            val vector = centred(vectors[index])
+            val vector = centredAt(index)
             var low = Float.MAX_VALUE
             for (centre in centres) {
                 val value = dot(vector, centre)
@@ -111,11 +114,11 @@ class KeywordBook private constructor(
         // усредняем ближайшие восемь — это и есть тема, а не формулировка
         val topic = FloatArray(dimension)
         vectors.indices
-            .map { it to dot(centred(vectors[it]), question) }
+            .map { it to dot(centredAt(it), question) }
             .sortedByDescending { it.second }
             .take(8)
             .forEach { (index, _) ->
-                val vector = centred(vectors[index])
+                val vector = centredAt(index)
                 for (d in 0 until dimension) topic[d] += vector[d]
             }
         val topicNorm = kotlin.math.sqrt(topic.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
@@ -125,16 +128,16 @@ class KeywordBook private constructor(
         fun choose(slack: Float): List<String> {
             val top = worst.max()
             val candidates = vectors.indices.filter { worst[it] >= top - slack }
-            if (candidates.isEmpty()) return emptyList()
+            if (candidates.isEmpty()) return emptyList<String>()
             // 3. вопрос решает, какие из равных взять
-            val ordered = candidates.sortedByDescending { dot(centred(vectors[it]), topic) }
+            val ordered = candidates.sortedByDescending { dot(centredAt(it), topic) }
             val chosen = ArrayList<Int>()
             val out = LinkedHashMap<String, String>()
             for (index in ordered) {
                 if (out.size >= limit) break
-                val vector = centred(vectors[index])
+                val vector = centredAt(index)
                 // 4. разнообразие: близнецы по смыслу не нужны
-                if (chosen.any { dot(vector, centred(vectors[it])) > 0.55f }) continue
+                if (chosen.any { dot(vector, centredAt(it)) > 0.55f }) continue
                 val root = keywords[index].lowercase().take(5)
                 if (out.containsKey(root)) continue
                 out[root] = keywords[index]
@@ -145,10 +148,14 @@ class KeywordBook private constructor(
 
         var result = choose(0.06f)
         if (result.size < 3) result = choose(0.12f)
-        return result
+        // согласие: насколько высоко худшее совпадение у лучших тегов
+        val agreement = if (result.isEmpty()) 0f else worst.max()
+        return SharedCore(result, agreement)
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */
+    private fun centredAt(index: Int): FloatArray = centredVectors[index]
+
     private fun centred(vector: FloatArray): FloatArray {
         if (mean == null) return vector
         val out = FloatArray(vector.size)
@@ -213,7 +220,20 @@ class KeywordBook private constructor(
             for (row in 0 until rows) for (column in 0 until cols) mean[column] += vectors[row][column]
             for (column in 0 until cols) mean[column] /= rows.toFloat()
 
-            return KeywordBook(vectors, shadowFlags, keywords, offsets, countsLight, countsShadow, frequency, mean)
+            val centredVectors = Array(rows) { row ->
+                val out = FloatArray(cols)
+                for (column in 0 until cols) out[column] = vectors[row][column] - mean[column]
+                var length = 0f
+                for (value in out) length += value * value
+                length = kotlin.math.sqrt(length) + 1e-9f
+                for (column in 0 until cols) out[column] /= length
+                out
+            }
+
+            return KeywordBook(
+                vectors, shadowFlags, keywords, offsets, countsLight, countsShadow,
+                frequency, mean, centredVectors
+            )
         }
     }
 }
