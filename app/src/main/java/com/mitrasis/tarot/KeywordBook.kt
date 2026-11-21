@@ -70,7 +70,8 @@ class KeywordBook private constructor(
         val question = centred(questionVector)
 
         // по каждой карте берём её собственные ближайшие теги к вопросу
-        val picked = ArrayList<Int>()
+        val picked = LinkedHashSet<Int>()
+        val centres = ArrayList<FloatArray>()
         for ((card, reversed) in cards) {
             if (card !in offsets.indices) continue
             val start = offsets[card]
@@ -78,24 +79,33 @@ class KeywordBook private constructor(
             val shadow = countsShadow[card]
             val range = if (reversed) (start + light) until (start + light + shadow)
             else start until (start + light)
-            val scored = range.map { index -> index to dot(centred(vectors[index]), question) }
+            if (range.isEmpty()) continue
+
+            val centre = FloatArray(dimension)
+            for (index in range) {
+                val vector = centred(vectors[index])
+                for (d in 0 until dimension) centre[d] += vector[d]
+            }
+            val norm = kotlin.math.sqrt(centre.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
+            for (d in 0 until dimension) centre[d] /= norm
+            centres += centre
+
+            range.map { index -> index to dot(centred(vectors[index]), question) }
                 .sortedByDescending { it.second }
                 .take(3)
-            scored.forEach { picked += it.first }
+                .forEach { picked += it.first }
         }
-        if (picked.isEmpty()) return emptyList()
+        if (picked.isEmpty() || centres.isEmpty()) return emptyList()
 
-        // согласие между выбранными: центр из них, а не из всей колоды
-        val centre = FloatArray(dimension)
-        for (index in picked) {
+        // тег должен подходить всем картам, а не одной: считаем худшее совпадение
+        val scored = picked.mapNotNull { index ->
             val vector = centred(vectors[index])
-            for (d in 0 until dimension) centre[d] += vector[d]
-        }
-        val norm = kotlin.math.sqrt(centre.sumOf { (it * it).toDouble() }).toFloat() + 1e-9f
-        for (d in 0 until dimension) centre[d] /= norm
-
-        val scored = picked.map { index ->
-            Triple(index, dot(centred(vectors[index]), centre) - 0.03f * (frequency[index] - 1), keywords[index])
+            val sims = centres.map { dot(vector, it) }
+            val worst = sims.min()
+            if (worst < -0.10f) return@mapNotNull null
+            val mean = sims.average().toFloat()
+            val score = 0.6f * mean + 0.4f * worst - 0.03f * (frequency[index] - 1)
+            Triple(index, score, keywords[index])
         }.sortedByDescending { it.second }
 
         val out = LinkedHashMap<String, String>()
