@@ -30,7 +30,7 @@ import kotlin.math.sqrt
  * Дальние слова мельче и бледнее, ближние крупнее — это и даёт глубину.
  */
 @Composable
-fun TagCloud(tags: List<String>, modifier: Modifier = Modifier) {
+fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Modifier = Modifier) {
     var yaw by remember { mutableStateOf(-20f) }
     var pitch by remember { mutableStateOf(10f) }
 
@@ -79,12 +79,27 @@ fun TagCloud(tags: List<String>, modifier: Modifier = Modifier) {
                 Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to tag
             }.sortedBy { it.first.third }
 
+            // значимость — не размером (он занят глубиной), а насыщенностью шрифта
+            val high = scores.maxOrNull() ?: 1f
+            val low = scores.minOrNull() ?: 0f
+            val span = (high - low).coerceAtLeast(1e-4f)
+            fun face(score: Float): android.graphics.Typeface {
+                val level = ((score - low) / span)
+                val style = when {
+                    level >= 0.66f -> android.graphics.Typeface.NORMAL
+                    level >= 0.33f -> android.graphics.Typeface.NORMAL
+                    else -> android.graphics.Typeface.NORMAL
+                }
+                val family = when {
+                    level >= 0.66f -> "sans-serif-medium"
+                    level >= 0.33f -> "sans-serif"
+                    else -> "sans-serif-light"
+                }
+                return android.graphics.Typeface.create(family, style)
+            }
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
-                typeface = android.graphics.Typeface.create(
-                    "sans-serif-light",
-                    android.graphics.Typeface.NORMAL
-                )
+                typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             }
 
             for ((p, tag) in rotated) {
@@ -92,6 +107,9 @@ fun TagCloud(tags: List<String>, modifier: Modifier = Modifier) {
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
+                val index = tags.indexOf(tag)
+                paint.typeface = if (index in scores.indices) face(scores[index])
+                else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
                 paint.color = android.graphics.Color.argb(
                     alpha,

@@ -120,6 +120,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             lines = entries.map { it.first },
             epithet = epithet,
             shared = shared,
+            sharedScores = core.scores,
             agreement = core.agreement,
             genre = genre,
             axis = axis

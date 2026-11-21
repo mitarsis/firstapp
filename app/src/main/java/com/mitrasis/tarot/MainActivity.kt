@@ -596,6 +596,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
     if (current.shared.isNotEmpty()) {
         TagCloud(
             tags = current.shared,
+            scores = current.sharedScores,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
