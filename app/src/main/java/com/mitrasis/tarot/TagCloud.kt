@@ -37,15 +37,16 @@ fun TagCloud(tags: List<String>, modifier: Modifier = Modifier) {
     val spin by rememberInfiniteTransition(label = "cloud").animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(30000, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(tween(60000, easing = LinearEasing), RepeatMode.Restart),
         label = "spin"
     )
 
     Box(modifier.pointerInput(Unit) {
         detectDragGestures { change, drag ->
             change.consume()
-            yaw += drag.x * 0.45f
-            pitch = (pitch - drag.y * 0.35f).coerceIn(-70f, 70f)
+            yaw += drag.x * 0.22f
+            pitch += drag.y * 0.22f
+            pitch %= 360f
         }
     }) {
         Canvas(Modifier.fillMaxSize()) {
