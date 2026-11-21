@@ -589,13 +589,22 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
         }
     }
     Spacer(Modifier.height(12.dp))
-    Reading.compose(current).forEach { line ->
+    if (current.shared.isNotEmpty()) {
         Text(
-            text = line,
-            style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+            text = current.shared.joinToString("  ·  "),
+            style = TextStyle(fontSize = 19.sp, lineHeight = 27.sp),
             color = Color(0xFFEDE4D2),
             textAlign = TextAlign.Center
         )
+    } else {
+        Reading.compose(current).forEach { line ->
+            Text(
+                text = line,
+                style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+                color = Color(0xFFEDE4D2),
+                textAlign = TextAlign.Center
+            )
+        }
     }
     Spacer(Modifier.height(6.dp))
     Text(
