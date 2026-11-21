@@ -137,7 +137,7 @@ class KeywordBook private constructor(
                 if (out.size >= limit) break
                 val vector = centredAt(index)
                 // 4. разнообразие: близнецы по смыслу не нужны
-                if (chosen.any { dot(vector, centredAt(it)) > 0.72f }) continue
+                if (chosen.any { dot(vector, centredAt(it)) > 0.78f }) continue
                 val root = keywords[index].lowercase().take(5)
                 if (out.containsKey(root)) continue
                 out[root] = keywords[index] to worst[index]
