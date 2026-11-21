@@ -72,11 +72,13 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         }
 
         val random = kotlin.random.Random(System.nanoTime())
-        // Три карты — чистый жребий. Никаких пулов и никакой сортировки по вопросу:
-        // модель отвечает только за общее ядро, а не за то, какие карты выпали.
-        val indices = (0 until cards.size).shuffled(random).take(layers.coerceIn(1, 3))
-        val entries = indices.map { index ->
-            val reversed = random.nextFloat() < REVERSED_PERCENT / 100f
+        // Колода из 156 положений: каждая карта лежит дважды — прямой и перевёрнутой.
+        // Жребий один и тот же для всех: перевёрнутых выходит ровно половина,
+        // как если бы колоду тасовали и половина карт легла вверх ногами.
+        val deckSize = cards.size * 2
+        val entries = (0 until deckSize).shuffled(random).take(layers.coerceIn(1, 3)).map { slot ->
+            val index = slot % cards.size
+            val reversed = slot >= cards.size
             val card = Deck.byId(index)
             Triple(
                 CardLine(
