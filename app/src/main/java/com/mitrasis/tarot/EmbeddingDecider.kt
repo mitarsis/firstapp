@@ -72,29 +72,23 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         }
 
         val random = kotlin.random.Random(System.nanoTime())
-        val pool = (0 until cards.size).shuffled(random).take(POOL_SIZE)
-
-        val cardScores = cards.similarities(vector)
-        val entries = pool.map { index ->
+        // Три карты — чистый жребий. Никаких пулов и никакой сортировки по вопросу:
+        // модель отвечает только за общее ядро, а не за то, какие карты выпали.
+        val indices = (0 until cards.size).shuffled(random).take(layers.coerceIn(1, 3))
+        val entries = indices.map { index ->
             val reversed = random.nextFloat() < REVERSED_PERCENT / 100f
-            val (keyword, keywordScore) = keywords.bestKeyword(index, vector, reversed)
-            // Карта с большим числом тегов имела бы преимущество только за счёт
-            // количества. Поэтому смешиваем лучший тег с близостью центроида карты.
-            val score = keywordScore * 0.65f + cardScores[index] * 0.35f
             val card = Deck.byId(index)
             Triple(
                 CardLine(
                     title = card.title,
-                    keyword = keyword.ifBlank {
-                        if (reversed) card.shadow.firstOrNull().orEmpty()
-                        else card.light.firstOrNull().orEmpty()
-                    },
+                    keyword = if (reversed) card.shadow.firstOrNull().orEmpty()
+                    else card.light.firstOrNull().orEmpty(),
                     reversed = reversed
                 ),
-                relevance(score),
+                0f,
                 index
             )
-        }.take(layers.coerceIn(1, 3))
+        }
 
         // Жребий не пересортировывается: карты идут в порядке вытяжки.
         // Модель отвечает только за выбор оттенка смысла у каждой карты.
