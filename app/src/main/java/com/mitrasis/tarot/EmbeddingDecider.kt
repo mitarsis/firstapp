@@ -37,10 +37,6 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         ctx.assets.open(KEYWORDS_ASSET).use { KeywordBook.fromStream(it) }
     }
 
-    private val epithetsLoaded: Unit by lazy {
-        ctx.assets.open(EPITHETS_ASSET).use { EpithetBook.load(it) }
-    }
-
     // Вектор вопроса переиспользуется при повторных вытяжках
     private val vectorCache = object : LruCache<String, FloatArray>(8) {
         override fun sizeOf(key: String, value: FloatArray): Int = value.size * 4 / 1024 + 1
@@ -103,19 +99,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             )
         }
 
-        // Жребий не пересортировывается: карты идут в порядке вытяжки.
-        // Модель отвечает только за выбор оттенка смысла у каждой карты.
-        epithetsLoaded
-        val firstKeyword = entries.first().first.keyword
-        val gender = EpithetBook.genderOf(Reading.shortValue(firstKeyword))
-        val epithet = EpithetBook.pick(vector, entries.first().third, gender)
-
-        val main = entries.first()
-        GenreGate.load(ctx)
-        Phrases.load(ctx)
-        Morph.load(ctx)
         Domains.load(ctx)
-        val (genre, axis) = GenreGate.decide(vector)
         val core = keywords.sharedTags(
             entries.map { it.third to it.first.reversed },
             vector
@@ -130,12 +114,9 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             topic = CardMeanings.all.getOrNull(main.third)?.full.orEmpty(),
             alternatives = entries.drop(1).map { Deck.byId(it.third) to it.second },
             lines = entries.map { it.first },
-            epithet = epithet,
             shared = shared,
             sharedScores = core.scores,
-            agreement = core.agreement,
-            genre = genre,
-            axis = axis
+            agreement = core.agreement
         )
     }
 
@@ -221,7 +202,6 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         private const val TOKENIZER_ASSET = "tokenizer.bin"
         private const val CARDS_ASSET = "cards.bin"
         private const val KEYWORDS_ASSET = "keywords.bin"
-        private const val EPITHETS_ASSET = "epithets.bin"
         private const val HIDDEN_SIZE = 384
         private const val MAX_TOKENS = 128
         private const val QUESTION_PREFIX = "query: "

@@ -327,6 +327,19 @@ fun TarotApp() {
     ) {
         Spacer(Modifier.weight(0.5f))
 
+        // Плавный наклон: значения сглаживаются, поэтому гироскоп не дёргает карту
+        val tiltActive = focusLayer < 0
+        val smoothY by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (tiltActive) flip + tilt.first * 14f else flip,
+            animationSpec = androidx.compose.animation.core.tween(180),
+            label = "rotY"
+        )
+        val smoothX by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (tiltActive) -tilt.second * 14f else 0f,
+            animationSpec = androidx.compose.animation.core.tween(180),
+            label = "rotX"
+        )
+
         // Карта — и есть интерфейс
         Box(
             modifier = Modifier
@@ -334,11 +347,8 @@ fun TarotApp() {
                 .aspectRatio(0.62f)
                 .graphicsLayer {
                     // объём: наклон всего блока вслед за телефоном
-                    val active = focusLayer < 0
-                    val tiltY = if (active) tilt.second else 0f
-                    val tiltX = if (active) tilt.first else 0f
-                    rotationY = flip + tiltX * 9f
-                    rotationX = -tiltY * 9f
+                    rotationY = smoothY
+                    rotationX = smoothX
                     cameraDistance = 24f * density
                     val zoom = if (focusLayer >= 0) 1.03f else 1f
                     scaleX = zoom
@@ -499,14 +509,20 @@ fun TarotApp() {
             Text(
                 text = "галерея",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
-                color = ASH.copy(alpha = 0.6f),
+                color = ASH.copy(alpha = 0.55f),
                 modifier = Modifier.clickable { showGallery = true }
             )
             Text(
-                text = if (layers == 3) "три карты" else "две карты",
+                text = "триангуляция",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
-                color = ASH.copy(alpha = 0.6f),
-                modifier = Modifier.clickable { layers = if (layers == 3) 2 else 3 }
+                color = if (layers == 3) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
+                modifier = Modifier.clickable { layers = 3 }
+            )
+            Text(
+                text = "домен",
+                style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
+                color = if (layers == 2) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
+                modifier = Modifier.clickable { layers = 2 }
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -572,11 +588,14 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
             val active = focusLayer < 0 || focusLayer == index
             val reversed = current.lines.getOrNull(index)?.reversed
                 ?: (index == 0 && current.reversed)
+            val tint = if (current.lines.size == 2) Color(0xFFEDE4D2)
+            else positionTint(index, reversed)
             val showArrow = current.lines.size != 2
             Text(
                 text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
                 maxLines = 1,
                 softWrap = false,
+                color = tint.copy(alpha = if (active) 0.95f else 0.35f),
                 style = TextStyle(
                     fontSize = 10.sp,
                     letterSpacing = 1.2.sp,
@@ -614,15 +633,6 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
             color = ASH.copy(alpha = 0.5f),
             textAlign = TextAlign.Center
         )
-    } else {
-        Reading.compose(current).forEach { line ->
-            Text(
-                text = line,
-                style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
-                color = Color(0xFFEDE4D2),
-                textAlign = TextAlign.Center
-            )
-        }
     }
     Spacer(Modifier.height(6.dp))
     Text(

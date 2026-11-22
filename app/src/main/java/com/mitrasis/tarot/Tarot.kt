@@ -31,12 +31,9 @@ data class CardAnswer(
     val variant: Int = 0,
     val summary: String = "",
     val lines: List<CardLine> = emptyList(),
-    val epithet: String = "",
     val shared: List<String> = emptyList(),
     val sharedScores: List<Float> = emptyList(),
-    val agreement: Float = 0f,
-    val genre: Genre = Genre.FORECAST,
-    val axis: Axis = Axis.MOVEMENT
+    val agreement: Float = 0f
 )
 
 object Deck {

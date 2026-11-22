@@ -209,7 +209,7 @@ class KeywordBook private constructor(
         // шаг второй: сначала отсев по Старшему
         val minorRange = rangeOf(minor.first, minor.second)
         val fieldScores = minorRange.map { dot(centredAt(it), domainCentre) }.sorted()
-        val threshold = fieldScores[fieldScores.size * 2 / 5]
+        val threshold = fieldScores[fieldScores.size / 4]
         //
         // шаг третий: из оставшихся берём близкое к вопросу
         val ranked = minorRange
