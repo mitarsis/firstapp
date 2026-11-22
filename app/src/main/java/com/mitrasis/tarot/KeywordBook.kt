@@ -195,18 +195,18 @@ class KeywordBook private constructor(
         val question = centred(questionVector)
 
         // поле: слово Старшего, ближайшее к теме вопроса
-        // поле должно быть И про карту, И про вопрос — иначе Старший говорит не своё
+        // домен — только от Старшего: вопрос на него не влияет
         val domainPick = rangeOf(major.first, major.second)
-            .maxByOrNull {
-                val v = centredAt(it)
-                0.5f * dot(v, question) + 0.5f * dot(v, domainCentre)
-            } ?: return SharedCore(emptyList(), emptyList(), 0f)
+            .maxByOrNull { dot(centredAt(it), domainCentre) }
+            ?: return SharedCore(emptyList(), emptyList(), 0f)
         val fieldScore = dot(centredAt(domainPick), domainCentre)
 
         // содержание: слово Младшего, уместное в этом поле
+        // остальное — через вопрос, но лишь в пределах домена
         val ranked = rangeOf(minor.first, minor.second).map { index ->
             val vector = centredAt(index)
-            Triple(index, 0.6f * dot(vector, contentCentre) + 0.4f * dot(vector, domainCentre), dot(vector, domainCentre))
+            val score = 0.75f * dot(vector, question) + 0.25f * dot(vector, contentCentre)
+            Triple(index, score, dot(vector, domainCentre))
         }.sortedByDescending { it.second }
 
         val threshold = ranked.map { it.third }.sorted()[ranked.size * 2 / 5]
