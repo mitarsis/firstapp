@@ -1,8 +1,21 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// Пароль и адрес ключа берутся из окружения или local.properties (он в .gitignore).
+// Резервные значения оставлены только чтобы не сломать сборку до ротации ключа.
+val signingProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) FileInputStream(file).use { load(it) }
+}
+
+fun signingValue(key: String, fallback: String): String =
+    System.getenv(key) ?: signingProps.getProperty(key) ?: fallback
 
 android {
     namespace = "com.mitrasis.tarot"
@@ -15,16 +28,16 @@ android {
         applicationId = "com.mitrasis.tarot"
         minSdk = 24
         targetSdk = 35
-        versionCode = 120
-        versionName = "16.8"
+        versionCode = 121
+        versionName = "16.8.1"
     }
 
     signingConfigs {
         create("stable") {
-            storeFile = file("../keystore/tarot.jks")
-            storePassword = "tarotdebug"
-            keyAlias = "tarot"
-            keyPassword = "tarotdebug"
+            storeFile = file(signingValue("TAROT_KEYSTORE", "../keystore/tarot.jks"))
+            storePassword = signingValue("TAROT_STORE_PASSWORD", "tarotdebug")
+            keyAlias = signingValue("TAROT_KEY_ALIAS", "tarot")
+            keyPassword = signingValue("TAROT_KEY_PASSWORD", "tarotdebug")
         }
     }
 

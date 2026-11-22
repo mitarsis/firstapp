@@ -10,4 +10,7 @@
 local.properties
 app/build/
 
-
+# ключ подписи не должен попадать в репозиторий
+keystore/
+*.jks
+*.keystore

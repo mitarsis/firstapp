@@ -28,6 +28,23 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Restore signing key (if provided)
+        env:
+          KEYSTORE_B64: ${{ secrets.TAROT_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.TAROT_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.TAROT_KEY_ALIAS }}
+        run: |
+          touch local.properties
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p keystore
+            printf '%s' "$KEYSTORE_B64" | base64 -d > keystore/tarot.jks
+            printf 'TAROT_STORE_PASSWORD=%s\nTAROT_KEY_PASSWORD=%s\nTAROT_KEY_ALIAS=%s\n' \
+              "$STORE_PASSWORD" "$STORE_PASSWORD" "${KEY_ALIAS:-tarot}" >> local.properties
+            echo "ключ подписи восстановлен из секрета"
+          else
+            echo "секрет не задан — используется ключ из репозитория"
+          fi
+
       - name: Run unit tests
         run: |
           set -o pipefail
