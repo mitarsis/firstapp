@@ -174,12 +174,10 @@ class KeywordBook private constructor(
         limit: Int
     ): SharedCore {
         val dimension = vectors[0].size
+        // в паре положение не учитываем: берём весь набор карты
         fun rangeOf(card: Int, reversed: Boolean): IntRange {
             val start = offsets[card]
-            val light = countsLight[card]
-            val shadow = countsShadow[card]
-            return if (reversed) (start + light) until (start + light + shadow)
-            else start until (start + light)
+            return start until (start + countsLight[card] + countsShadow[card])
         }
         fun centreOf(card: Int, reversed: Boolean): FloatArray {
             val centre = FloatArray(dimension)
@@ -197,8 +195,12 @@ class KeywordBook private constructor(
         val question = centred(questionVector)
 
         // поле: слово Старшего, ближайшее к теме вопроса
+        // поле должно быть И про карту, И про вопрос — иначе Старший говорит не своё
         val domainPick = rangeOf(major.first, major.second)
-            .maxByOrNull { dot(centredAt(it), question) } ?: return SharedCore(emptyList(), emptyList(), 0f)
+            .maxByOrNull {
+                val v = centredAt(it)
+                0.5f * dot(v, question) + 0.5f * dot(v, domainCentre)
+            } ?: return SharedCore(emptyList(), emptyList(), 0f)
         val fieldScore = dot(centredAt(domainPick), domainCentre)
 
         // содержание: слово Младшего, уместное в этом поле

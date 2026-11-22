@@ -572,8 +572,9 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
             val active = focusLayer < 0 || focusLayer == index
             val reversed = current.lines.getOrNull(index)?.reversed
                 ?: (index == 0 && current.reversed)
+            val showArrow = current.lines.size != 2
             Text(
-                text = card.title.lowercase() + "\u00A0" + (if (reversed) "↓" else "↑"),
+                text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
                 maxLines = 1,
                 softWrap = false,
                 style = TextStyle(

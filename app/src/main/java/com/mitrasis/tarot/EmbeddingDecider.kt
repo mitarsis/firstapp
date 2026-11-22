@@ -80,7 +80,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         val picks: List<Pair<Int, Boolean>> = if (layers == 2) {
             val major = random.nextInt(MAJOR_COUNT)
             val minor = MAJOR_COUNT + random.nextInt(cards.size - MAJOR_COUNT)
-            listOf(major to (random.nextFloat() < 0.5f), minor to (random.nextFloat() < 0.5f))
+            // положение в паре не разыгрывается: у карты берутся все смыслы
+            listOf(major to false, minor to false)
         } else {
             val deckSize = cards.size * 2
             (0 until deckSize).shuffled(random).take(layers.coerceIn(1, 3)).map { slot ->
