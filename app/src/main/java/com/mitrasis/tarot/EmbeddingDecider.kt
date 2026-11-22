@@ -105,6 +105,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             vector
         )
         val shared = core.tags
+        val main = entries.first()
         return CardAnswer(
             card = Deck.byId(main.third),
             reversed = main.first.reversed,

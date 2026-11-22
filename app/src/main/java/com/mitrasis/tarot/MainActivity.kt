@@ -603,12 +603,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
                         color = Color.Black.copy(alpha = 0.8f),
                         blurRadius = 8f
                     )
-                ),
-                color = if (active) {
-                    Color(0xFFE8DFCB).copy(alpha = 0.85f)
-                } else {
-                    Color(0xFFE8DFCB).copy(alpha = 0.25f)
-                }
+                )
             )
         }
     }
