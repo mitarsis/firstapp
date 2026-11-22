@@ -195,9 +195,13 @@ class KeywordBook private constructor(
         val question = centred(questionVector)
 
         // поле: слово Старшего, ближайшее к теме вопроса
-        // домен — только от Старшего: вопрос на него не влияет
-        val domainPick = rangeOf(major.first, major.second)
-            .maxByOrNull { dot(centredAt(it), domainCentre) }
+        // домен — только от Старшего: слово задано вручную в domains.txt
+        val minorRangeForDomain = rangeOf(major.first, major.second)
+        val manual = Domains.of(major.first)
+        val domainPick = (if (manual != null) {
+            minorRangeForDomain.firstOrNull { keywords[it].equals(manual, ignoreCase = true) }
+        } else null)
+            ?: minorRangeForDomain.maxByOrNull { dot(centredAt(it), domainCentre) }
             ?: return SharedCore(emptyList(), emptyList(), 0f)
         val fieldScore = dot(centredAt(domainPick), domainCentre)
 

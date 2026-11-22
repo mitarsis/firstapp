@@ -114,6 +114,7 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
         GenreGate.load(ctx)
         Phrases.load(ctx)
         Morph.load(ctx)
+        Domains.load(ctx)
         val (genre, axis) = GenreGate.decide(vector)
         val core = keywords.sharedTags(
             entries.map { it.third to it.first.reversed },
