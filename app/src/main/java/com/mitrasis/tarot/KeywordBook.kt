@@ -202,18 +202,19 @@ class KeywordBook private constructor(
         val fieldScore = dot(centredAt(domainPick), domainCentre)
 
         // содержание: слово Младшего, уместное в этом поле
-        // остальное — через вопрос, но лишь в пределах домена
-        val ranked = rangeOf(minor.first, minor.second).map { index ->
-            val vector = centredAt(index)
-            val score = 0.75f * dot(vector, question) + 0.25f * dot(vector, contentCentre)
-            Triple(index, score, dot(vector, domainCentre))
-        }.sortedByDescending { it.second }
-
-        val threshold = ranked.map { it.third }.sorted()[ranked.size * 2 / 5]
+        // шаг второй: сначала отсев по Старшему
+        val minorRange = rangeOf(minor.first, minor.second)
+        val fieldScores = minorRange.map { dot(centredAt(it), domainCentre) }.sorted()
+        val threshold = fieldScores[fieldScores.size * 2 / 5]
+        //
+        // шаг третий: из оставшихся берём близкое к вопросу
+        val ranked = minorRange
+            .filter { dot(centredAt(it), domainCentre) >= threshold }
+            .map { index -> Triple(index, dot(centredAt(index), question), dot(centredAt(index), domainCentre)) }
+            .sortedByDescending { it.second }
         val out = LinkedHashMap<String, String>()
         out[keywords[domainPick].lowercase().take(5)] = keywords[domainPick]
-        for ((index, _, inField) in ranked) {
-            if (inField < threshold) continue
+        for ((index, _, _) in ranked) {
             val root = keywords[index].lowercase().take(5)
             if (out.containsKey(root)) continue
             out[root] = keywords[index]
