@@ -77,12 +77,12 @@ class KeywordBook private constructor(
         limit: Int = 6
     ): SharedCore {
         if (cards.isEmpty() || vectors.isEmpty()) return SharedCore(emptyList(), emptyList(), 0f)
-        // Старший задаёт поле, остальные карты читаются внутри него.
-        // Если Старших нет — работает триангуляция.
-        val major = cards.firstOrNull { it.first < MAJOR_CARDS }
-        if (major != null && cards.size >= 2) {
-            val rest = cards.filter { it !== major }
-            return domainCore(major, rest, questionVector, limit)
+        if (cards.size == 2) {
+            val major = cards.firstOrNull { it.first < MAJOR_CARDS }
+            val minor = cards.firstOrNull { it.first >= MAJOR_CARDS }
+            if (major != null && minor != null) {
+                return domainCore(major, minor, questionVector, limit)
+            }
         }
         val dimension = vectors[0].size
 
@@ -169,7 +169,7 @@ class KeywordBook private constructor(
      */
     private fun domainCore(
         major: Pair<Int, Boolean>,
-        minors: List<Pair<Int, Boolean>>,
+        minor: Pair<Int, Boolean>,
         questionVector: FloatArray,
         limit: Int
     ): SharedCore {
@@ -191,6 +191,7 @@ class KeywordBook private constructor(
         }
 
         val domainCentre = centreOf(major.first, major.second)
+        val contentCentre = centreOf(minor.first, minor.second)
         val question = centred(questionVector)
 
         // поле: слово Старшего, ближайшее к теме вопроса
@@ -205,27 +206,22 @@ class KeywordBook private constructor(
         val fieldScore = dot(centredAt(domainPick), domainCentre)
 
         // содержание: слово Младшего, уместное в этом поле
-        // шаг второй и третий: для каждой карты — отсев по домену, затем выбор по вопросу
+        // шаг второй: сначала отсев по Старшему
+        val minorRange = rangeOf(minor.first, minor.second)
+        val fieldScores = minorRange.map { dot(centredAt(it), domainCentre) }.sorted()
+        val threshold = fieldScores[fieldScores.size * 2 / 5]
+        //
+        // шаг третий: из оставшихся берём близкое к вопросу
+        val ranked = minorRange
+            .filter { dot(centredAt(it), domainCentre) >= threshold }
+            .map { index -> Triple(index, dot(centredAt(index), question), dot(centredAt(index), domainCentre)) }
+            .sortedByDescending { it.second }
         val out = LinkedHashMap<String, String>()
         out[keywords[domainPick].lowercase().take(5)] = keywords[domainPick]
-
-        for (minor in minors) {
-            val range = rangeOf(minor.first, minor.second)
-            if (range.isEmpty()) continue
-            val fieldScores = range.map { dot(centredAt(it), domainCentre) }.sorted()
-            val threshold = fieldScores[fieldScores.size * 2 / 5]
-            val ranked = range
-                .filter { dot(centredAt(it), domainCentre) >= threshold }
-                .map { index -> index to dot(centredAt(index), question) }
-                .sortedByDescending { it.second }
-            var taken = 0
-            for ((index, _) in ranked) {
-                val root = keywords[index].lowercase().take(5)
-                if (out.containsKey(root)) continue
-                out[root] = keywords[index]
-                taken++
-                if (taken >= 2 || out.size >= limit) break
-            }
+        for ((index, _, _) in ranked) {
+            val root = keywords[index].lowercase().take(5)
+            if (out.containsKey(root)) continue
+            out[root] = keywords[index]
             if (out.size >= limit) break
         }
         val tags = out.values.toList()
