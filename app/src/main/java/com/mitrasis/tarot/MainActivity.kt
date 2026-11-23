@@ -115,12 +115,57 @@ private fun TableBackdrop() {
             )
         }
     }
+    // медленное вращение и дыхание: подложка живёт, но не отвлекает
+    val spell by androidx.compose.animation.core.rememberInfiniteTransition(label = "spell").animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(48000, easing = androidx.compose.animation.core.LinearEasing)
+        ),
+        label = "spell"
+    )
+    val breath = 0.5f + 0.5f * kotlin.math.sin(spell * kotlin.math.PI.toFloat() / 180f * 3f)
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(brush = Brush.radialGradient(
             colors = listOf(Color(0xFF1A1620), TABLE),
             center = Offset(size.width * 0.5f, size.height * 0.38f),
             radius = size.height * 0.75f
         ))
+
+        val center = Offset(size.width * 0.5f, size.height * 0.38f)
+
+        // вращающееся сияние: два сектора уходят по кругу
+        androidx.compose.ui.graphics.drawscope.rotate(spell, pivot = center) {
+            drawCircle(
+                brush = Brush.sweepGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color(0xFF6D3BD8).copy(alpha = 0.10f),
+                        Color.Transparent,
+                        Color(0xFF1FA3B8).copy(alpha = 0.08f),
+                        Color.Transparent
+                    ),
+                    center = center
+                ),
+                radius = size.height * (0.55f + 0.03f * breath),
+                center = center,
+                blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+            )
+        }
+
+        // дышащие кольца
+        for (ring in 0 until 3) {
+            val phaseBreath = 0.5f + 0.5f * kotlin.math.sin(
+                spell * kotlin.math.PI.toFloat() / 180f * (2f + ring) + ring
+            )
+            drawCircle(
+                color = FOIL.copy(alpha = 0.035f + 0.03f * phaseBreath),
+                radius = size.height * (0.18f + 0.10f * ring + 0.02f * phaseBreath),
+                center = center,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f)
+            )
+        }
         sparks.forEach { spark ->
             drawCircle(
                 color = FOIL.copy(alpha = spark.alpha),
@@ -593,13 +638,13 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
                 text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
                 maxLines = 2,
                 softWrap = true,
-                color = tint.copy(alpha = if (active) 0.75f else 0.30f),
+                color = tint.copy(alpha = if (active) 0.98f else 0.45f),
                 style = TextStyle(
                     fontSize = 10.sp,
                     letterSpacing = 1.2.sp,
                     shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.8f),
-                        blurRadius = 8f
+                        color = if (active) tint.copy(alpha = 0.85f) else tint.copy(alpha = 0.35f),
+                        blurRadius = if (active) 14f else 8f
                     )
                 )
             )
