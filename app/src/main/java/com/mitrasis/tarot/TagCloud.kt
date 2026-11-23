@@ -55,24 +55,36 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             val cy = size.height / 2f
             val radius = minOf(cx, cy) * 0.82f
 
-            // дыхание света за сферой: живёт в той же канве, поэтому не дёргает облако
-            val breath = 0.55f + 0.45f * (0.5f + 0.5f * sin(spin * PI.toFloat() / 180f))
-            drawCircle(
-                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFFF2A93B).copy(alpha = 0.16f * breath),
-                        Color(0xFF3FC6DC).copy(alpha = 0.10f * breath),
-                        Color(0xFFA45BE8).copy(alpha = 0.06f * breath),
-                        Color.Transparent
-                    ),
-                    center = androidx.compose.ui.geometry.Offset(cx, cy),
-                    radius = radius * 1.25f
-                ),
-                radius = radius * 1.25f,
-                center = androidx.compose.ui.geometry.Offset(cx, cy)
+            // Туманность: облака света привязаны к тегам — их положение и глубина
+            // берутся из той же сферы, поэтому картинка «растёт» из расклада.
+            val nebula = listOf(
+                Color(0xFF6D3BD8), Color(0xFF1FA3B8), Color(0xFFC8389B),
+                Color(0xFFE08A2B), Color(0xFF3F6FD8)
             )
+            val breathe = 0.75f + 0.25f * (0.5f + 0.5f * sin(yaw * PI.toFloat() / 180f))
 
-            val tagIndex = tags.withIndex().associate { it.value to it.index }
+            // общий фон: несколько больших облаков, медленно плывущих вокруг оси
+            for (i in 0 until 5) {
+                val angle = yawRad * 0.6 + i * 1.27
+                val cloudRadius = radius * (0.55f + 0.10f * i)
+                val bx = cx + (cos(angle) * radius * 0.30).toFloat()
+                val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
+                val tint = nebula[i % nebula.size]
+                drawCircle(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            tint.copy(alpha = 0.13f * breathe),
+                            tint.copy(alpha = 0.05f * breathe),
+                            Color.Transparent
+                        ),
+                        center = androidx.compose.ui.geometry.Offset(bx, by),
+                        radius = cloudRadius
+                    ),
+                    radius = cloudRadius,
+                    center = androidx.compose.ui.geometry.Offset(bx, by),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                )
+            }
             val golden = PI * (1 + sqrt(5.0))
             val points = tags.mapIndexed { index, tag ->
                 val phi = acos(1 - 2 * (index + 0.5) / tags.size)
@@ -115,6 +127,28 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 }
                 return android.graphics.Typeface.create(family, style)
             }
+            // свет вокруг каждого тега: чем ближе к зрителю, тем плотнее
+            for ((p, tag) in rotated) {
+                val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
+                val tagRadius = radius * (0.22f + 0.18f * depth)
+                val tint = nebula[Math.floorMod(tag.hashCode(), nebula.size)]
+                val bx = cx + p.first * radius * 0.85f
+                val by = cy + p.second * radius * 0.85f
+                drawCircle(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            tint.copy(alpha = 0.10f + 0.10f * depth),
+                            Color.Transparent
+                        ),
+                        center = androidx.compose.ui.geometry.Offset(bx, by),
+                        radius = tagRadius
+                    ),
+                    radius = tagRadius,
+                    center = androidx.compose.ui.geometry.Offset(bx, by),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                )
+            }
+
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
                 typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)

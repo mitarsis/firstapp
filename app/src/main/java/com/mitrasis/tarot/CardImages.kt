@@ -294,18 +294,12 @@ fun CardStack(
                 val dstW = (image.width * fit).toInt()
                 val dstH = (image.height * fit).toInt()
 
-                // параллакс: слои смещаются с разной силой, но умеренно,
-                // чтобы не было ощущения «третья карта уехала»
+                // Карта всегда занимает рамку целиком: никаких сдвигов.
+                // Вместо движения — линза: по изображению бежит волна искажения.
                 val weight = 1f - index * 0.20f
-                // сумма двух синусов: движение не повторяется по кругу и не дёргается
-                val driftScale = if (cards.size > 1 && focusIndex < 0) 1f else 0f
-                // ровный круг вместо суммы синусов: скорость постоянная, без рывков
-                val s1 = sin(phase + index * 0.55f)
-                val c1 = cos(phase + index * 0.55f)
-                val floatX = s1 * 0.028f * weight * driftScale
-                val floatY = c1 * 0.016f * weight * driftScale
-                val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight + floatX * w
-                val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight + floatY * h
+                val lensScale = if (cards.size > 1 && focusIndex < 0) 1f else 0.45f
+                val dx = (w - dstW) / 2f
+                val dy = (h - dstH) / 2f
 
                 // мягкое свечение: тот же слой, чуть крупнее и прозрачнее
                 drawImage(
@@ -326,23 +320,33 @@ fun CardStack(
                     blendMode = BlendMode.Screen
                 )
 
-                drawImage(
-                    image = image,
-                    srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(image.width, image.height),
-                    dstOffset = IntOffset(dx.toInt(), dy.toInt()),
-                    dstSize = IntSize(dstW, dstH),
-                    alpha = layerAlpha,
-                    colorFilter = if (tinted) {
-                        ColorFilter.tint(
-                            channelColor(index, channelShift, cards.size),
-                            BlendMode.SrcIn
-                        )
-                    } else {
-                        null
-                    },
-                    blendMode = BlendMode.Screen
-                )
+                // линия рисуется полосами: волна проходит сквозь карту, а не двигает её
+                val strips = 34
+                for (strip in 0 until strips) {
+                    val top = dy + dstH * strip / strips
+                    val bottom = dy + dstH * (strip + 1) / strips
+                    val srcTop = image.height * strip / strips
+                    val srcBottom = image.height * (strip + 1) / strips
+                    val t = strip / (strips - 1f)
+                    val wave = sin(phase * 1.4f + t * 5.2f + index * 0.9f) * dstW * 0.020f * weight * lensScale
+                    drawImage(
+                        image = image,
+                        srcOffset = IntOffset(0, srcTop),
+                        srcSize = IntSize(image.width, (srcBottom - srcTop).coerceAtLeast(1)),
+                        dstOffset = IntOffset((dx + wave).toInt(), top.toInt()),
+                        dstSize = IntSize(dstW, (bottom - top).toInt().coerceAtLeast(1)),
+                        alpha = layerAlpha,
+                        colorFilter = if (tinted) {
+                            ColorFilter.tint(
+                                channelColor(index, channelShift, cards.size),
+                                BlendMode.SrcIn
+                            )
+                        } else {
+                            null
+                        },
+                        blendMode = BlendMode.Screen
+                    )
+                }
             }
         }
 
