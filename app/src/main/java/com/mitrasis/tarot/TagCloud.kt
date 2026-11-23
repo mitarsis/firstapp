@@ -14,9 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -37,10 +37,29 @@ import kotlin.math.sqrt
  */
 @Composable
 fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Modifier = Modifier) {
-    val scope = rememberCoroutineScope()
-    val yaw = remember { androidx.compose.animation.core.Animatable(-20f) }
-    val pitch = remember { androidx.compose.animation.core.Animatable(10f) }
+    var yaw by remember { mutableStateOf(-20f) }
+    var pitch by remember { mutableStateOf(10f) }
+    var velocity by remember { mutableStateOf(Offset.Zero) }
+    var dragging by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
+
+    // Инерция считается по кадрам: скорость гасится множителем, пока не упадёт до нуля
+    LaunchedEffect(Unit) {
+        var last = 0L
+        while (true) {
+            withFrameNanos { now ->
+                val dt = if (last == 0L) 0f else ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
+                last = now
+                if (!dragging && velocity != Offset.Zero) {
+                    yaw += velocity.x * dt
+                    pitch += velocity.y * dt
+                    val damp = (1f - 1.15f * dt).coerceIn(0f, 1f)
+                    val next = velocity * damp
+                    velocity = if (next.getDistance() < 2f) Offset.Zero else next
+                }
+            }
+        }
+    }
 
     val spin by rememberInfiniteTransition(label = "cloud").animateFloat(
         initialValue = 0f,
@@ -51,29 +70,30 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
 
     Box(modifier.pointerInput(Unit) {
         detectDragGestures(
-            onDragStart = { tracker.resetTracking() },
+            onDragStart = {
+                dragging = true
+                velocity = Offset.Zero
+                tracker.resetTracking()
+            },
             onDrag = { change, drag ->
                 change.consume()
                 tracker.addPosition(change.uptimeMillis, change.position)
-                scope.launch {
-                    yaw.snapTo(yaw.value + drag.x * 0.22f)
-                    pitch.snapTo(pitch.value + drag.y * 0.22f)
-                }
+                yaw += drag.x * 0.30f
+                pitch += drag.y * 0.30f
             },
             onDragEnd = {
-                val velocity = tracker.calculateVelocity()
-                scope.launch {
-                    yaw.animateDecay(
-                        initialVelocity = velocity.x * 0.22f,
-                        animationSpec = androidx.compose.animation.core.exponentialDecay(1.6f)
-                    )
-                }
-                scope.launch {
-                    pitch.animateDecay(
-                        initialVelocity = velocity.y * 0.22f,
-                        animationSpec = androidx.compose.animation.core.exponentialDecay(1.6f)
-                    )
-                }
+                dragging = false
+                val raw = tracker.calculateVelocity()
+                // ограничиваем рывок, иначе облако улетает в бесконечность
+                val cap = 1400f
+                velocity = Offset(
+                    raw.x.coerceIn(-cap, cap) * 0.30f,
+                    raw.y.coerceIn(-cap, cap) * 0.30f
+                )
+            },
+            onDragCancel = {
+                dragging = false
+                velocity = Offset.Zero
             }
         )
     }) {
@@ -95,8 +115,8 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 ) to tag
             }
 
-            val yawRad = Math.toRadians((yaw.value + spin).toDouble())
-            val pitchRad = Math.toRadians(pitch.value.toDouble())
+            val yawRad = Math.toRadians((yaw + spin).toDouble())
+            val pitchRad = Math.toRadians(pitch.toDouble())
             val rotated = points.map { (p, tag) ->
                 val px = p.first.toDouble()
                 val py = p.second.toDouble()
