@@ -136,7 +136,7 @@ private fun TableBackdrop() {
         val center = Offset(size.width * 0.5f, size.height * 0.38f)
 
         // вращающееся сияние: два сектора уходят по кругу
-        androidx.compose.ui.graphics.drawscope.rotate(spell, pivot = center) {
+        rotate(spell, pivot = center) {
             drawCircle(
                 brush = Brush.sweepGradient(
                     colors = listOf(
