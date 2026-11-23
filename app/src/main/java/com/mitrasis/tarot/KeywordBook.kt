@@ -107,7 +107,6 @@ class KeywordBook private constructor(
         if (centres.isEmpty()) return SharedCore(emptyList(), emptyList(), 0f)
 
         // 1. триангуляция: худшее совпадение с картами
-        val question = centred(questionVector)
         val worst = FloatArray(vectors.size)
         for (index in vectors.indices) {
             val vector = centredAt(index)
@@ -192,9 +191,7 @@ class KeywordBook private constructor(
 
         val domainCentre = centreOf(major.first, major.second)
         val contentCentre = centreOf(minor.first, minor.second)
-        val question = centred(questionVector)
 
-        // поле: слово Старшего, ближайшее к теме вопроса
         // домен — только от Старшего: слово задано вручную в domains.txt
         val minorRangeForDomain = rangeOf(major.first, major.second)
         val manual = Domains.of(major.first)
@@ -209,12 +206,12 @@ class KeywordBook private constructor(
         // шаг второй: сначала отсев по Старшему
         val minorRange = rangeOf(minor.first, minor.second)
         val fieldScores = minorRange.map { dot(centredAt(it), domainCentre) }.sorted()
-        val threshold = fieldScores[fieldScores.size / 4]
+        val threshold = fieldScores[fieldScores.size / 2]
         //
-        // шаг третий: из оставшихся берём близкое к вопросу
+        // шаг третий: из оставшихся берём самое характерное для самой карты
         val ranked = minorRange
             .filter { dot(centredAt(it), domainCentre) >= threshold }
-            .map { index -> Triple(index, dot(centredAt(index), question), dot(centredAt(index), domainCentre)) }
+            .map { index -> Triple(index, dot(centredAt(index), contentCentre), dot(centredAt(index), domainCentre)) }
             .sortedByDescending { it.second }
         val out = LinkedHashMap<String, String>()
         out[keywords[domainPick].lowercase().take(5)] = keywords[domainPick]

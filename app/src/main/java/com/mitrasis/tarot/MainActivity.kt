@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
             TarotTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = TABLE) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        StarField()
                         TableBackdrop()
                         TarotApp()
                     }
@@ -410,6 +411,8 @@ fun TarotApp() {
                     )
                 }
         ) {
+            val shift = if (channelsAnimating && answer?.alternatives?.isNotEmpty() == true && focusLayer < 0)
+                rotatingChannels else 0f
             val shown = answer
             if (shown == null) {
                 CardBack(
@@ -431,13 +434,7 @@ fun TarotApp() {
                     reversed = shown.lines.map { it.reversed },
                     focusIndex = focusLayer,
                     parallax = if (focusLayer >= 0) 0f to 0f else (tilt.first * 0.3f) to (tilt.second * 0.3f),
-                    channelShift = if (
-                        channelsAnimating && shown.alternatives.isNotEmpty() && focusLayer < 0
-                    ) {
-                        rotatingChannels
-                    } else {
-                        0f
-                    },
+                    channelShift = shift,
                     modifier = Modifier.fillMaxSize()
                 )
                 }
@@ -516,13 +513,13 @@ fun TarotApp() {
                 text = "триангуляция",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 3) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
-                modifier = Modifier.clickable { layers = 3 }
+                modifier = Modifier.clickable { if (layers != 3) { layers = 3; answer = null; question = "" } }
             )
             Text(
                 text = "домен",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 2) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
-                modifier = Modifier.clickable { layers = 2 }
+                modifier = Modifier.clickable { if (layers != 2) { layers = 2; answer = null; question = "" } }
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -578,7 +575,7 @@ private fun looksLikePentagram(points: List<Offset>, size: androidx.compose.ui.u
 }
 
 @Composable
-private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
+private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f) {
     val current = answer ?: return
 
     Spacer(Modifier.height(6.dp))
@@ -588,8 +585,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
             val active = focusLayer < 0 || focusLayer == index
             val reversed = current.lines.getOrNull(index)?.reversed
                 ?: (index == 0 && current.reversed)
-            val tint = if (current.lines.size == 2) Color(0xFFEDE4D2)
-            else positionTint(index, reversed)
+            val tint = channelColor(index, shift, current.lines.size)
             val showArrow = current.lines.size != 2
             Text(
                 text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
@@ -609,13 +605,49 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int) {
     }
     Spacer(Modifier.height(12.dp))
     if (current.shared.isNotEmpty()) {
-        TagCloud(
-            tags = current.shared,
-            scores = current.sharedScores,
+        // мягкое свечение под облаком + плавное появление при смене расклада
+        val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "glow")
+            .animateFloat(
+                initialValue = 0.6f,
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.LinearEasing),
+                    androidx.compose.animation.core.RepeatMode.Reverse
+                ),
+                label = "glowPulse"
+            )
+        val appear by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(700),
+            label = "appear"
+        )
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
-        )
+                .height(220.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(
+                            Color(0xFFF2A93B).copy(alpha = 0.10f * pulse),
+                            Color(0xFFA45BE8).copy(alpha = 0.05f * pulse),
+                            Color.Transparent
+                        )
+                    ),
+                    radius = size.minDimension * 0.55f
+                )
+            }
+            TagCloud(
+                tags = current.shared,
+                scores = current.sharedScores,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .graphicsLayer { alpha = appear }
+            )
+        }
         val agreementText = when {
             current.lines.size == 2 -> "старший задаёт поле, младший — что в нём возможно"
             current.agreement >= 0.125f -> "карты говорят об одном"
@@ -779,5 +811,34 @@ private fun CrashScreen(trace: String, onShare: () -> Unit, onClear: () -> Unit)
         Text("отправить", style = TextStyle(fontSize = 13.sp), color = FOIL, modifier = Modifier.clickable { onShare() })
         Spacer(Modifier.height(14.dp))
         Text("стереть и попробовать снова", style = TextStyle(fontSize = 13.sp), color = FOIL, modifier = Modifier.clickable { onClear() })
+    }
+}
+
+/** Медленно мерцающая пыль на фоне: 48 точек, каждая со своим ритмом. */
+@Composable
+private fun StarField() {
+    val twinkle by androidx.compose.animation.core.rememberInfiniteTransition(label = "stars").animateFloat(
+        initialValue = 0f,
+        targetValue = (2.0 * Math.PI).toFloat(),
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(14000, easing = androidx.compose.animation.core.LinearEasing)
+        ),
+        label = "phase"
+    )
+    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+        val count = 48
+        for (i in 0 until count) {
+            val hash = i * 2654435761u
+            val x = ((hash % 1000u).toFloat() / 1000f) * size.width
+            val y = (((hash / 1000u) % 1000u).toFloat() / 1000f) * size.height
+            val rhythm = 0.35f + ((i % 7) / 7f)
+            val alpha = (0.10f + 0.16f * (0.5f + 0.5f * kotlin.math.sin(twinkle * rhythm + i))).coerceIn(0f, 0.3f)
+            val radius = if (i % 5 == 0) 1.6f else 1.0f
+            drawCircle(
+                color = Color(0xFFEDE4D2).copy(alpha = alpha),
+                radius = radius,
+                center = androidx.compose.ui.geometry.Offset(x, y)
+            )
+        }
     }
 }

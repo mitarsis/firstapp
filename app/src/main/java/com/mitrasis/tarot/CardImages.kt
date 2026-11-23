@@ -212,7 +212,7 @@ private fun buildHalftone(angle: Float, cell: Int = 7, dot: Float = 2.1f): andro
  * Цвет канала с учётом сдвига: при долгом нажатии каналы перетекают
  * друг в друга, поэтому между двумя цветами интерполируем.
  */
-private fun channelColor(index: Int, shift: Float, total: Int): Color {
+fun channelColor(index: Int, shift: Float, total: Int): Color {
     val palette = if (total <= 2) {
         listOf(Color(0xFFF2A93B), Color(0xFF3FC6DC))
     } else {
@@ -258,7 +258,7 @@ fun CardStack(
     val phase by drift.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(19000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(26000, easing = LinearEasing)),
         label = "phase"
     )
 
@@ -301,8 +301,8 @@ fun CardStack(
                 val driftScale = if (cards.size > 1 && focusIndex < 0) 1f else 0f
                 val s1 = sin(phase + index * 0.9f) + 0.35f * sin(2f * phase + index * 1.7f)
                 val c1 = cos(phase * 0.8f + index * 1.3f) + 0.35f * cos(2f * phase * 0.8f + index * 0.6f)
-                val floatX = s1 / 1.35f * 0.006f * weight * driftScale
-                val floatY = c1 / 1.35f * 0.0035f * weight * driftScale
+                val floatX = s1 / 1.35f * 0.014f * weight * driftScale
+                val floatY = c1 / 1.35f * 0.008f * weight * driftScale
                 val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight + floatX * w
                 val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight + floatY * h
 
