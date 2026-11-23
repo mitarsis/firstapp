@@ -99,6 +99,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
     }) {
         Canvas(Modifier.fillMaxSize()) {
             if (tags.isEmpty()) return@Canvas
+            try {
 
             val cx = size.width / 2f
             val cy = size.height / 2f
@@ -271,6 +272,9 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     (0xD2 * depth + 0x50 * (1 - depth)).toInt()
                 )
                 drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
+            }
+            } catch (t: Throwable) {
+                // рисование не должно ронять ответ
             }
         }
     }

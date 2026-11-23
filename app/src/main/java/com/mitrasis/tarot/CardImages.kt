@@ -274,6 +274,7 @@ fun CardStack(
     )
 
     Canvas(modifier = modifier.aspectRatio(0.62f)) {
+        try {
         val w = size.width
         val h = size.height
         val corner = androidx.compose.ui.geometry.CornerRadius(w * 0.045f, w * 0.045f)
@@ -426,5 +427,8 @@ fun CardStack(
             Color(0xFF7B62C8), Color(0xFFC9A96E), agree
         )
         drawFrame(w.toInt(), h.toInt(), frameColor)
+        } catch (t: Throwable) {
+            // сбой отрисовки слоёв не должен закрывать приложение
+        }
     }
 }
