@@ -239,8 +239,9 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 }
             }
 
-            val blurCache = Array(6) { level ->
-                android.graphics.BlurMaskFilter(level.toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+            // радиус 0 недопустим — фильтры строим с 1 по 5
+            val blurCache = Array(5) { index ->
+                android.graphics.BlurMaskFilter((index + 1).toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
             }
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
