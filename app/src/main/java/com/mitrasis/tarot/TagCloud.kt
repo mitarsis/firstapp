@@ -41,7 +41,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
     val spin by rememberInfiniteTransition(label = "cloud").animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(90000, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(tween(62000, easing = LinearEasing), RepeatMode.Restart),
         label = "spin"
     )
 
