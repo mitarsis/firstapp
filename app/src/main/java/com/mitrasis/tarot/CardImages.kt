@@ -320,6 +320,29 @@ fun CardStack(
                     blendMode = BlendMode.Screen
                 )
 
+                // киберпанк: расщепление каналов — циан влево, маджента вправо
+                val split = dstW * 0.004f
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset((dx - split).toInt(), dy.toInt()),
+                    dstSize = IntSize(dstW, dstH),
+                    alpha = layerAlpha * 0.5f,
+                    colorFilter = ColorFilter.tint(Color(0xFF19E3FF).copy(alpha = 0.5f), BlendMode.SrcIn),
+                    blendMode = BlendMode.Screen
+                )
+                drawImage(
+                    image = image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(image.width, image.height),
+                    dstOffset = IntOffset((dx + split).toInt(), dy.toInt()),
+                    dstSize = IntSize(dstW, dstH),
+                    alpha = layerAlpha * 0.5f,
+                    colorFilter = ColorFilter.tint(Color(0xFFFF2BD6).copy(alpha = 0.5f), BlendMode.SrcIn),
+                    blendMode = BlendMode.Screen
+                )
+
                 // линия рисуется полосами: волна проходит сквозь карту, а не двигает её
                 val strips = 34
                 for (strip in 0 until strips) {
@@ -328,7 +351,12 @@ fun CardStack(
                     val srcTop = image.height * strip / strips
                     val srcBottom = image.height * (strip + 1) / strips
                     val t = strip / (strips - 1f)
-                    val wave = sin(phase + t * 6.0f + index * 0.9f) * dstW * 0.018f * weight * lensScale
+                    var wave = sin(phase + t * 6.0f + index * 0.9f) * dstW * 0.018f * weight * lensScale
+                    // редкий цифровой сбой: полоса уезжает на несколько пикселей
+                    val tick = (phase * 2.2f).toInt()
+                    if ((strip * 31 + index * 17 + tick * 13) % 97 == 0) {
+                        wave += (if ((strip + tick) % 2 == 0) 1f else -1f) * dstW * 0.05f
+                    }
                     drawImage(
                         image = image,
                         srcOffset = IntOffset(0, srcTop),
@@ -361,6 +389,20 @@ fun CardStack(
             ),
             cornerRadius = corner
         )
+
+        // скан-линии поверх всех слоёв — признак «цифрового» изображения
+        clipPath(clip) {
+            var scan = 0f
+            while (scan < h) {
+                drawLine(
+                    color = Color.Black.copy(alpha = 0.12f),
+                    start = androidx.compose.ui.geometry.Offset(0f, scan),
+                    end = androidx.compose.ui.geometry.Offset(w, scan),
+                    strokeWidth = 1f
+                )
+                scan += 4f
+            }
+        }
 
         drawFrame(w.toInt(), h.toInt())
     }
