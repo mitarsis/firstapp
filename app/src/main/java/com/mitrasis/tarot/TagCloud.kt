@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -35,8 +37,10 @@ import kotlin.math.sqrt
  */
 @Composable
 fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Modifier = Modifier) {
-    var yaw by remember { mutableStateOf(-20f) }
-    var pitch by remember { mutableStateOf(10f) }
+    val scope = rememberCoroutineScope()
+    val yaw = remember { androidx.compose.animation.core.Animatable(-20f) }
+    val pitch = remember { androidx.compose.animation.core.Animatable(10f) }
+    val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
 
     val spin by rememberInfiniteTransition(label = "cloud").animateFloat(
         initialValue = 0f,
@@ -46,12 +50,32 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
     )
 
     Box(modifier.pointerInput(Unit) {
-        detectDragGestures { change, drag ->
-            change.consume()
-            yaw += drag.x * 0.22f
-            pitch += drag.y * 0.22f
-            pitch %= 360f
-        }
+        detectDragGestures(
+            onDragStart = { tracker.resetTracking() },
+            onDrag = { change, drag ->
+                change.consume()
+                tracker.addPosition(change.uptimeMillis, change.position)
+                scope.launch {
+                    yaw.snapTo(yaw.value + drag.x * 0.22f)
+                    pitch.snapTo(pitch.value + drag.y * 0.22f)
+                }
+            },
+            onDragEnd = {
+                val velocity = tracker.calculateVelocity()
+                scope.launch {
+                    yaw.animateDecay(
+                        initialVelocity = velocity.x * 0.22f,
+                        animationSpec = androidx.compose.animation.core.exponentialDecay(1.6f)
+                    )
+                }
+                scope.launch {
+                    pitch.animateDecay(
+                        initialVelocity = velocity.y * 0.22f,
+                        animationSpec = androidx.compose.animation.core.exponentialDecay(1.6f)
+                    )
+                }
+            }
+        )
     }) {
         Canvas(Modifier.fillMaxSize()) {
             if (tags.isEmpty()) return@Canvas
@@ -71,8 +95,8 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 ) to tag
             }
 
-            val yawRad = Math.toRadians((yaw + spin).toDouble())
-            val pitchRad = Math.toRadians(pitch.toDouble())
+            val yawRad = Math.toRadians((yaw.value + spin).toDouble())
+            val pitchRad = Math.toRadians(pitch.value.toDouble())
             val rotated = points.map { (p, tag) ->
                 val px = p.first.toDouble()
                 val py = p.second.toDouble()
