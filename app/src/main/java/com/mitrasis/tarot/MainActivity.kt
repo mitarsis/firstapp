@@ -660,6 +660,15 @@ private fun CardBack(
     downloading: Boolean,
     progress: Float
 ) {
+    val flamePhase by androidx.compose.animation.core.rememberInfiniteTransition(label = "flame").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(5200, easing = androidx.compose.animation.core.LinearEasing)
+        ),
+        label = "flamePhase"
+    )
+
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawRoundRect(
@@ -686,6 +695,39 @@ private fun CardBack(
             path.close()
             drawPath(path, FOIL.copy(alpha = 0.35f),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.width * 0.003f))
+
+            // пламя бежит по контуру звезды: три языка, идущих друг за другом
+            val measure = androidx.compose.ui.graphics.PathMeasure().apply { setPath(path, false) }
+            val length = measure.length
+            if (length > 0f) {
+                for (tongue in 0 until 3) {
+                    val head = ((flamePhase + tongue * 0.33f) % 1f) * length
+                    val tail = (head + length * 0.10f).coerceAtMost(length)
+                    val piece = androidx.compose.ui.graphics.Path()
+                    measure.getSegment(head, tail, piece, true)
+                    val core = androidx.compose.ui.graphics.Path()
+                    measure.getSegment(head, (head + length * 0.04f).coerceAtMost(length), core, true)
+
+                    drawPath(
+                        piece,
+                        color = Color(0xFFF2A93B).copy(alpha = 0.18f),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = size.width * 0.022f,
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        ),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                    )
+                    drawPath(
+                        core,
+                        color = Color(0xFFFFD79A).copy(alpha = 0.95f),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = size.width * 0.006f,
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        ),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                    )
+                }
+            }
 
             // решётка «под тиснение»
             val step = size.width / 9f

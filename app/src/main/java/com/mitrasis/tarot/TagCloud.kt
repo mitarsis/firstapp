@@ -96,7 +96,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             val breathe = 0.75f + 0.25f * (0.5f + 0.5f * sin(spin * PI.toFloat() / 180f))
 
             // фон: несколько больших облаков, медленно плывущих вокруг оси
-            for (i in 0 until 3) {
+            for (i in 0 until 2) {
                 val angle = yawRad * 0.6 + i * 1.27
                 val cloudRadius = radius * (0.60f + 0.12f * i)
                 val bx = cx + (cos(angle) * radius * 0.30).toFloat()
@@ -126,18 +126,6 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val bx = cx + p.first * radius * 0.85f
                 val by = cy + p.second * radius * 0.85f
 
-                // широкий ореол — глубина
-                val halo = tagRadius * 1.9f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(tint.copy(alpha = 0.04f + 0.03f * depth), Color.Transparent),
-                        center = Offset(bx, by),
-                        radius = halo
-                    ),
-                    radius = halo,
-                    center = Offset(bx, by),
-                    blendMode = BlendMode.Screen
-                )
                 // ядро — ярче у значимых тегов
                 val weightOf = scores.getOrNull(order[tag] ?: -1)
                 val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
