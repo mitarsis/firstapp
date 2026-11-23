@@ -243,7 +243,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             }
 
             // Разводка по местам: сначала считаем размеры, потом раздвигаем пересечения
-            data class Slot(var x: Float, var y: Float, var size: Float, val w: Float, val h: Float, val tag: String)
+            data class Slot(var x: Float, var y: Float, var size: Float, val w: Float, val h: Float, val tag: String, val depth: Float)
             val placed = ArrayList<Slot>()
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
@@ -255,7 +255,8 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     size = textSize,
                     w = paint.measureText(tag),
                     h = textSize * 1.15f,
-                    tag = tag
+                    tag = tag,
+                    depth = depth
                 )
                 // пробуем сдвинуть вверх-вниз, при неудаче — уменьшить кегль
                 var attempt = 0
@@ -273,15 +274,20 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
 
             for (slot in placed) {
                 paint.textSize = slot.size
-                val depth = ((slot.y - cy) / radius).coerceIn(-1f, 1f)
-                paint.maskFilter = if (depth < 0f) {
-                    android.graphics.BlurMaskFilter((-depth) * 2.2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                val depth = slot.depth
+                paint.maskFilter = if (depth < 0.55f) {
+                    android.graphics.BlurMaskFilter((0.55f - depth) * 4.0f, android.graphics.BlurMaskFilter.Blur.NORMAL)
                 } else null
                 val index = order[slot.tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
-                val alpha = (100 + 155 * ((depth + 1f) / 2f)).toInt().coerceIn(0, 255)
-                paint.color = android.graphics.Color.argb(alpha, 0xED, 0xE4, 0xD2)
+                val alpha = (70 + 185 * depth).toInt().coerceIn(0, 255)
+                paint.color = android.graphics.Color.argb(
+                    alpha,
+                    (0xED * depth + 0x66 * (1 - depth)).toInt(),
+                    (0xE4 * depth + 0x5B * (1 - depth)).toInt(),
+                    (0xD2 * depth + 0x56 * (1 - depth)).toInt()
+                )
                 drawContext.canvas.nativeCanvas.drawText(slot.tag, slot.x, slot.y, paint)
             }
         }
