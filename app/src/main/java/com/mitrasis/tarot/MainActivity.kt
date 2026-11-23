@@ -828,11 +828,12 @@ private fun StarField() {
     androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
         val count = 48
         for (i in 0 until count) {
-            val hash = i * 2654435761u
-            val x = ((hash % 1000u).toFloat() / 1000f) * size.width
-            val y = (((hash / 1000u) % 1000u).toFloat() / 1000f) * size.height
+            val hash = ((i + 1).toLong() * 2654435761L) % 1000003L
+            val x = ((hash % 1000L).toFloat() / 1000f) * size.width
+            val y = (((hash / 1000L) % 1000L).toFloat() / 1000f) * size.height
             val rhythm = 0.35f + ((i % 7) / 7f)
-            val alpha = (0.10f + 0.16f * (0.5f + 0.5f * kotlin.math.sin(twinkle * rhythm + i))).coerceIn(0f, 0.3f)
+            val alpha = (0.10f + 0.16f * (0.5f + 0.5f * kotlin.math.sin(twinkle * rhythm + i.toFloat())))
+                .coerceIn(0f, 0.3f)
             val radius = if (i % 5 == 0) 1.6f else 1.0f
             drawCircle(
                 color = Color(0xFFEDE4D2).copy(alpha = alpha),

@@ -118,6 +118,8 @@ class KeywordBook private constructor(
             worst[index] = low - 0.02f * (frequency[index] - 1)
         }
 
+        val question = centred(questionVector)
+
         // тема вопроса: сам вопрос проецируем в пространство тегов,
         // усредняем ближайшие восемь — это и есть тема, а не формулировка
         val topic = FloatArray(dimension)
