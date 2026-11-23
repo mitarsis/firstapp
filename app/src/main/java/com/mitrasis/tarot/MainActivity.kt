@@ -585,13 +585,15 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             val active = focusLayer < 0 || focusLayer == index
             val reversed = current.lines.getOrNull(index)?.reversed
                 ?: (index == 0 && current.reversed)
-            val tint = channelColor(index, shift, current.lines.size)
+            val tint = androidx.compose.ui.graphics.lerp(
+                channelColor(index, shift, current.lines.size), Color(0xFF8D867B), 0.45f
+            )
             val showArrow = current.lines.size != 2
             Text(
                 text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
                 maxLines = 2,
                 softWrap = true,
-                color = tint.copy(alpha = if (active) 0.95f else 0.35f),
+                color = tint.copy(alpha = if (active) 0.75f else 0.30f),
                 style = TextStyle(
                     fontSize = 10.sp,
                     letterSpacing = 1.2.sp,
@@ -664,7 +666,7 @@ private fun CardBack(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            androidx.compose.animation.core.tween(5200, easing = androidx.compose.animation.core.LinearEasing)
+            androidx.compose.animation.core.tween(8000, easing = androidx.compose.animation.core.LinearEasing)
         ),
         label = "flamePhase"
     )

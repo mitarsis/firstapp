@@ -163,7 +163,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
-                paint.textSize = (size.minDimension * (0.055f + 0.075f * depth)).roundToInt().toFloat()
+                paint.textSize = ((size.minDimension * (0.055f + 0.075f * depth)) * 4f).roundToInt() / 4f
                 val index = order[tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
