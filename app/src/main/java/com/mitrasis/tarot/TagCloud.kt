@@ -156,6 +156,10 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
 
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
+                // без этих двух флагов Android округляет кегль и позицию до пикселя,
+                // отсюда «ступеньки» при вращении сферы
+                isSubpixelText = true
+                isLinearText = true
                 typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             }
 
@@ -163,7 +167,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
-                paint.textSize = ((size.minDimension * (0.055f + 0.075f * depth)) * 4f).roundToInt() / 4f
+                paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
                 val index = order[tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
@@ -174,7 +178,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     (0xE4 * depth + 0x55 * (1 - depth)).toInt(),
                     (0xD2 * depth + 0x50 * (1 - depth)).toInt()
                 )
-                drawContext.canvas.nativeCanvas.drawText(tag, x.roundToInt().toFloat(), y.roundToInt().toFloat(), paint)
+                drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
             }
         }
     }
