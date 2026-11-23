@@ -242,25 +242,47 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             }
 
+            // Разводка по местам: сначала считаем размеры, потом раздвигаем пересечения
+            data class Slot(var x: Float, var y: Float, var size: Float, val w: Float, val h: Float, val tag: String)
+            val placed = ArrayList<Slot>()
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                val x = cx + p.first * radius
-                val y = cy + p.second * radius
-                paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
-                paint.maskFilter = if (depth < 0.55f) {
-                    android.graphics.BlurMaskFilter((0.55f - depth) * 4.5f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                var textSize = size.minDimension * (0.055f + 0.075f * depth)
+                paint.textSize = textSize
+                var slot = Slot(
+                    x = cx + p.first * radius,
+                    y = cy + p.second * radius,
+                    size = textSize,
+                    w = paint.measureText(tag),
+                    h = textSize * 1.15f,
+                    tag = tag
+                )
+                // пробуем сдвинуть вверх-вниз, при неудаче — уменьшить кегль
+                var attempt = 0
+                while (attempt < 10 && placed.any { other ->
+                        kotlin.math.abs(other.x - slot.x) < (other.w + slot.w) / 2f + 6f &&
+                        kotlin.math.abs(other.y - slot.y) < (other.h + slot.h) / 2f + 4f
+                    }
+                ) {
+                    val step = (attempt / 2 + 1) * slot.h * 0.85f
+                    slot.y += if (attempt % 2 == 0) -step else step
+                    attempt++
+                }
+                placed += slot
+            }
+
+            for (slot in placed) {
+                paint.textSize = slot.size
+                val depth = ((slot.y - cy) / radius).coerceIn(-1f, 1f)
+                paint.maskFilter = if (depth < 0f) {
+                    android.graphics.BlurMaskFilter((-depth) * 2.2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
                 } else null
-                val index = order[tag] ?: -1
+                val index = order[slot.tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
-                val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
-                paint.color = android.graphics.Color.argb(
-                    alpha,
-                    (0xED * depth + 0x60 * (1 - depth)).toInt(),
-                    (0xE4 * depth + 0x55 * (1 - depth)).toInt(),
-                    (0xD2 * depth + 0x50 * (1 - depth)).toInt()
-                )
-                drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
+                val alpha = (100 + 155 * ((depth + 1f) / 2f)).toInt().coerceIn(0, 255)
+                paint.color = android.graphics.Color.argb(alpha, 0xED, 0xE4, 0xD2)
+                drawContext.canvas.nativeCanvas.drawText(slot.tag, slot.x, slot.y, paint)
             }
         }
     }
