@@ -222,6 +222,10 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 }
             }
 
+            // радиус 0 недопустим: фильтры строим сразу с 1..5 и переиспользуем
+            val blurCache = Array(5) { index ->
+                android.graphics.BlurMaskFilter((index + 1).toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+            }
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
                 // без этих двух флагов Android округляет кегль и позицию до пикселя,
