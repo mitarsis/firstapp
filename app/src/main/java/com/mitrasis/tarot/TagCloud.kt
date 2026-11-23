@@ -26,6 +26,7 @@ import kotlin.math.PI
 import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -83,6 +84,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to tag
             }.sortedBy { it.first.third }
 
+            val order = tags.withIndex().associate { it.value to it.index }
             val high = scores.maxOrNull() ?: 1f
             val low = scores.minOrNull() ?: 0f
             val span = (high - low).coerceAtLeast(1e-4f)
@@ -137,7 +139,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     blendMode = BlendMode.Screen
                 )
                 // ядро — ярче у значимых тегов
-                val weightOf = scores.getOrNull(tags.indexOf(tag))
+                val weightOf = scores.getOrNull(order[tag] ?: -1)
                 val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -173,8 +175,8 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
-                paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
-                val index = tags.indexOf(tag)
+                paint.textSize = (size.minDimension * (0.055f + 0.075f * depth)).roundToInt().toFloat()
+                val index = order[tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
@@ -184,7 +186,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     (0xE4 * depth + 0x55 * (1 - depth)).toInt(),
                     (0xD2 * depth + 0x50 * (1 - depth)).toInt()
                 )
-                drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
+                drawContext.canvas.nativeCanvas.drawText(tag, x.roundToInt().toFloat(), y.roundToInt().toFloat(), paint)
             }
         }
     }
