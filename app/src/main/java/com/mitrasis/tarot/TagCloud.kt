@@ -53,7 +53,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 if (!dragging && velocity != Offset.Zero) {
                     yaw += velocity.x * dt
                     pitch += velocity.y * dt
-                    val damp = (1f - 1.15f * dt).coerceIn(0f, 1f)
+                    val damp = (1f - 0.85f * dt).coerceIn(0f, 1f)
                     val next = velocity * damp
                     velocity = if (next.getDistance() < 2f) Offset.Zero else next
                 }
@@ -78,17 +78,17 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             onDrag = { change, drag ->
                 change.consume()
                 tracker.addPosition(change.uptimeMillis, change.position)
-                yaw += drag.x * 0.30f
-                pitch += drag.y * 0.30f
+                yaw += drag.x * 0.38f
+                pitch += drag.y * 0.38f
             },
             onDragEnd = {
                 dragging = false
                 val raw = tracker.calculateVelocity()
                 // ограничиваем рывок, иначе облако улетает в бесконечность
-                val cap = 1400f
+                val cap = 1800f
                 velocity = Offset(
-                    raw.x.coerceIn(-cap, cap) * 0.30f,
-                    raw.y.coerceIn(-cap, cap) * 0.30f
+                    raw.x.coerceIn(-cap, cap) * 0.38f,
+                    raw.y.coerceIn(-cap, cap) * 0.38f
                 )
             },
             onDragCancel = {
@@ -200,39 +200,48 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
 
             // пыль: чем быстрее вращение после броска, тем больше искр
             val speed = velocity.getDistance()
-            if (speed > 90f) {
+            if (speed > 35f) {
                 val dirX = velocity.x / speed
                 val dirY = velocity.y / speed
-                val sparks = (speed / 120f).toInt().coerceIn(1, 8)
+                val sparks = (speed / 70f).toInt().coerceIn(3, 16)
                 for (spark in 0 until sparks) {
                     val spread = ((spark * 37) % 100) / 100f - 0.5f
                     val sx = cx + dirX * radius * (0.55f + spread * 0.4f)
                     val sy = cy + dirY * radius * (0.55f + spread * 0.4f)
                     drawCircle(
-                        color = Color(0xFFF2A93B).copy(alpha = (speed / 1400f).coerceIn(0.05f, 0.35f)),
-                        radius = 1.2f + spread * 1.5f,
+                        color = Color(0xFFFFC46B).copy(alpha = (speed / 900f).coerceIn(0.12f, 0.6f)),
+                        radius = 2.0f + kotlin.math.abs(spread) * 3.0f,
                         center = Offset(sx, sy)
                     )
                 }
             }
 
-            // созвездие: тонкие связи между соседями по сфере
+            // созвездие: каждый тег связан с двумя ближайшими на сфере
             for (a in rotated.indices) {
-                for (b in a + 1 until rotated.size) {
+                val neighbours = rotated.indices
+                    .filter { it != a }
+                    .sortedByDescending { b ->
+                        val pa = rotated[a].first
+                        val pb = rotated[b].first
+                        pa.first * pb.first + pa.second * pb.second + pa.third * pb.third
+                    }
+                    .take(2)
+                for (b in neighbours) {
                     val pa = rotated[a].first
                     val pb = rotated[b].first
-                    val dot = pa.first * pb.first + pa.second * pb.second + pa.third * pb.third
-                    if (dot < 0.72f) continue
                     val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
                     drawLine(
-                        color = Color(0xFFD9CFC0).copy(alpha = 0.10f + 0.16f * depthAvg),
+                        color = Color(0xFFF2A93B).copy(alpha = 0.10f + 0.22f * depthAvg),
                         start = Offset(cx + pa.first * radius, cy + pa.second * radius),
                         end = Offset(cx + pb.first * radius, cy + pb.second * radius),
-                        strokeWidth = 1f
+                        strokeWidth = 1.1f
                     )
                 }
             }
 
+            val blurCache = Array(6) { level ->
+                android.graphics.BlurMaskFilter(level.toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+            }
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
                 // без этих двух флагов Android округляет кегль и позицию до пикселя,
