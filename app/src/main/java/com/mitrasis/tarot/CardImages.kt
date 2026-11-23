@@ -285,7 +285,7 @@ fun CardStack(
         clipPath(clip) {
             images.forEachIndexed { index, image ->
                 if (image == null) return@forEachIndexed
-                val layerAlpha = alphas.getOrElse(index) { 0f }
+                val layerAlpha = (alphas.getOrElse(index) { 0f } * if (cards.size > 1) 1.20f else 1f).coerceAtMost(1f)
                 if (layerAlpha <= 0.01f) return@forEachIndexed
 
                 // все слои одного размера: различаются цветом и прозрачностью,
@@ -354,7 +354,8 @@ fun CardStack(
                     var wave = sin(phase + t * 6.0f + index * 0.9f) * dstW * 0.018f * weight * lensScale
                     // редкий цифровой сбой: полоса уезжает на несколько пикселей
                     val tick = (phase * 2.2f).toInt()
-                    if ((strip * 31 + index * 17 + tick * 13) % 331 == 0) {
+                    val dice = kotlin.random.Random(tick * 7919 + index * 131 + strip).nextInt(520)
+                    if (dice == 0) {
                         wave += (if ((strip + tick) % 2 == 0) 1f else -1f) * dstW * 0.05f
                     }
                     drawImage(

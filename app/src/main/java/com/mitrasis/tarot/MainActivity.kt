@@ -381,6 +381,16 @@ fun TarotApp() {
             animationSpec = androidx.compose.animation.core.tween(180),
             label = "rotY"
         )
+        val breathScale by androidx.compose.animation.core.rememberInfiniteTransition(label = "breath")
+            .animateFloat(
+                initialValue = 0.992f,
+                targetValue = 1.012f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(6200, easing = androidx.compose.animation.core.LinearEasing),
+                    androidx.compose.animation.core.RepeatMode.Reverse
+                ),
+                label = "breath"
+            )
         val smoothX by androidx.compose.animation.core.animateFloatAsState(
             targetValue = if (tiltActive) -tilt.second * 14f else 0f,
             animationSpec = androidx.compose.animation.core.tween(180),
@@ -398,20 +408,8 @@ fun TarotApp() {
                     rotationX = smoothX
                     cameraDistance = 24f * density
                     val zoom = if (focusLayer >= 0) 1.03f else 1f
-                    scaleX = zoom
-                    scaleY = zoom
-                }
-                .drawBehind {
-                    // мягкая тень под картой
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent),
-                            center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 1.02f),
-                            radius = size.width * 0.7f
-                        ),
-                        topLeft = androidx.compose.ui.geometry.Offset(-size.width * 0.1f, size.height * 0.86f),
-                        size = androidx.compose.ui.geometry.Size(size.width * 1.2f, size.height * 0.3f)
-                    )
+                    scaleX = zoom * breathScale
+                    scaleY = zoom * breathScale
                 }
                 .pointerInput(answer, ready, busy, question) {
                     detectTapGestures(
@@ -883,8 +881,10 @@ private fun StarField() {
         val count = 64
         for (i in 0 until count) {
             val hash = ((i + 1).toLong() * 2654435761L) % 1000003L
-            val x = ((hash % 1000L).toFloat() / 1000f) * size.width
-            val y = (((hash / 1000L) % 1000L).toFloat() / 1000f) * size.height
+            val driftX = kotlin.math.sin(twinkle * 0.35f + i * 0.7f) * size.width * 0.012f
+            val driftY = kotlin.math.cos(twinkle * 0.28f + i * 1.1f) * size.height * 0.010f
+            val x = ((hash % 1000L).toFloat() / 1000f) * size.width + driftX
+            val y = (((hash / 1000L) % 1000L).toFloat() / 1000f) * size.height + driftY
             val rhythm = 0.35f + ((i % 7) / 7f)
             val alpha = (0.16f + 0.24f * (0.5f + 0.5f * kotlin.math.sin(twinkle * rhythm + i.toFloat())))
                 .coerceIn(0f, 0.45f)
