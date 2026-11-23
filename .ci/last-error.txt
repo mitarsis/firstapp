@@ -1,0 +1,56 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues FROM-CACHE
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources FROM-CACHE
+> Task :app:mergeDebugResources FROM-CACHE
+> Task :app:packageDebugResources FROM-CACHE
+> Task :app:parseDebugLocalResources FROM-CACHE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug FROM-CACHE
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug FROM-CACHE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:68:29 Unresolved reference 'yawRad'.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:68:42 Overload resolution ambiguity between candidates:
+fun String?.plus(other: Any?): String
+fun <T> Array<T>.plus(element: T): Array<T>
+fun DoubleArray.plus(element: Double): DoubleArray
+fun <T> Collection<T>.plus(element: T): List<T>
+fun <T> Iterable<T>.plus(element: T): List<T>
+fun <T> Set<T>.plus(element: T): Set<T>
+fun <T> Sequence<T>.plus(element: T): Sequence<T>
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:71:42 None of the following candidates is applicable:
+fun BigDecimal.times(other: BigDecimal): BigDecimal
+fun BigInteger.times(other: BigInteger): BigInteger
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:162:29 Unresolved reference 'tagIndex'.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:163:75 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.Int' was expected.
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795408987101.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 30s
+17 actionable tasks: 9 executed, 8 from cache
+=== test mismatches ===
