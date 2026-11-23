@@ -259,7 +259,9 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val y = cy + p.second * radius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
                 paint.maskFilter = if (depth < 0.55f) {
-                    android.graphics.BlurMaskFilter((0.55f - depth) * 4.5f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                    // берём готовый фильтр из кеша: радиус всегда 1..5, нулевого не бывает
+                    val level = (((0.55f - depth) * 6f).toInt()).coerceIn(1, 5)
+                    blurCache[level - 1]
                 } else null
                 val index = order[tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
