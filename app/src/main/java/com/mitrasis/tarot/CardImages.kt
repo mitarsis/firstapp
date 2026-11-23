@@ -258,7 +258,7 @@ fun CardStack(
     val phase by drift.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(26000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(12000, easing = LinearEasing)),
         label = "phase"
     )
 
@@ -299,10 +299,11 @@ fun CardStack(
                 val weight = 1f - index * 0.20f
                 // сумма двух синусов: движение не повторяется по кругу и не дёргается
                 val driftScale = if (cards.size > 1 && focusIndex < 0) 1f else 0f
-                val s1 = sin(phase + index * 0.9f) + 0.35f * sin(2f * phase + index * 1.7f)
-                val c1 = cos(phase * 0.8f + index * 1.3f) + 0.35f * cos(2f * phase * 0.8f + index * 0.6f)
-                val floatX = s1 / 1.35f * 0.014f * weight * driftScale
-                val floatY = c1 / 1.35f * 0.008f * weight * driftScale
+                // ровный круг вместо суммы синусов: скорость постоянная, без рывков
+                val s1 = sin(phase + index * 0.55f)
+                val c1 = cos(phase + index * 0.55f)
+                val floatX = s1 * 0.028f * weight * driftScale
+                val floatY = c1 * 0.016f * weight * driftScale
                 val dx = (w - dstW) / 2f + parallax.first * w * 0.09f * weight + floatX * w
                 val dy = (h - dstH) / 2f + parallax.second * h * 0.045f * weight + floatY * h
 

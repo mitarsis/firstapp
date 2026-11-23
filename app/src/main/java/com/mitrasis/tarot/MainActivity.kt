@@ -89,8 +89,8 @@ class MainActivity : ComponentActivity() {
             TarotTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = TABLE) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        StarField()
                         TableBackdrop()
+                        StarField()
                         TarotApp()
                     }
                 }
@@ -605,49 +605,13 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
     }
     Spacer(Modifier.height(12.dp))
     if (current.shared.isNotEmpty()) {
-        // мягкое свечение под облаком + плавное появление при смене расклада
-        val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "glow")
-            .animateFloat(
-                initialValue = 0.6f,
-                targetValue = 1f,
-                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                    androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.LinearEasing),
-                    androidx.compose.animation.core.RepeatMode.Reverse
-                ),
-                label = "glowPulse"
-            )
-        val appear by androidx.compose.animation.core.animateFloatAsState(
-            targetValue = 1f,
-            animationSpec = androidx.compose.animation.core.tween(700),
-            label = "appear"
-        )
-        Box(
+        TagCloud(
+            tags = current.shared,
+            scores = current.sharedScores,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(
-                            Color(0xFFF2A93B).copy(alpha = 0.10f * pulse),
-                            Color(0xFFA45BE8).copy(alpha = 0.05f * pulse),
-                            Color.Transparent
-                        )
-                    ),
-                    radius = size.minDimension * 0.55f
-                )
-            }
-            TagCloud(
-                tags = current.shared,
-                scores = current.sharedScores,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .graphicsLayer { alpha = appear }
-            )
-        }
+                .height(220.dp)
+        )
         val agreementText = when {
             current.lines.size == 2 -> "старший задаёт поле, младший — что в нём возможно"
             current.agreement >= 0.125f -> "карты говорят об одном"
@@ -826,15 +790,15 @@ private fun StarField() {
         label = "phase"
     )
     androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-        val count = 48
+        val count = 64
         for (i in 0 until count) {
             val hash = ((i + 1).toLong() * 2654435761L) % 1000003L
             val x = ((hash % 1000L).toFloat() / 1000f) * size.width
             val y = (((hash / 1000L) % 1000L).toFloat() / 1000f) * size.height
             val rhythm = 0.35f + ((i % 7) / 7f)
-            val alpha = (0.10f + 0.16f * (0.5f + 0.5f * kotlin.math.sin(twinkle * rhythm + i.toFloat())))
-                .coerceIn(0f, 0.3f)
-            val radius = if (i % 5 == 0) 1.6f else 1.0f
+            val alpha = (0.16f + 0.24f * (0.5f + 0.5f * kotlin.math.sin(twinkle * rhythm + i.toFloat())))
+                .coerceIn(0f, 0.45f)
+            val radius = if (i % 4 == 0) 2.1f else 1.3f
             drawCircle(
                 color = Color(0xFFEDE4D2).copy(alpha = alpha),
                 radius = radius,

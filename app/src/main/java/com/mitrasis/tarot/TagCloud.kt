@@ -55,6 +55,24 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             val cy = size.height / 2f
             val radius = minOf(cx, cy) * 0.82f
 
+            // дыхание света за сферой: живёт в той же канве, поэтому не дёргает облако
+            val breath = 0.55f + 0.45f * (0.5f + 0.5f * sin(spin * PI.toFloat() / 180f))
+            drawCircle(
+                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFF2A93B).copy(alpha = 0.16f * breath),
+                        Color(0xFF3FC6DC).copy(alpha = 0.10f * breath),
+                        Color(0xFFA45BE8).copy(alpha = 0.06f * breath),
+                        Color.Transparent
+                    ),
+                    center = androidx.compose.ui.geometry.Offset(cx, cy),
+                    radius = radius * 1.25f
+                ),
+                radius = radius * 1.25f,
+                center = androidx.compose.ui.geometry.Offset(cx, cy)
+            )
+
+            val tagIndex = tags.withIndex().associate { it.value to it.index }
             val golden = PI * (1 + sqrt(5.0))
             val points = tags.mapIndexed { index, tag ->
                 val phi = acos(1 - 2 * (index + 0.5) / tags.size)
@@ -107,7 +125,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
-                val index = tags.indexOf(tag)
+                val index = tagIndex[tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
