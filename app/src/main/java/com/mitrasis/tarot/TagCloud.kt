@@ -40,7 +40,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
     val spin by rememberInfiniteTransition(label = "cloud").animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(60000, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(tween(90000, easing = LinearEasing), RepeatMode.Restart),
         label = "spin"
     )
 
@@ -90,9 +90,9 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             val breathe = 0.75f + 0.25f * (0.5f + 0.5f * sin(spin * PI.toFloat() / 180f))
 
             // фон: несколько больших облаков, медленно плывущих вокруг оси
-            for (i in 0 until 5) {
+            for (i in 0 until 3) {
                 val angle = yawRad * 0.6 + i * 1.27
-                val cloudRadius = radius * (0.55f + 0.10f * i)
+                val cloudRadius = radius * (0.60f + 0.12f * i)
                 val bx = cx + (cos(angle) * radius * 0.30).toFloat()
                 val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
                 val tint = nebula[i % nebula.size]
@@ -115,14 +115,30 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             // свет вокруг каждого тега: генерируется самим облаком
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                val tagRadius = radius * (0.22f + 0.18f * depth)
+                val tagRadius = radius * (0.18f + 0.14f * depth)
                 val tint = nebula[Math.floorMod(tag.hashCode(), nebula.size)]
                 val bx = cx + p.first * radius * 0.85f
                 val by = cy + p.second * radius * 0.85f
+
+                // широкий ореол — глубина
+                val halo = tagRadius * 1.9f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(tint.copy(alpha = 0.04f + 0.03f * depth), Color.Transparent),
+                        center = Offset(bx, by),
+                        radius = halo
+                    ),
+                    radius = halo,
+                    center = Offset(bx, by),
+                    blendMode = BlendMode.Screen
+                )
+                // ядро — ярче у значимых тегов
+                val weightOf = scores.getOrNull(tags.indexOf(tag))
+                val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            tint.copy(alpha = 0.10f + 0.10f * depth),
+                            tint.copy(alpha = 0.07f + 0.12f * depth + 0.08f * importance),
                             Color.Transparent
                         ),
                         center = Offset(bx, by),

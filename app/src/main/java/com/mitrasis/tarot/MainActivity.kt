@@ -589,8 +589,8 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             val showArrow = current.lines.size != 2
             Text(
                 text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
-                maxLines = 1,
-                softWrap = false,
+                maxLines = 2,
+                softWrap = true,
                 color = tint.copy(alpha = if (active) 0.95f else 0.35f),
                 style = TextStyle(
                     fontSize = 10.sp,

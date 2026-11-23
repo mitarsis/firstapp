@@ -258,7 +258,7 @@ fun CardStack(
     val phase by drift.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(12000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing)),
         label = "phase"
     )
 
@@ -328,7 +328,7 @@ fun CardStack(
                     val srcTop = image.height * strip / strips
                     val srcBottom = image.height * (strip + 1) / strips
                     val t = strip / (strips - 1f)
-                    val wave = sin(phase * 1.4f + t * 5.2f + index * 0.9f) * dstW * 0.020f * weight * lensScale
+                    val wave = sin(phase + t * 6.0f + index * 0.9f) * dstW * 0.018f * weight * lensScale
                     drawImage(
                         image = image,
                         srcOffset = IntOffset(0, srcTop),
