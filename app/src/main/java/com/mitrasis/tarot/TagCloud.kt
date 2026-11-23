@@ -83,6 +83,10 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to tag
             }.sortedBy { it.first.third }
 
+            val high = scores.maxOrNull() ?: 1f
+            val low = scores.minOrNull() ?: 0f
+            val span = (high - low).coerceAtLeast(1e-4f)
+
             val nebula = listOf(
                 Color(0xFF6D3BD8), Color(0xFF1FA3B8), Color(0xFFC8389B),
                 Color(0xFFE08A2B), Color(0xFF3F6FD8)
@@ -150,9 +154,6 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 )
             }
 
-            val high = scores.maxOrNull() ?: 1f
-            val low = scores.minOrNull() ?: 0f
-            val span = (high - low).coerceAtLeast(1e-4f)
             fun face(score: Float): android.graphics.Typeface {
                 val level = (score - low) / span
                 val family = when {
