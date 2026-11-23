@@ -16,6 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -26,8 +29,8 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Облако тегов на сфере: вращается само, тянется пальцем.
- * Дальние слова мельче и бледнее, ближние крупнее — это и даёт глубину.
+ * Облако тегов на сфере плюс туманность, которая из них же и вырастает:
+ * каждое облако света привязано к положению тега, его глубине и его цвету.
  */
 @Composable
 fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Modifier = Modifier) {
@@ -51,40 +54,11 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
     }) {
         Canvas(Modifier.fillMaxSize()) {
             if (tags.isEmpty()) return@Canvas
+
             val cx = size.width / 2f
             val cy = size.height / 2f
             val radius = minOf(cx, cy) * 0.82f
 
-            // Туманность: облака света привязаны к тегам — их положение и глубина
-            // берутся из той же сферы, поэтому картинка «растёт» из расклада.
-            val nebula = listOf(
-                Color(0xFF6D3BD8), Color(0xFF1FA3B8), Color(0xFFC8389B),
-                Color(0xFFE08A2B), Color(0xFF3F6FD8)
-            )
-            val breathe = 0.75f + 0.25f * (0.5f + 0.5f * sin(yaw * PI.toFloat() / 180f))
-
-            // общий фон: несколько больших облаков, медленно плывущих вокруг оси
-            for (i in 0 until 5) {
-                val angle = yawRad * 0.6 + i * 1.27
-                val cloudRadius = radius * (0.55f + 0.10f * i)
-                val bx = cx + (cos(angle) * radius * 0.30).toFloat()
-                val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
-                val tint = nebula[i % nebula.size]
-                drawCircle(
-                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(
-                            tint.copy(alpha = 0.13f * breathe),
-                            tint.copy(alpha = 0.05f * breathe),
-                            Color.Transparent
-                        ),
-                        center = androidx.compose.ui.geometry.Offset(bx, by),
-                        radius = cloudRadius
-                    ),
-                    radius = cloudRadius,
-                    center = androidx.compose.ui.geometry.Offset(bx, by),
-                    blendMode = androidx.compose.ui.graphics.BlendMode.Screen
-                )
-            }
             val golden = PI * (1 + sqrt(5.0))
             val points = tags.mapIndexed { index, tag ->
                 val phi = acos(1 - 2 * (index + 0.5) / tags.size)
@@ -109,25 +83,36 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to tag
             }.sortedBy { it.first.third }
 
-            // значимость — не размером (он занят глубиной), а насыщенностью шрифта
-            val high = scores.maxOrNull() ?: 1f
-            val low = scores.minOrNull() ?: 0f
-            val span = (high - low).coerceAtLeast(1e-4f)
-            fun face(score: Float): android.graphics.Typeface {
-                val level = ((score - low) / span)
-                val style = when {
-                    level >= 0.66f -> android.graphics.Typeface.NORMAL
-                    level >= 0.33f -> android.graphics.Typeface.NORMAL
-                    else -> android.graphics.Typeface.NORMAL
-                }
-                val family = when {
-                    level >= 0.66f -> "sans-serif-medium"
-                    level >= 0.33f -> "sans-serif"
-                    else -> "sans-serif-light"
-                }
-                return android.graphics.Typeface.create(family, style)
+            val nebula = listOf(
+                Color(0xFF6D3BD8), Color(0xFF1FA3B8), Color(0xFFC8389B),
+                Color(0xFFE08A2B), Color(0xFF3F6FD8)
+            )
+            val breathe = 0.75f + 0.25f * (0.5f + 0.5f * sin(spin * PI.toFloat() / 180f))
+
+            // фон: несколько больших облаков, медленно плывущих вокруг оси
+            for (i in 0 until 5) {
+                val angle = yawRad * 0.6 + i * 1.27
+                val cloudRadius = radius * (0.55f + 0.10f * i)
+                val bx = cx + (cos(angle) * radius * 0.30).toFloat()
+                val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
+                val tint = nebula[i % nebula.size]
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            tint.copy(alpha = 0.13f * breathe),
+                            tint.copy(alpha = 0.05f * breathe),
+                            Color.Transparent
+                        ),
+                        center = Offset(bx, by),
+                        radius = cloudRadius
+                    ),
+                    radius = cloudRadius,
+                    center = Offset(bx, by),
+                    blendMode = BlendMode.Screen
+                )
             }
-            // свет вокруг каждого тега: чем ближе к зрителю, тем плотнее
+
+            // свет вокруг каждого тега: генерируется самим облаком
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val tagRadius = radius * (0.22f + 0.18f * depth)
@@ -135,18 +120,31 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val bx = cx + p.first * radius * 0.85f
                 val by = cy + p.second * radius * 0.85f
                 drawCircle(
-                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    brush = Brush.radialGradient(
                         colors = listOf(
                             tint.copy(alpha = 0.10f + 0.10f * depth),
                             Color.Transparent
                         ),
-                        center = androidx.compose.ui.geometry.Offset(bx, by),
+                        center = Offset(bx, by),
                         radius = tagRadius
                     ),
                     radius = tagRadius,
-                    center = androidx.compose.ui.geometry.Offset(bx, by),
-                    blendMode = androidx.compose.ui.graphics.BlendMode.Screen
+                    center = Offset(bx, by),
+                    blendMode = BlendMode.Screen
                 )
+            }
+
+            val high = scores.maxOrNull() ?: 1f
+            val low = scores.minOrNull() ?: 0f
+            val span = (high - low).coerceAtLeast(1e-4f)
+            fun face(score: Float): android.graphics.Typeface {
+                val level = (score - low) / span
+                val family = when {
+                    level >= 0.66f -> "sans-serif-medium"
+                    level >= 0.33f -> "sans-serif"
+                    else -> "sans-serif-light"
+                }
+                return android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
             }
 
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -159,7 +157,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
-                val index = tagIndex[tag] ?: -1
+                val index = tags.indexOf(tag)
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
