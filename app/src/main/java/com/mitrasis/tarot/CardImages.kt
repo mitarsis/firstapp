@@ -354,7 +354,7 @@ fun CardStack(
                     var wave = sin(phase + t * 6.0f + index * 0.9f) * dstW * 0.018f * weight * lensScale
                     // редкий цифровой сбой: полоса уезжает на несколько пикселей
                     val tick = (phase * 2.2f).toInt()
-                    if ((strip * 31 + index * 17 + tick * 13) % 97 == 0) {
+                    if ((strip * 31 + index * 17 + tick * 13) % 331 == 0) {
                         wave += (if ((strip + tick) % 2 == 0) 1f else -1f) * dstW * 0.05f
                     }
                     drawImage(
@@ -395,7 +395,7 @@ fun CardStack(
             var scan = 0f
             while (scan < h) {
                 drawLine(
-                    color = Color.Black.copy(alpha = 0.12f),
+                    color = Color.Black.copy(alpha = if (cards.size > 1) 0.045f else 0.12f),
                     start = androidx.compose.ui.geometry.Offset(0f, scan),
                     end = androidx.compose.ui.geometry.Offset(w, scan),
                     strokeWidth = 1f
