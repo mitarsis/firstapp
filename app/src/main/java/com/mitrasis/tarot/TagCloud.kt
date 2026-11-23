@@ -199,33 +199,29 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 return android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
             }
 
-            // пыль: искры летят по касательной к вращению, разброс — поперёк движения
-            val speed = velocity.getDistance()
-            if (speed > 35f) {
-                val dirX = velocity.x / speed
-                val dirY = velocity.y / speed
-                val perpX = -dirY
-                val perpY = dirX
-                val sparks = (speed / 60f).toInt().coerceIn(4, 20)
-                for (spark in 0 until sparks) {
-                    val a = ((spark * 37) % 100) / 100f - 0.5f          // поперёк
-                    val b = ((spark * 61) % 100) / 100f                 // вдоль
-                    val ring = radius * (0.35f + 0.55f * b)
-                    val sx = cx + perpX * ring + dirX * a * radius * 0.9f
-                    val sy = cy + perpY * ring + dirY * a * radius * 0.9f
-                    val alpha = (speed / 900f).coerceIn(0.10f, 0.55f) * (1f - b * 0.6f)
-                    drawCircle(
-                        color = Color(0xFFFFC46B).copy(alpha = alpha),
-                        radius = 1.6f + (1f - b) * 2.4f,
-                        center = Offset(sx, sy)
+            // созвездие: каждый тег связан с двумя ближайшими на сфере
+            for (a in rotated.indices) {
+                val neighbours = rotated.indices
+                    .filter { it != a }
+                    .sortedByDescending { b ->
+                        val pa = rotated[a].first
+                        val pb = rotated[b].first
+                        pa.first * pb.first + pa.second * pb.second + pa.third * pb.third
+                    }
+                    .take(2)
+                for (b in neighbours) {
+                    val pa = rotated[a].first
+                    val pb = rotated[b].first
+                    val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
+                    drawLine(
+                        color = Color(0xFFF2A93B).copy(alpha = 0.12f + 0.26f * depthAvg),
+                        start = Offset(cx + pa.first * radius, cy + pa.second * radius),
+                        end = Offset(cx + pb.first * radius, cy + pb.second * radius),
+                        strokeWidth = 1.2f
                     )
                 }
             }
 
-            // радиус 0 недопустим: фильтры строим сразу с 1..5 и переиспользуем
-            val blurCache = Array(5) { index ->
-                android.graphics.BlurMaskFilter((index + 1).toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
-            }
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
                 // без этих двух флагов Android округляет кегль и позицию до пикселя,
