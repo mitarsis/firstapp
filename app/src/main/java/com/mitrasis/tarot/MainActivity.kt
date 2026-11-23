@@ -88,11 +88,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TarotTheme {
+                var modeLayers by remember { mutableStateOf(3) }
                 Surface(modifier = Modifier.fillMaxSize(), color = TABLE) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        TableBackdrop()
+                        TableBackdrop(modeLayers)
                         StarField()
-                        TarotApp()
+                        TarotApp(layers = modeLayers, onLayersChange = { modeLayers = it })
                     }
                 }
             }
@@ -104,7 +105,7 @@ class MainActivity : ComponentActivity() {
 private data class Spark(val x: Float, val y: Float, val radius: Float, val alpha: Float)
 
 @Composable
-private fun TableBackdrop() {
+private fun TableBackdrop(mode: Int = 3) {
     val sparks = remember {
         val random = Random(77)
         List(90) {
@@ -128,8 +129,12 @@ private fun TableBackdrop() {
     val breath = 0.5f + 0.5f * kotlin.math.sin(spell * kotlin.math.PI.toFloat() / 180f * 3f)
 
     Canvas(modifier = Modifier.fillMaxSize()) {
+        // цветокоррекция по режиму: триангуляция холоднее, домен теплее
+        val warm = if (mode == 2) 0.55f else 0f
+        val top = androidx.compose.ui.graphics.lerp(Color(0xFF1A1620), Color(0xFF231A16), warm)
+        val bottom = androidx.compose.ui.graphics.lerp(TABLE, Color(0xFF17110E), warm)
         drawRect(brush = Brush.radialGradient(
-            colors = listOf(Color(0xFF1A1620), TABLE),
+            colors = listOf(top, bottom),
             center = Offset(size.width * 0.5f, size.height * 0.38f),
             radius = size.height * 0.75f
         ))
@@ -208,7 +213,7 @@ private fun rememberTilt(): Pair<Float, Float> {
 }
 
 @Composable
-fun TarotApp() {
+fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
     val context = LocalContext.current
     val crashFile = remember { File(context.filesDir, TarotAppClass.CRASH_FILE) }
     var crash by remember { mutableStateOf(crashFile.takeIf { it.exists() }?.readText()) }
@@ -258,7 +263,6 @@ fun TarotApp() {
     var note by remember { mutableStateOf("") }
     var showDiag by remember { mutableStateOf(false) }
     var focusLayer by remember { mutableStateOf(-1) }
-    var layers by remember { mutableStateOf(3) }
     var showGallery by remember { mutableStateOf(false) }
     val tilt = rememberTilt()
     var channelsAnimating by remember { mutableStateOf(false) }
@@ -479,6 +483,7 @@ fun TarotApp() {
                     focusIndex = focusLayer,
                     parallax = if (focusLayer >= 0) 0f to 0f else (tilt.first * 0.3f) to (tilt.second * 0.3f),
                     channelShift = shift,
+                    agreement = shown.agreement,
                     modifier = Modifier.fillMaxSize()
                 )
                 }
@@ -557,13 +562,13 @@ fun TarotApp() {
                 text = "триангуляция",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 3) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
-                modifier = Modifier.clickable { if (layers != 3) { layers = 3; answer = null; question = "" } }
+                modifier = Modifier.clickable { if (layers != 3) { onLayersChange(3); answer = null; question = "" } }
             )
             Text(
                 text = "домен",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 2) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
-                modifier = Modifier.clickable { if (layers != 2) { layers = 2; answer = null; question = "" } }
+                modifier = Modifier.clickable { if (layers != 2) { onLayersChange(2); answer = null; question = "" } }
             )
         }
         Spacer(Modifier.height(6.dp))

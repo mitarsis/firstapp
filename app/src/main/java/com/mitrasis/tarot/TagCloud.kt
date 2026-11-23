@@ -133,6 +133,23 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             val low = scores.minOrNull() ?: 0f
             val span = (high - low).coerceAtLeast(1e-4f)
 
+            // созвездие: тонкие связи между соседями по сфере
+            for (a in rotated.indices) {
+                for (b in a + 1 until rotated.size) {
+                    val pa = rotated[a].first
+                    val pb = rotated[b].first
+                    val dot = pa.first * pb.first + pa.second * pb.second + pa.third * pb.third
+                    if (dot < 0.72f) continue
+                    val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
+                    drawLine(
+                        color = Color(0xFFD9CFC0).copy(alpha = 0.05f + 0.10f * depthAvg),
+                        start = Offset(cx + pa.first * radius, cy + pa.second * radius),
+                        end = Offset(cx + pb.first * radius, cy + pb.second * radius),
+                        strokeWidth = 1f
+                    )
+                }
+            }
+
             val nebula = listOf(
                 Color(0xFF6D3BD8), Color(0xFF1FA3B8), Color(0xFFC8389B),
                 Color(0xFFE08A2B), Color(0xFF3F6FD8)
@@ -198,6 +215,24 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 return android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
             }
 
+            // пыль: чем быстрее вращение после броска, тем больше искр
+            val speed = velocity.getDistance()
+            if (speed > 90f) {
+                val dirX = velocity.x / speed
+                val dirY = velocity.y / speed
+                val sparks = (speed / 120f).toInt().coerceIn(1, 8)
+                for (spark in 0 until sparks) {
+                    val spread = ((spark * 37) % 100) / 100f - 0.5f
+                    val sx = cx + dirX * radius * (0.55f + spread * 0.4f)
+                    val sy = cy + dirY * radius * (0.55f + spread * 0.4f)
+                    drawCircle(
+                        color = Color(0xFFF2A93B).copy(alpha = (speed / 1400f).coerceIn(0.05f, 0.35f)),
+                        radius = 1.2f + spread * 1.5f,
+                        center = Offset(sx, sy)
+                    )
+                }
+            }
+
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textAlign = android.graphics.Paint.Align.CENTER
                 // без этих двух флагов Android округляет кегль и позицию до пикселя,
@@ -212,6 +247,9 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                 val x = cx + p.first * radius
                 val y = cy + p.second * radius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
+                paint.maskFilter = if (depth < 0.55f) {
+                    android.graphics.BlurMaskFilter((0.55f - depth) * 4.5f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                } else null
                 val index = order[tag] ?: -1
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)

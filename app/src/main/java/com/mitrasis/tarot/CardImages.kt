@@ -84,8 +84,11 @@ object CardImages {
  * Шершавая гравюрная рамка: несколько неровных процарапанных обводов
  * с пропусками, угловая штриховка и крапины — как у старой печатной доски.
  */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(width: Int, height: Int) {
-    val ink = androidx.compose.ui.graphics.Color(0xFFC0A276)
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(
+    width: Int,
+    height: Int,
+    ink: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(0xFFC0A276)
+) {
     val w = width.toFloat()
     val h = height.toFloat()
 
@@ -238,10 +241,18 @@ fun CardStack(
     focusIndex: Int = -1,
     parallax: Pair<Float, Float> = 0f to 0f,
     channelShift: Float = 0f,
+    agreement: Float = 0f,
     tinted: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val images = cards.map { rememberCardImage(context, it.id) }
+
+    // появление по одной карте: общий прогресс, у каждого слоя свой сдвиг
+    val appear = remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(cards) {
+        appear.snapTo(0f)
+        appear.animateTo(1f, androidx.compose.animation.core.tween(1100))
+    }
 
     val strongest = probabilities.maxOrNull()?.takeIf { it > 0f } ?: 1f
     val alphas = probabilities.mapIndexed { index, probability ->
@@ -285,7 +296,11 @@ fun CardStack(
         clipPath(clip) {
             images.forEachIndexed { index, image ->
                 if (image == null) return@forEachIndexed
-                val layerAlpha = (alphas.getOrElse(index) { 0f } * if (cards.size > 1) 1.20f else 1f).coerceAtMost(1f)
+                val base = (alphas.getOrElse(index) { 0f } * if (cards.size > 1) 1.20f else 1f).coerceAtMost(1f)
+                // слой вступает со сдвигом: 0, 0.35, 0.7 от общего прогресса
+                val layerAppear = ((appear.value - index * 0.22f) / 0.55f).coerceIn(0f, 1f)
+                val layerAlpha = base * layerAppear
+                if (layerAlpha <= 0.001f) return@forEachIndexed
                 if (layerAlpha <= 0.01f) return@forEachIndexed
 
                 // все слои одного размера: различаются цветом и прозрачностью,
@@ -299,7 +314,7 @@ fun CardStack(
                 val weight = 1f - index * 0.20f
                 val lensScale = if (cards.size > 1 && focusIndex < 0) 1f else 0.45f
                 val dx = (w - dstW) / 2f
-                val dy = (h - dstH) / 2f
+                val dy = (h - dstH) / 2f + (1f - layerAppear) * h * 0.02f
 
                 // мягкое свечение: тот же слой, чуть крупнее и прозрачнее
                 drawImage(
@@ -405,6 +420,11 @@ fun CardStack(
             }
         }
 
-        drawFrame(w.toInt(), h.toInt())
+        // цвет рамки говорит о согласии карт: холодный — расходятся, янтарный — об одном
+        val agree = (agreement / 0.28f).coerceIn(0f, 1f)
+        val frameColor = androidx.compose.ui.graphics.lerp(
+            Color(0xFF7B62C8), Color(0xFFC9A96E), agree
+        )
+        drawFrame(w.toInt(), h.toInt(), frameColor)
     }
 }
