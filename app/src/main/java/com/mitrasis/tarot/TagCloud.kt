@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.PI
@@ -42,6 +43,8 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
     var velocity by remember { mutableStateOf(Offset.Zero) }
     var dragging by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
+    var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var nebulaKey by remember { mutableStateOf(Float.NaN) }
 
     // Инерция считается по кадрам: скорость гасится множителем, пока не упадёт до нуля
     LaunchedEffect(Unit) {
@@ -140,54 +143,71 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
             )
             val breathe = 0.75f + 0.25f * (0.5f + 0.5f * sin(spin * PI.toFloat() / 180f))
 
-            // фон: несколько больших облаков, медленно плывущих вокруг оси
-            for (i in 0 until 2) {
-                val angle = yawRad * 0.6 + i * 1.27
-                val cloudRadius = radius * (0.60f + 0.12f * i)
-                val bx = cx + (cos(angle) * radius * 0.30).toFloat()
-                val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
-                val tint = nebula[i % nebula.size]
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            tint.copy(alpha = 0.13f * breathe),
-                            tint.copy(alpha = 0.05f * breathe),
-                            Color.Transparent
+            // Туманность кешируется в битмап: перерисовываем только при заметном повороте,
+            // остальные кадры — просто вывод готовой картинки (это и убирает тормоза).
+            val bmpW = size.width.toInt().coerceAtLeast(1)
+            val bmpH = size.height.toInt().coerceAtLeast(1)
+            val keyNow = yawRad.toFloat() * 57.29578f + pitch * 0.5f
+            val cached = nebulaBmp
+            val stale = cached == null || cached.width != bmpW || cached.height != bmpH ||
+                kotlin.math.abs(keyNow - nebulaKey) > 1.2f
+            val target = if (stale) {
+                android.graphics.Bitmap.createBitmap(bmpW, bmpH, android.graphics.Bitmap.Config.ARGB_8888).also {
+                    nebulaBmp = it
+                    nebulaKey = keyNow
+                }
+            } else cached!!
+
+            if (stale) {
+                val bc = android.graphics.Canvas(target)
+                bc.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR)
+                val blob = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+                blob.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.ADD)
+
+                fun glow(x: Float, y: Float, r: Float, color: Int, alpha: Float) {
+                    blob.shader = android.graphics.RadialGradient(
+                        x, y, r,
+                        android.graphics.Color.argb(
+                            (alpha * 255).toInt().coerceIn(0, 255),
+                            android.graphics.Color.red(color),
+                            android.graphics.Color.green(color),
+                            android.graphics.Color.blue(color)
                         ),
-                        center = Offset(bx, by),
-                        radius = cloudRadius
-                    ),
-                    radius = cloudRadius,
-                    center = Offset(bx, by),
-                    blendMode = BlendMode.Screen
-                )
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Shader.TileMode.CLAMP
+                    )
+                    bc.drawCircle(x, y, r, blob)
+                }
+
+                // фоновые облака
+                for (i in 0 until 2) {
+                    val angle = yawRad * 0.6 + i * 1.27
+                    val cloudRadius = radius * (0.60f + 0.12f * i)
+                    val bx = cx + (cos(angle) * radius * 0.30).toFloat()
+                    val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
+                    glow(bx, by, cloudRadius, nebula[i % nebula.size].value.toInt(), 0.13f * breathe)
+                }
+
+                // свет вокруг тегов
+                for ((p, tag) in rotated) {
+                    val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
+                    val tagRadius = radius * (0.18f + 0.14f * depth)
+                    val tint = nebula[Math.floorMod(tag.hashCode(), nebula.size)]
+                    val bx = cx + p.first * radius * 0.85f
+                    val by = cy + p.second * radius * 0.85f
+                    val weightOf = scores.getOrNull(order[tag] ?: -1)
+                    val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
+                    glow(bx, by, tagRadius, tint.value.toInt(), 0.07f + 0.12f * depth + 0.08f * importance)
+                }
             }
 
-            // свет вокруг каждого тега: генерируется самим облаком
-            for ((p, tag) in rotated) {
-                val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                val tagRadius = radius * (0.18f + 0.14f * depth)
-                val tint = nebula[Math.floorMod(tag.hashCode(), nebula.size)]
-                val bx = cx + p.first * radius * 0.85f
-                val by = cy + p.second * radius * 0.85f
-
-                // ядро — ярче у значимых тегов
-                val weightOf = scores.getOrNull(order[tag] ?: -1)
-                val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            tint.copy(alpha = 0.07f + 0.12f * depth + 0.08f * importance),
-                            Color.Transparent
-                        ),
-                        center = Offset(bx, by),
-                        radius = tagRadius
-                    ),
-                    radius = tagRadius,
-                    center = Offset(bx, by),
-                    blendMode = BlendMode.Screen
-                )
-            }
+            drawImage(
+                image = target.asImageBitmap(),
+                srcOffset = androidx.compose.ui.unit.IntOffset.Zero,
+                srcSize = androidx.compose.ui.unit.IntSize(bmpW, bmpH),
+                dstOffset = androidx.compose.ui.unit.IntOffset.Zero,
+                dstSize = androidx.compose.ui.unit.IntSize(bmpW, bmpH)
+            )
 
             fun face(score: Float): android.graphics.Typeface {
                 val level = (score - low) / span
