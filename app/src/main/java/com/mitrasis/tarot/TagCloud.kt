@@ -8,7 +8,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -58,8 +57,6 @@ fun TagCloud(
     var lastDx by remember { mutableStateOf(0f) }
     var lastDy by remember { mutableStateOf(0f) }
     val lastZ = remember { HashMap<String, Float>() }
-    var highlighted by remember { mutableStateOf<String?>(null) }
-    var highlightUntil by remember { mutableStateOf(0L) }
     var spinning by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
     var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -93,28 +90,6 @@ fun TagCloud(
         label = "spin"
     )
 
-    Box(modifier.pointerInput(tags, outer) {
-        detectTapGestures { offset ->
-            // ищем ближайшее слово к точке касания
-            val cx = size.width / 2f
-            val cy = size.height / 2f
-            val radius = minOf(cx, cy) * (if (expanded) 1.02f else 0.82f)
-            var best: String? = null
-            var bestDistance = Float.MAX_VALUE
-            tags.forEachIndexed { index, tag ->
-                val phi = Math.acos(1 - 2.0 * (index + 0.5) / tags.size)
-                val theta = Math.PI * (1 + Math.sqrt(5.0)) * (index + 0.5)
-                val x = cx + (Math.sin(phi) * Math.cos(theta)).toFloat() * radius
-                val y = cy + Math.cos(phi).toFloat() * radius
-                val d = kotlin.math.hypot(offset.x - x, offset.y - y)
-                if (d < bestDistance && d < radius * 0.5f) { bestDistance = d; best = tag }
-            }
-            if (best != null) {
-                highlighted = best
-                highlightUntil = System.currentTimeMillis() + 1500
-            }
-        }
-    })
     Box(modifier.pointerInput(Unit) {
         detectDragGestures(
             onDragStart = {
@@ -338,44 +313,6 @@ fun TagCloud(
                         word, cx + p.first * outerRadius, cy + p.second * outerRadius, outerPaint
                     )
                 }
-            }
-
-            // подсветка по касанию: на полторы секунды показываем связь с полем
-            val highlightTag = highlighted
-            if (highlightTag != null && System.currentTimeMillis() < highlightUntil) {
-                val target = rotated.firstOrNull { it.second == highlightTag }
-                if (target != null && outer.isNotEmpty()) {
-                    val outerRadiusNow = radius
-                    val outerYawNow = Math.toRadians((-yaw * 0.45 - spin * 0.55).toDouble())
-                    val goldenH = PI * (1 + sqrt(5.0))
-                    val links = outer.mapIndexed { idx, word ->
-                        val phi = acos(1 - 2 * (idx + 0.5) / outer.size)
-                        val theta = goldenH * (idx + 0.5)
-                        val px = sin(phi) * cos(theta)
-                        val pz = sin(phi) * sin(theta)
-                        val py = cos(phi)
-                        val x1 = px * cos(outerYawNow) + pz * sin(outerYawNow)
-                        val z1 = -px * sin(outerYawNow) + pz * cos(outerYawNow)
-                        val y2 = py * cos(pitchRad) - z1 * sin(pitchRad)
-                        val z2 = py * sin(pitchRad) + z1 * cos(pitchRad)
-                        val dot = target.first.first * x1 + target.first.second * y2 + target.first.third * z2
-                        Triple(x1.toFloat(), y2.toFloat(), dot) to word
-                    }.sortedByDescending { it.second.third }.take(2)
-
-                    for ((pp, _) in links) {
-                        drawLine(
-                            color = Color(0xFF9FE3EA).copy(alpha = 0.55f),
-                            start = Offset(
-                                cx + target.first.first * innerRadius,
-                                cy + target.first.second * innerRadius
-                            ),
-                            end = Offset(cx + pp.first * outerRadiusNow, cy + pp.second * outerRadiusNow),
-                            strokeWidth = 1.6f
-                        )
-                    }
-                }
-            } else if (highlightTag != null) {
-                highlighted = null
             }
 
             // созвездие: каждый тег связан с двумя ближайшими на сфере
