@@ -26,7 +26,6 @@ object SoundEngine {
     private var chimeTrack: AudioTrack? = null
     private var whooshTrack: AudioTrack? = null
     private var clickTrack: AudioTrack? = null
-    private var ambientTrack: AudioTrack? = null
 
     fun init(context: Context) {
         enabled = context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
@@ -36,8 +35,7 @@ object SoundEngine {
         chimeTrack = prepare(tone(listOf(392.0 to 0.55, 587.3 to 0.35), 0.45))
         whooshTrack = prepare(noise(0.30))
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
-        ambientTrack = prepare(ambient(4.0))?.apply { setVolume(0.22f) }
-        if (enabled) startAmbient()
+
     }
 
     fun isEnabled(): Boolean = enabled
@@ -46,7 +44,6 @@ object SoundEngine {
         enabled = !enabled
         context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
             .edit().putBoolean(ENABLED_KEY, enabled).apply()
-        if (enabled) startAmbient() else stopAmbient()
         return enabled
     }
 
@@ -56,31 +53,12 @@ object SoundEngine {
 
     fun tick() = fire(clickTrack)
 
-    fun startAmbient() {
-        if (!enabled) return
-        runCatching {
-            val track = ambientTrack ?: return
-            if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                track.stop()
-                track.reloadStaticData()
-                track.setLoopPoints(0, ambientLength, -1)
-                track.play()
-            }
-        }
-    }
-
-    fun stopAmbient() {
-        runCatching { ambientTrack?.pause() }
-    }
-
     fun release() {
         runCatching {
-            listOf(chimeTrack, whooshTrack, clickTrack, ambientTrack).forEach { it?.release() }
+            listOf(chimeTrack, whooshTrack, clickTrack).forEach { it?.release() }
         }
         initialised = false
     }
-
-    private var ambientLength = 0
 
     private fun fire(track: AudioTrack?) {
         if (!enabled || track == null) return
@@ -144,31 +122,4 @@ object SoundEngine {
         return out
     }
 
-    /**
-     * Фон: тихая цифровая «среда» — редкие щелчки, шорох плёнки и низкий гул.
-     * Зацикливается бесшовно, поэтому обрезаем по целому числу периодов гула.
-     */
-    private fun ambient(seconds: Double): ShortArray {
-        val count = (RATE * seconds).toInt()
-        ambientLength = count
-        val out = ShortArray(count)
-        var state = 987654321
-        var filtered = 0.0
-        for (i in 0 until count) {
-            val t = i.toDouble() / RATE
-            state = state * 1103515245 + 12345
-            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            filtered = filtered * 0.995 + white * 0.005
-            // низкий гул 55 Гц + пятая, чтобы не было «писка»
-            val hum = sin(2 * PI * 55.0 * t) * 0.05 + sin(2 * PI * 82.5 * t) * 0.02
-            // редкие цифровые щелчки
-            var glitch = 0.0
-            if (state % 40000 < 60) {
-                glitch = (1.0 - (state % 40000) / 60.0) * 0.35
-            }
-            val value = hum + filtered * 2.2 + glitch * white
-            out[i] = (value * 3600).toInt().coerceIn(-32767, 32767).toShort()
-        }
-        return out
-    }
 }
