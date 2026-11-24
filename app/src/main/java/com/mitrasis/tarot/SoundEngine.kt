@@ -23,6 +23,7 @@ object SoundEngine {
 
     private var enabled = true
     private var initialised = false
+    private var appContext: Context? = null
 
     private var chimeTrack: AudioTrack? = null
     private var whooshTrack: AudioTrack? = null
@@ -86,6 +87,7 @@ object SoundEngine {
     }
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         enabled = context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
             .getBoolean(ENABLED_KEY, true)
         if (initialised) return
@@ -108,7 +110,8 @@ object SoundEngine {
         drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
         // девять колокольчиков: тег, проходящий у зрителя, бьёт своим тоном
         // у каждого угла свой регистр: низкий, средний, ещё ниже, высокий
-        val bases = doubleArrayOf(288.0, 432.0, 180.0, 640.0)
+        // ля-минорная опора: A3, C4, E4, A4 — звучат как один инструмент
+        val bases = doubleArrayOf(220.0, 264.0, 330.0, 440.0)
         for (timbre in 0 until 4) {
             for (step in 0 until 9) {
                 val freq = bases[timbre] * Math.pow(1.0 + step * 0.11, 1.0)
@@ -141,7 +144,28 @@ object SoundEngine {
         fire(layerTrack)
     }
 
-    fun flip() = fire(flipTrack)
+    fun flip() {
+        fire(flipTrack)
+        haptic(22)
+    }
+
+    /** Лёгкая вибрация: короткий тик, сила зависит от скорости. */
+    private fun haptic(ms: Long) {
+        if (!enabled) return
+        val context = appContext ?: return
+        runCatching {
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+            if (!vibrator.hasVibrator()) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(
+                    android.os.VibrationEffect.createOneShot(ms, 90)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(ms)
+            }
+        }
+    }
 
     /** Касание: тег прошёл у передней границы сферы. */
     fun clink(index: Int, speed: Float, sector: Int = 0) {
@@ -150,6 +174,7 @@ object SoundEngine {
         if (bank.isEmpty()) return
         val track = bank[Math.floorMod(index, bank.size)]
         val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f))
+        haptic((5 + 9f * (speed / 1600f).coerceIn(0f, 1f)).toLong())
         runCatching {
             track.stop()
             track.reloadStaticData()
@@ -172,7 +197,7 @@ object SoundEngine {
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
             a += 2 * PI * freq / RATE
-            b += 2 * PI * freq * 1.055 / RATE
+            b += 2 * PI * freq * 1.012 / RATE
             mod += 2 * PI * 4.5 / RATE
             val beating = (sin(a) + sin(b)) * 0.5
             // у каждого угла свой характер
@@ -182,12 +207,12 @@ object SoundEngine {
                 2 -> sin(a * 0.5) * 0.30                  // низ-лево: суб
                 else -> (sin(a * 4.03) + sin(a * 5.01)) * 0.10  // низ-право: воздух
             }
-            val ring = beating * (0.75 + 0.25 * sin(mod))
-            val envelope = exp(-7.5 * t) * (1.0 - exp(-700.0 * t))
+            val ring = beating * (0.88 + 0.12 * sin(mod))
+            val envelope = exp(-6.0 * t) * (1.0 - exp(-900.0 * t))
             val sub = sin(2 * PI * (freq / 4) * t) * exp(-6.0 * t) * 0.22
             val raw = (ring + shimmer) * envelope + sub
             // лёгкий биткруш, чтобы звук остался «цифровым»
-            val crushed = Math.round(raw * 24.0) / 24.0
+            val crushed = Math.round(raw * 64.0) / 64.0
             out[i] = (crushed * 11000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
