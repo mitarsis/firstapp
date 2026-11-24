@@ -249,6 +249,45 @@ fun TagCloud(
                     Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to word
                 }.sortedBy { it.first.third }
 
+                // связи внутри внешней сферы
+                for (a in outerRotated.indices) {
+                    val neighbours = outerRotated.indices
+                        .filter { it != a }
+                        .sortedByDescending { b ->
+                            val pa = outerRotated[a].first
+                            val pb = outerRotated[b].first
+                            pa.first * pb.first + pa.second * pb.second + pa.third * pb.third
+                        }
+                        .take(2)
+                    for (b in neighbours) {
+                        val pa = outerRotated[a].first
+                        val pb = outerRotated[b].first
+                        drawLine(
+                            color = Color(0xFFF2A93B).copy(alpha = 0.07f),
+                            start = Offset(cx + pa.first * outerRadius, cy + pa.second * outerRadius),
+                            end = Offset(cx + pb.first * outerRadius, cy + pb.second * outerRadius),
+                            strokeWidth = 1f
+                        )
+                    }
+                }
+
+                // мостики: каждое слово Старшего связано с ближайшим словом Младшего
+                for ((po, _) in outerRotated) {
+                    var best: Pair<Float, Float>? = null
+                    var bestDot = -2f
+                    for ((pi, _) in rotated) {
+                        val dot = po.first * pi.first + po.second * pi.second + po.third * pi.third
+                        if (dot > bestDot) { bestDot = dot; best = pi.first to pi.second }
+                    }
+                    val target = best ?: continue
+                    drawLine(
+                        color = Color(0xFF9FE3EA).copy(alpha = 0.06f + 0.08f * bestDot.coerceIn(0f, 1f)),
+                        start = Offset(cx + po.first * outerRadius, cy + po.second * outerRadius),
+                        end = Offset(cx + target.first * radius, cy + target.second * radius),
+                        strokeWidth = 0.9f
+                    )
+                }
+
                 val outerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     textAlign = android.graphics.Paint.Align.CENTER
                     isSubpixelText = true

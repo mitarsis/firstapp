@@ -180,10 +180,13 @@ class KeywordBook private constructor(
         limit: Int
     ): SharedCore {
         val dimension = vectors[0].size
-        // в паре положение не учитываем: берём весь набор карты
+        // положение учитывается: прямая — светлые смыслы, перевёрнутая — теневые
         fun rangeOf(card: Int, reversed: Boolean): IntRange {
             val start = offsets[card]
-            return start until (start + countsLight[card] + countsShadow[card])
+            val light = countsLight[card]
+            val shadow = countsShadow[card]
+            return if (reversed) (start + light) until (start + light + shadow)
+            else start until (start + light)
         }
         fun centreOf(card: Int, reversed: Boolean): FloatArray {
             val centre = FloatArray(dimension)

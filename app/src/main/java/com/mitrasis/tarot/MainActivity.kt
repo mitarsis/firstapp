@@ -645,7 +645,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             val tint = androidx.compose.ui.graphics.lerp(
                 channelColor(index, shift, current.lines.size), Color(0xFF8D867B), 0.45f
             )
-            val showArrow = current.lines.size != 2
+            val showArrow = true
             Text(
                 text = card.title.lowercase() + if (showArrow) "\u00A0" + (if (reversed) "↓" else "↑") else "",
                 maxLines = 2,
