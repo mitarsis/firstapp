@@ -162,12 +162,14 @@ fun TagCloud(
             val cached = nebulaBmp
             val stale = cached == null || cached.width != bmpW || cached.height != bmpH ||
                 kotlin.math.abs(keyNow - nebulaKey) > 1.2f
-            val target = if (stale) {
+            val target = if (cached != null && cached.width == bmpW && cached.height == bmpH) {
+                cached
+            } else {
                 android.graphics.Bitmap.createBitmap(bmpW, bmpH, android.graphics.Bitmap.Config.ARGB_8888).also {
                     nebulaBmp = it
-                    nebulaKey = keyNow
                 }
-            } else cached!!
+            }
+            if (stale) nebulaKey = keyNow
 
             if (stale) {
                 val bc = android.graphics.Canvas(target)
@@ -348,11 +350,12 @@ fun TagCloud(
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
+                val tint = layerColors[Math.floorMod(index, layerColors.size)].toArgb()
                 paint.color = android.graphics.Color.argb(
                     alpha,
-                    (0xED * depth + 0x60 * (1 - depth)).toInt(),
-                    (0xE4 * depth + 0x55 * (1 - depth)).toInt(),
-                    (0xD2 * depth + 0x50 * (1 - depth)).toInt()
+                    android.graphics.Color.red(tint),
+                    android.graphics.Color.green(tint),
+                    android.graphics.Color.blue(tint)
                 )
                 drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
             }

@@ -433,7 +433,8 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                                     if (question.isBlank()) note = "сначала вопрос" else draw()
                                 }
                                 else -> {
-                                    focusLayer = (focusLayer + 2) % 4 - 1
+                                    val count = (answer?.alternatives?.size ?: 0) + 1
+                                    focusLayer = if (focusLayer >= count - 1) -1 else focusLayer + 1
                                     pulsingTap()
                                 }
                             }
