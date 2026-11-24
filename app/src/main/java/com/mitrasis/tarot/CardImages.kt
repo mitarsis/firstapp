@@ -261,8 +261,17 @@ fun CardStack(
             if (index == focusIndex) 1f else 0f
         } else {
             val share = (probability / strongest).coerceIn(0f, 1f)
-            // главный слой — полной яркости, задние тише, чтобы не было каши
-            if (share >= 0.999f) 1f else (0.42f + 0.46f * share).coerceIn(0.35f, 0.88f)
+            // вероятность у слоёв нулевая (жребий равноправный), поэтому
+            // контраст задаём порядком: передний ярче, задние тише
+            if (share <= 0.001f) {
+                when (index) {
+                    0 -> 1f
+                    1 -> 0.55f
+                    else -> 0.38f
+                }
+            } else {
+                if (share >= 0.999f) 1f else (0.42f + 0.46f * share).coerceIn(0.35f, 0.88f)
+            }
         }
     }
 
