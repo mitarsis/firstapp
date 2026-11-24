@@ -30,6 +30,7 @@ object SoundEngine {
     private var layerTrack: AudioTrack? = null
     private var pool: SoundPool? = null
     private var drawId = 0
+    private val clinks = ArrayList<AudioTrack>()
     private const val BLOCK = 256
     @Volatile private var motionSpeed = 0f
     @Volatile private var rendererRunning = false
@@ -103,6 +104,11 @@ object SoundEngine {
             )
             .build()
         drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
+        // девять колокольчиков: тег, проходящий у зрителя, бьёт своим тоном
+        for (step in 0 until 9) {
+            val freq = 660.0 * Math.pow(1.0 + step * 0.12, 1.0)
+            clinks.add(prepare(bell(freq)) ?: continue)
+        }
 
     }
 
@@ -132,11 +138,38 @@ object SoundEngine {
         fire(layerTrack)
     }
 
+    /** Касание: тег прошёл у передней границы сферы. */
+    fun clink(index: Int, speed: Float) {
+        if (!enabled || clinks.isEmpty()) return
+        val track = clinks[Math.floorMod(index, clinks.size)]
+        val gain = (0.15f + 0.75f * (speed / 1200f).coerceIn(0f, 1f))
+        runCatching {
+            track.stop()
+            track.reloadStaticData()
+            track.setVolume(gain)
+            track.play()
+        }
+    }
+
+    /** Короткий колокольчик с быстрой атакой и стеклянным призвуком. */
+    private fun bell(freq: Double): ShortArray {
+        val seconds = 0.22
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            val envelope = exp(-14.0 * t) * (1.0 - exp(-600.0 * t))
+            val value = sin(2 * PI * freq * t) * 0.7 +
+                sin(2 * PI * freq * 2.76 * t) * 0.22 +
+                sin(2 * PI * freq * 5.4 * t) * 0.08
+            out[i] = (value * envelope * 9000).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
+
     /** Живой звук движения: плотность и яркость зависят от скорости вращения. */
     fun motion(speed: Float) {
         motionSpeed = speed
-        if (!enabled) return
-        if (!rendererRunning) startRenderer()
     }
 
     /** Тишина: при уходе в фон, выключении звука, остановке облака. */
@@ -194,6 +227,8 @@ object SoundEngine {
         stopRenderer()
         runCatching {
             listOf(chimeTrack, whooshTrack, clickTrack, layerTrack).forEach { it?.release() }
+            clinks.forEach { it.release() }
+            clinks.clear()
             pool?.release()
             pool = null
         }

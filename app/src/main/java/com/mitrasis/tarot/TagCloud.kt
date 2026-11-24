@@ -47,6 +47,7 @@ fun TagCloud(
     expanded: Boolean = false,
     onFling: () -> Unit = {},
     onMotion: (Float) -> Unit = {},
+    onClink: (Int, Float) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -55,6 +56,7 @@ fun TagCloud(
     var dragging by remember { mutableStateOf(false) }
     var lastDx by remember { mutableStateOf(0f) }
     var lastDy by remember { mutableStateOf(0f) }
+    val lastZ = remember { HashMap<String, Float>() }
     var spinning by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
     var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -392,6 +394,14 @@ fun TagCloud(
                     blurCache[level - 1]
                 } else null
                 val index = order[tag] ?: -1
+                // тег прошёл у передней границы сферы — касание
+                val z = p.third
+                val previous = lastZ[tag]
+                val speedNow = velocity.getDistance()
+                if (previous != null && previous < 0.72f && z >= 0.72f && speedNow > 40f) {
+                    onClink(index, speedNow)
+                }
+                lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
