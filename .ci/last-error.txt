@@ -3,7 +3,7 @@ Daemon will be stopped at the end of the build
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
-> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugBuildConfig FROM-CACHE
 > Task :app:generateDebugResValues FROM-CACHE
 > Task :app:checkDebugAarMetadata
 > Task :app:mapDebugSourceSetPaths
@@ -13,26 +13,21 @@ Daemon will be stopped at the end of the build
 > Task :app:parseDebugLocalResources FROM-CACHE
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug FROM-CACHE
-> Task :app:processDebugMainManifest
-> Task :app:processDebugManifest
+> Task :app:processDebugMainManifest FROM-CACHE
+> Task :app:processDebugManifest FROM-CACHE
+> Task :app:processDebugManifestForPackage FROM-CACHE
+> Task :app:processDebugResources FROM-CACHE
 > Task :app:javaPreCompileDebug FROM-CACHE
 > Task :app:preDebugUnitTestBuild UP-TO-DATE
 > Task :app:javaPreCompileDebugUnitTest FROM-CACHE
-> Task :app:processDebugManifestForPackage
-> Task :app:processDebugResources
 
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:96:46 Unresolved reference 'detectTapGestures'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:96:66 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:108:50 Unresolved reference 'x'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:108:64 Unresolved reference 'y'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:109:77 Assignment type mismatch: actual type is 'kotlin.Double', but 'kotlin.Float' was expected.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:362:23 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:362:42 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:362:54 Unresolved reference 'third'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:368:59 Unresolved reference 'innerRadius'.
-e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:369:60 Unresolved reference 'innerRadius'.
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795555702314.json
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:363:23 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:363:42 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:363:54 Unresolved reference 'third'.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:369:59 Unresolved reference 'innerRadius'.
+e: file:///home/runner/work/firstapp/firstapp/app/src/main/java/com/mitrasis/tarot/TagCloud.kt:370:60 Unresolved reference 'innerRadius'.
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795555898464.json
 
 FAILURE: Build failed with an exception.
 
@@ -48,5 +43,5 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Get more help at https://help.gradle.org.
 
 BUILD FAILED in 23s
-17 actionable tasks: 9 executed, 8 from cache
+17 actionable tasks: 4 executed, 13 from cache
 === test mismatches ===
