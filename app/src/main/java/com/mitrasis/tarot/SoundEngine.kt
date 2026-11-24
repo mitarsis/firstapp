@@ -90,7 +90,7 @@ object SoundEngine {
             .getBoolean(ENABLED_KEY, true)
         if (initialised) return
         initialised = true
-        chimeTrack = prepare(tone(listOf(392.0 to 0.55, 587.3 to 0.35), 0.45))
+        chimeTrack = prepare(portal())
         whooshTrack = prepare(noise(0.30))
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
         layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
@@ -123,10 +123,7 @@ object SoundEngine {
         return enabled
     }
 
-    fun chime() {
-        if (!enabled) return
-        if (drawId != 0) pool?.play(drawId, 0.9f, 0.9f, 1, 0, 1f) else fire(chimeTrack)
-    }
+    fun chime() = fire(chimeTrack)
 
     fun swipe() = fire(whooshTrack)
 
@@ -161,6 +158,36 @@ object SoundEngine {
         fire(layerTrack)
     }
 
+    /**
+     * Ответ на вопрос: тёмный портал — низкий спуск частоты, шумовая завеса
+     * и металлический призвук. Никакой весёлости, только вход.
+     */
+    private fun portal(): ShortArray {
+        val seconds = 0.9
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        var phase = 0.0
+        var ring = 0.0
+        var state = 1337
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            val progress = t / seconds
+            val sweep = 320.0 * (1.0 - 0.62 * progress)
+            phase += 2 * PI * sweep / RATE
+            ring += 2 * PI * 660.0 / RATE
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            val envelope = exp(-2.6 * t) * (1.0 - exp(-90.0 * t))
+            val body = sin(phase) * 0.55 + sin(phase * 2.02) * 0.18
+            val metal = sin(ring) * exp(-9.0 * t) * 0.12
+            val air = white * 0.10 * exp(-5.0 * t)
+            out[i] = ((body + metal) * envelope * 0.9 + air).let {
+                (it * 9000).toInt().coerceIn(-32767, 32767).toShort()
+            }
+        }
+        return out
+    }
+
     /** Касание: тег прошёл у передней границы сферы. */
     fun clink(index: Int, speed: Float) {
         if (!enabled || clinks.isEmpty()) return
@@ -175,30 +202,29 @@ object SoundEngine {
     }
 
     /**
-     * Цифровой блип: короткий щелчок с падающей частотой квадрата,
-     * биткрушем и шумовым фронтом — вместо колокольчика.
+     * Кибермистический блип: две расстроенные синусоиды дают биения,
+     * кольцевая модуляция — стеклянный призвук, лёгкий биткруш — цифру.
      */
     private fun bell(freq: Double): ShortArray {
-        val seconds = 0.16
+        val seconds = 0.2
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
-        var phase = 0.0
-        var state = freq.toInt()
+        var a = 0.0
+        var b = 0.0
+        var mod = 0.0
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            val progress = t / seconds
-            // частота падает вдвое за время удара
-            val sweep = freq * (1.0 - 0.7 * progress)
-            phase += 2 * PI * sweep / RATE
-            val square = if (sin(phase) >= 0) 1.0 else -1.0
-            // биткруш: 3 уровня вместо плавной волны
-            val crushed = Math.round(square * 2.0) / 2.0
-            state = state * 1103515245 + 12345
-            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            val click = white * exp(-260.0 * t)
-            val envelope = exp(-18.0 * t)
-            val value = crushed * 0.55 * envelope + click * 0.45
-            out[i] = (value * 9500).toInt().coerceIn(-32767, 32767).toShort()
+            a += 2 * PI * freq / RATE
+            b += 2 * PI * freq * 1.006 / RATE
+            mod += 2 * PI * 9.0 / RATE
+            val beating = (sin(a) + sin(b)) * 0.5
+            val shimmer = sin(a * 3.01) * 0.14
+            val ring = beating * (0.75 + 0.25 * sin(mod))
+            val envelope = exp(-15.0 * t) * (1.0 - exp(-700.0 * t))
+            val raw = (ring + shimmer) * envelope
+            // лёгкий биткруш, чтобы звук остался «цифровым»
+            val crushed = Math.round(raw * 24.0) / 24.0
+            out[i] = (crushed * 11000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
