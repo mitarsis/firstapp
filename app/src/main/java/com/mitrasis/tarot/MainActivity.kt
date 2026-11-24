@@ -300,6 +300,11 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
     )
     var diag by remember { mutableStateOf<List<String>>(emptyList()) }
 
+    // переворот карты: шелест в момент, когда карта встаёт
+    androidx.compose.runtime.LaunchedEffect(answer != null) {
+        if (answer != null) SoundEngine.flip()
+    }
+
     fun draw() {
         val text = question.trim()
         if (text.isEmpty() || busy) return
@@ -415,6 +420,25 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
             animationSpec = androidx.compose.animation.core.tween(180),
             label = "rotX"
         )
+
+        // вспышка в момент, когда карта проходит ребром к зрителю
+        val flipGlow = (kotlin.math.sin(flip * Math.PI.toFloat() / 180f)).coerceIn(0f, 1f)
+        if (flipGlow > 0.05f) {
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .fillMaxWidth(0.78f)
+                    .aspectRatio(0.62f)
+            ) {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFF2A93B).copy(alpha = 0.28f * flipGlow),
+                            Color.Transparent
+                        )
+                    )
+                )
+            }
+        }
 
         // Карта — и есть интерфейс
         Box(

@@ -28,6 +28,7 @@ object SoundEngine {
     private var whooshTrack: AudioTrack? = null
     private var clickTrack: AudioTrack? = null
     private var layerTrack: AudioTrack? = null
+    private var flipTrack: AudioTrack? = null
     private var pool: SoundPool? = null
     private var drawId = 0
     private val clinks = ArrayList<AudioTrack>()
@@ -93,6 +94,7 @@ object SoundEngine {
         whooshTrack = prepare(noise(0.30))
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
         layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
+        flipTrack = prepare(riffle())
         // звуки, сгенерированные earshot и ужатые до моно 22 кГц
         pool = SoundPool.Builder()
             .setMaxStreams(4)
@@ -131,6 +133,27 @@ object SoundEngine {
     fun tick() {
         if (!enabled) return
         fire(clickTrack)
+    }
+
+    fun flip() = fire(flipTrack)
+
+    /** Шелест переворота: шум с быстрым спадом и низким «хлопком» в конце. */
+    private fun riffle(): ShortArray {
+        val seconds = 0.34
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        var state = 5150
+        var band = 0.0
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            band = band * 0.55 + white * 0.45
+            val envelope = exp(-9.0 * t) * (1.0 - exp(-400.0 * t))
+            val thump = sin(2 * PI * 90.0 * t) * exp(-30.0 * t) * 0.5
+            out[i] = ((band * 0.7 * envelope + thump) * 8000).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
     }
 
     fun layer() {
@@ -239,7 +262,7 @@ object SoundEngine {
     fun release() {
         stopRenderer()
         runCatching {
-            listOf(chimeTrack, whooshTrack, clickTrack, layerTrack).forEach { it?.release() }
+            listOf(chimeTrack, whooshTrack, clickTrack, layerTrack, flipTrack).forEach { it?.release() }
             clinks.forEach { it.release() }
             clinks.clear()
             pool?.release()
