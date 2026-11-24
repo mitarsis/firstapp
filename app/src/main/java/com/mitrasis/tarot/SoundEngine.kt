@@ -136,6 +136,11 @@ object SoundEngine {
         fire(clickTrack)
     }
 
+    fun layer() {
+        if (!enabled) return
+        fire(layerTrack)
+    }
+
     fun flip() = fire(flipTrack)
 
     /** Касание: тег прошёл у передней границы сферы. */
