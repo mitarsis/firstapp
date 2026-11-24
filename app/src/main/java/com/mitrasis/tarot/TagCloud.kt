@@ -399,8 +399,11 @@ fun TagCloud(
                 val previous = lastZ[tag]
                 // автовращение тоже считается движением, иначе касания молчат
                 val speedNow = velocity.getDistance() + 120f
+                // касание спереди и сзади: тег задевает оба края сферы
                 if (previous != null && previous < 0.72f && z >= 0.72f) {
                     onClink(index, speedNow)
+                } else if (previous != null && previous > -0.72f && z <= -0.72f) {
+                    onClink(index + 4, speedNow * 0.6f)
                 }
                 lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])

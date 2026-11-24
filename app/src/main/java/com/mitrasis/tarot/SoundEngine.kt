@@ -108,7 +108,7 @@ object SoundEngine {
         drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
         // девять колокольчиков: тег, проходящий у зрителя, бьёт своим тоном
         for (step in 0 until 9) {
-            val freq = 660.0 * Math.pow(1.0 + step * 0.12, 1.0)
+            val freq = 288.0 * Math.pow(1.0 + step * 0.16, 1.0)
             clinks.add(prepare(bell(freq)) ?: continue)
         }
 
@@ -159,31 +159,33 @@ object SoundEngine {
     }
 
     /**
-     * Ответ на вопрос: тёмный портал — низкий спуск частоты, шумовая завеса
-     * и металлический призвук. Никакой весёлости, только вход.
+     * Ответ на вопрос: холодный кристаллический удар. Короткий шумовой фронт,
+     * затем три расстроенных тона в малой секунде — тревожно и без «вздоха».
      */
     private fun portal(): ShortArray {
-        val seconds = 0.9
+        val seconds = 1.1
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
-        var phase = 0.0
-        var ring = 0.0
-        var state = 1337
+        val f1 = 196.0
+        val f2 = 207.65
+        val f3 = 392.0
+        var p1 = 0.0
+        var p2 = 0.0
+        var p3 = 0.0
+        var state = 4242
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            val progress = t / seconds
-            val sweep = 320.0 * (1.0 - 0.62 * progress)
-            phase += 2 * PI * sweep / RATE
-            ring += 2 * PI * 660.0 / RATE
+            p1 += 2 * PI * f1 / RATE
+            p2 += 2 * PI * f2 / RATE
+            p3 += 2 * PI * f3 / RATE
             state = state * 1103515245 + 12345
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            val envelope = exp(-2.6 * t) * (1.0 - exp(-90.0 * t))
-            val body = sin(phase) * 0.55 + sin(phase * 2.02) * 0.18
-            val metal = sin(ring) * exp(-9.0 * t) * 0.12
-            val air = white * 0.10 * exp(-5.0 * t)
-            out[i] = ((body + metal) * envelope * 0.9 + air).let {
-                (it * 9000).toInt().coerceIn(-32767, 32767).toShort()
-            }
+            val body = sin(p1) * 0.45 + sin(p2) * 0.35 + sin(p3) * 0.18
+            val envelope = exp(-3.4 * t)
+            val strike = white * exp(-120.0 * t) * 0.6
+            val sub = sin(2 * PI * 49.0 * t) * exp(-8.0 * t) * 0.25
+            val value = (body * envelope + strike + sub) * 0.75
+            out[i] = (value * 9000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
@@ -206,7 +208,7 @@ object SoundEngine {
      * кольцевая модуляция — стеклянный призвук, лёгкий биткруш — цифру.
      */
     private fun bell(freq: Double): ShortArray {
-        val seconds = 0.2
+        val seconds = 0.34
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
         var a = 0.0
@@ -215,15 +217,16 @@ object SoundEngine {
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
             a += 2 * PI * freq / RATE
-            b += 2 * PI * freq * 1.006 / RATE
-            mod += 2 * PI * 9.0 / RATE
+            b += 2 * PI * freq * 1.055 / RATE
+            mod += 2 * PI * 4.5 / RATE
             val beating = (sin(a) + sin(b)) * 0.5
             val shimmer = sin(a * 3.01) * 0.14
             val ring = beating * (0.75 + 0.25 * sin(mod))
-            val envelope = exp(-15.0 * t) * (1.0 - exp(-700.0 * t))
-            val raw = (ring + shimmer) * envelope
+            val envelope = exp(-7.5 * t) * (1.0 - exp(-700.0 * t))
+            val raw = (ring + shimmer) * envelope + sub
             // лёгкий биткруш, чтобы звук остался «цифровым»
             val crushed = Math.round(raw * 24.0) / 24.0
+            val sub = sin(2 * PI * (freq / 4) * t) * exp(-6.0 * t) * 0.22
             out[i] = (crushed * 11000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
