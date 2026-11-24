@@ -385,9 +385,18 @@ fun TagCloud(
 
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                val x = cx + p.first * innerRadius
+                // поджимаем позицию, чтобы слово целиком осталось в кадре
+                val halfText = paint.measureText(tag) / 2f
+                val rawX = cx + p.first * innerRadius
+                val x = rawX.coerceIn(halfText + 4f, size.width - halfText - 4f)
                 val y = cy + p.second * innerRadius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
+                // длинное слово не должно вылезать за экран
+                val maxWidth = size.width * 0.84f
+                val textWidth = paint.measureText(tag)
+                if (textWidth > maxWidth) {
+                    paint.textSize = paint.textSize * (maxWidth / textWidth)
+                }
                 paint.maskFilter = if (depth < 0.55f) {
                     // берём готовый фильтр из кеша: радиус всегда 1..5, нулевого не бывает
                     val level = (((0.55f - depth) * 6f).toInt()).coerceIn(1, 5)
