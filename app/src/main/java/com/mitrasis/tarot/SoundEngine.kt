@@ -28,6 +28,8 @@ object SoundEngine {
     private var whooshTrack: AudioTrack? = null
     private var clickTrack: AudioTrack? = null
     private var layerTrack: AudioTrack? = null
+    private var pool: SoundPool? = null
+    private var drawId = 0
     private const val BLOCK = 256
     @Volatile private var motionSpeed = 0f
     @Volatile private var rendererRunning = false
@@ -80,9 +82,6 @@ object SoundEngine {
             buffer[i] = (value * gain * 9000).toInt().coerceIn(-32767, 32767).toShort()
         }
     }
-    private var drawId = 0
-    private var layerId = 0
-    private var modeId = 0
 
     fun init(context: Context) {
         enabled = context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
@@ -104,8 +103,6 @@ object SoundEngine {
             )
             .build()
         drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
-        layerId = runCatching { pool!!.load(context.assets.openFd("sfx/layer.wav"), 1) }.getOrDefault(0)
-        modeId = runCatching { pool!!.load(context.assets.openFd("sfx/mode.wav"), 1) }.getOrDefault(0)
 
     }
 
