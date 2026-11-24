@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior =
                 androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        SoundEngine.init(this)
         setContent {
             TarotTheme {
                 var modeLayers by remember { mutableStateOf(3) }
@@ -430,7 +431,10 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                                 !ready -> download()
                                 busy -> Unit
                                 answer == null -> {
-                                    if (question.isBlank()) note = "сначала вопрос" else draw()
+                                    if (question.isBlank()) note = "сначала вопрос" else {
+                                        draw()
+                                        SoundEngine.chime()
+                                    }
                                 }
                                 else -> {
                                     val count = (answer?.alternatives?.size ?: 0) + 1
@@ -571,13 +575,24 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                 text = "триангуляция",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 3) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
-                modifier = Modifier.clickable { if (layers != 3) { onLayersChange(3); answer = null; question = "" } }
+                modifier = Modifier.clickable {
+                    if (layers != 3) { onLayersChange(3); answer = null; question = ""; SoundEngine.tick(context) }
+                }
+            )
+            var soundOn by remember { mutableStateOf(SoundEngine.isEnabled()) }
+            Text(
+                text = if (soundOn) "звук вкл" else "звук выкл",
+                style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
+                color = ASH.copy(alpha = if (soundOn) 0.8f else 0.4f),
+                modifier = Modifier.clickable { soundOn = SoundEngine.flip(context) }
             )
             Text(
                 text = "домен",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 2) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
-                modifier = Modifier.clickable { if (layers != 2) { onLayersChange(2); answer = null; question = "" } }
+                modifier = Modifier.clickable {
+                    if (layers != 2) { onLayersChange(2); answer = null; question = ""; SoundEngine.tick(context) }
+                }
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -673,6 +688,8 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             tint = if (current.outerTags.isNotEmpty())
                 channelColor(1, shift, 2) else Color(0xFFE8E0D2),
             outerTint = channelColor(0, shift, 2),
+            expanded = current.outerTags.isNotEmpty(),
+            onFling = { SoundEngine.swipe() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)

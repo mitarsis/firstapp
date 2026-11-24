@@ -44,6 +44,8 @@ fun TagCloud(
     outer: List<String> = emptyList(),
     tint: Color = Color(0xFFF2A93B),
     outerTint: Color = Color(0xFFF2A93B),
+    expanded: Boolean = false,
+    onFling: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -56,6 +58,7 @@ fun TagCloud(
     var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var nebulaKey by remember { mutableStateOf(Float.NaN) }
     var nebulaImage by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    val indexMap = remember(tags) { tags.withIndex().associate { it.value to it.index } }
 
     // Инерция считается по кадрам: скорость гасится множителем, пока не упадёт до нуля
     LaunchedEffect(Unit) {
@@ -110,6 +113,7 @@ fun TagCloud(
                     vy = lastDy * 14f
                 }
                 velocity = Offset(vx, vy)
+                if (kotlin.math.abs(vx) + kotlin.math.abs(vy) > 25f) onFling()
             },
             onDragCancel = {
                 dragging = false
@@ -123,7 +127,7 @@ fun TagCloud(
 
             val cx = size.width / 2f
             val cy = size.height / 2f
-            val radius = minOf(cx, cy) * 0.82f
+            val radius = minOf(cx, cy) * (if (expanded) 1.02f else 0.82f)
 
             val golden = PI * (1 + sqrt(5.0))
             val points = tags.mapIndexed { index, tag ->
@@ -149,7 +153,7 @@ fun TagCloud(
                 Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to tag
             }.sortedBy { it.first.third }
 
-            val order = tags.withIndex().associate { it.value to it.index }
+            val order = indexMap
             val high = scores.maxOrNull() ?: 1f
             val low = scores.minOrNull() ?: 0f
             val span = (high - low).coerceAtLeast(1e-4f)
@@ -353,7 +357,7 @@ fun TagCloud(
             }
 
             // внутренняя сфера сжата: поле Старшего должно быть снаружи
-            val innerRadius = if (outer.isEmpty()) radius else radius * 0.60f
+            val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val x = cx + p.first * innerRadius

@@ -223,11 +223,19 @@ class KeywordBook private constructor(
 
         // Внешнее кольцо — слова самого Старшего (его поле).
         // Внутреннее — слова Младшего. Ничего не заимствуется: у каждой карты свой голос.
-        val domainWords = rangeOf(major.first, major.second)
+        var domainWords = rangeOf(major.first, major.second)
             .sortedByDescending { dot(centredAt(it), domainCentre) }
             .map { keywords[it] }
             .distinctBy { it.lowercase().take(5) }
             .take(5)
+        // у бедных сторон (например, перевёрнутый Повешенный) слов мало — добираем
+        if (domainWords.size < 3) {
+            val start = offsets[major.first]
+            val full = (start until (start + countsLight[major.first] + countsShadow[major.first]))
+                .sortedByDescending { dot(centredAt(it), domainCentre) }
+                .map { keywords[it] }
+            domainWords = (domainWords + full).distinctBy { it.lowercase().take(5) }.take(5)
+        }
 
         val question = centred(questionVector)
         val innerRange = rangeOf(minor.first, minor.second)
