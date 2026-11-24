@@ -176,7 +176,7 @@ fun TagCloud(
             val keyNow = yawRad.toFloat() * 57.29578f + pitch * 0.5f
             val cached = nebulaBmp
             val stale = cached == null || cached.width != bmpW || cached.height != bmpH ||
-                kotlin.math.abs(keyNow - nebulaKey) > 2.5f
+                kotlin.math.abs(keyNow - nebulaKey) > 1.6f
             val target = if (cached != null && cached.width == bmpW && cached.height == bmpH) {
                 cached
             } else {
@@ -217,17 +217,6 @@ fun TagCloud(
                     glow(bx, by, cloudRadius, nebula[i % nebula.size].toArgb(), 0.13f * breathe)
                 }
 
-                // свет вокруг тегов
-                for ((p, tag) in rotated) {
-                    val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                    val tagRadius = radius * (0.18f + 0.14f * depth)
-                    val tint = nebula[Math.floorMod(tag.hashCode(), nebula.size)]
-                    val bx = cx + p.first * radius * 0.85f
-                    val by = cy + p.second * radius * 0.85f
-                    val weightOf = scores.getOrNull(order[tag] ?: -1)
-                    val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
-                    glow(bx, by, tagRadius, tint.toArgb(), 0.07f + 0.12f * depth + 0.08f * importance)
-                }
             }
 
             val targetImage = nebulaImage ?: target.asImageBitmap().also { nebulaImage = it }
@@ -354,6 +343,35 @@ fun TagCloud(
                 isSubpixelText = true
                 isLinearText = true
                 typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+            }
+
+            // свечение вокруг тегов — каждый кадр, поэтому оно не отстаёт от текста
+            for ((p, tag) in rotated) {
+                val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
+                val tagRadius = radius * (0.18f + 0.14f * depth)
+                val gx = cx + p.first * innerRadius * 0.95f
+                val gy = cy + p.second * innerRadius * 0.95f
+                val weightOf = scores.getOrNull(indexMap[tag] ?: -1)
+                val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
+                val argb = (if (outer.isEmpty()) Color(0xFFE8E0D2) else tint).toArgb()
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(
+                                android.graphics.Color.red(argb),
+                                android.graphics.Color.green(argb),
+                                android.graphics.Color.blue(argb),
+                                (0.10f + 0.14f * depth + 0.08f * importance).coerceIn(0f, 1f)
+                            ),
+                            Color.Transparent
+                        ),
+                        center = Offset(gx, gy),
+                        radius = tagRadius
+                    ),
+                    radius = tagRadius,
+                    center = Offset(gx, gy),
+                    blendMode = BlendMode.Screen
+                )
             }
 
             // внутренняя сфера сжата: поле Старшего должно быть снаружи

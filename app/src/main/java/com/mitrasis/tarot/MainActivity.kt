@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing && !isChangingConfigurations) {
             DeciderHolder.close()
+            SoundEngine.release()
         }
         super.onDestroy()
     }
@@ -576,7 +577,7 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 3) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
                 modifier = Modifier.clickable {
-                    if (layers != 3) { onLayersChange(3); answer = null; question = ""; SoundEngine.tick(context) }
+                    if (layers != 3) { onLayersChange(3); answer = null; question = ""; SoundEngine.tick() }
                 }
             )
             var soundOn by remember { mutableStateOf(SoundEngine.isEnabled()) }
@@ -591,7 +592,7 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = if (layers == 2) Color(0xFFEDE4D2) else ASH.copy(alpha = 0.4f),
                 modifier = Modifier.clickable {
-                    if (layers != 2) { onLayersChange(2); answer = null; question = ""; SoundEngine.tick(context) }
+                    if (layers != 2) { onLayersChange(2); answer = null; question = ""; SoundEngine.tick() }
                 }
             )
         }
@@ -784,11 +785,27 @@ private fun CardBack(
             if (length > 0f) {
                 for (tongue in 0 until 3) {
                     val head = ((flamePhase + tongue * 0.33f) % 1f) * length
-                    val tail = (head + length * 0.10f).coerceAtMost(length)
                     val piece = androidx.compose.ui.graphics.Path()
-                    measure.getSegment(head, tail, piece, true)
+                    val tongueLength = length * 0.10f
+                    if (head + tongueLength <= length) {
+                        measure.getSegment(head, head + tongueLength, piece, true)
+                    } else {
+                        // язык переходит через стык пути — дорисовываем с начала
+                        measure.getSegment(head, length, piece, true)
+                        val rest = androidx.compose.ui.graphics.Path()
+                        measure.getSegment(0f, head + tongueLength - length, rest, true)
+                        piece.addPath(rest)
+                    }
                     val core = androidx.compose.ui.graphics.Path()
-                    measure.getSegment(head, (head + length * 0.04f).coerceAtMost(length), core, true)
+                    val coreEnd = head + length * 0.04f
+                    if (coreEnd <= length) {
+                        measure.getSegment(head, coreEnd, core, true)
+                    } else {
+                        measure.getSegment(head, length, core, true)
+                        val rest = androidx.compose.ui.graphics.Path()
+                        measure.getSegment(0f, coreEnd - length, rest, true)
+                        core.addPath(rest)
+                    }
 
                     drawPath(
                         piece,
