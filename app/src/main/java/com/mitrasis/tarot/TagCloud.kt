@@ -360,10 +360,12 @@ fun TagCloud(
                     brush = Brush.radialGradient(
                         colors = listOf(
                             Color(
-                                android.graphics.Color.red(argb),
-                                android.graphics.Color.green(argb),
-                                android.graphics.Color.blue(argb),
-                                (0.10f + 0.14f * depth + 0.08f * importance).coerceIn(0f, 1f)
+                                android.graphics.Color.argb(
+                                    ((0.10f + 0.14f * depth + 0.08f * importance).coerceIn(0f, 1f) * 255).toInt(),
+                                    android.graphics.Color.red(argb),
+                                    android.graphics.Color.green(argb),
+                                    android.graphics.Color.blue(argb)
+                                )
                             ),
                             Color.Transparent
                         ),
