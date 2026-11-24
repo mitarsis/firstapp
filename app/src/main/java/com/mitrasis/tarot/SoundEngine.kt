@@ -26,6 +26,10 @@ object SoundEngine {
     private var chimeTrack: AudioTrack? = null
     private var whooshTrack: AudioTrack? = null
     private var clickTrack: AudioTrack? = null
+    private var layerTrack: AudioTrack? = null
+    private var spinTrack: AudioTrack? = null
+    private var spinLength = 0
+    private var spinPlaying = false
 
     fun init(context: Context) {
         enabled = context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
@@ -35,6 +39,8 @@ object SoundEngine {
         chimeTrack = prepare(tone(listOf(392.0 to 0.55, 587.3 to 0.35), 0.45))
         whooshTrack = prepare(noise(0.30))
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
+        layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
+        spinTrack = prepare(bells(2.4)).also { spinLength = (RATE * 2.4).toInt() }
 
     }
 
@@ -53,9 +59,30 @@ object SoundEngine {
 
     fun tick() = fire(clickTrack)
 
+    fun layer() = fire(layerTrack)
+
+    /** Перезвон, пока облако крутится: включаем на раскрутке, гасим на остановке. */
+    fun spin(active: Boolean) {
+        if (active == spinPlaying) return
+        spinPlaying = active
+        val track = spinTrack ?: return
+        if (!enabled) return
+        runCatching {
+            if (active) {
+                track.stop()
+                track.reloadStaticData()
+                track.setLoopPoints(0, spinLength, -1)
+                track.setVolume(0.5f)
+                track.play()
+            } else {
+                track.pause()
+            }
+        }
+    }
+
     fun release() {
         runCatching {
-            listOf(chimeTrack, whooshTrack, clickTrack).forEach { it?.release() }
+            listOf(chimeTrack, whooshTrack, clickTrack, layerTrack, spinTrack).forEach { it?.release() }
         }
         initialised = false
     }
@@ -122,4 +149,47 @@ object SoundEngine {
         return out
     }
 
+
+    /**
+     * Перезвон: несколько колокольчиков по пентатонике с разными моментами
+     * удара и затуханиями. Петля бесшовная — всё стихает до конца буфера.
+     */
+    private fun bells(seconds: Double): ShortArray {
+        val count = (RATE * seconds).toInt()
+        val out = DoubleArray(count)
+        val scale = doubleArrayOf(523.25, 587.33, 698.46, 783.99, 1046.5, 1174.66)
+        var state = 24680
+        fun rnd(): Double {
+            state = state * 1103515245 + 12345
+            return ((state ushr 16) and 0x7FFF) / 32767.0
+        }
+        // восемь ударов, разнесённых по времени
+        repeat(9) { hit ->
+            val start = (rnd() * 0.55 + hit * 0.24) * RATE
+            val freq = scale[(rnd() * scale.size).toInt().coerceIn(0, scale.size - 1)]
+            val decay = 0.5 + rnd() * 0.45
+            val amp = 0.16 + rnd() * 0.10
+            val startIndex = start.toInt()
+            for (i in 0 until (RATE * decay).toInt()) {
+                val index = startIndex + i
+                if (index >= count) break
+                val t = i.toDouble() / RATE
+                val envelope = exp(-4.0 * t / decay) * (1.0 - exp(-120.0 * t))
+                out[index] += sin(2 * PI * freq * t) * envelope * amp
+                out[index] += sin(2 * PI * freq * 2.01 * t) * envelope * amp * 0.25
+            }
+        }
+        // края сводим к нулю, чтобы петля не щёлкала
+        val fade = (RATE * 0.05).toInt()
+        for (i in 0 until fade) {
+            val k = i.toDouble() / fade
+            out[i] *= k
+            out[count - 1 - i] *= k
+        }
+        val result = ShortArray(count)
+        for (i in 0 until count) {
+            result[i] = (out[i] * 9000).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return result
+    }
 }

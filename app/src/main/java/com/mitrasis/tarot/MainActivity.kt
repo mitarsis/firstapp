@@ -440,6 +440,7 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                                 else -> {
                                     val count = (answer?.alternatives?.size ?: 0) + 1
                                     focusLayer = if (focusLayer >= count - 1) -1 else focusLayer + 1
+                                    SoundEngine.layer()
                                     pulsingTap()
                                 }
                             }
@@ -690,7 +691,8 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
                 channelColor(1, shift, 2) else Color(0xFFE8E0D2),
             outerTint = channelColor(0, shift, 2),
             expanded = current.outerTags.isNotEmpty(),
-            onFling = { SoundEngine.swipe() },
+            onFling = { },
+            onSpin = { active -> SoundEngine.spin(active) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)

@@ -46,6 +46,7 @@ fun TagCloud(
     outerTint: Color = Color(0xFFF2A93B),
     expanded: Boolean = false,
     onFling: () -> Unit = {},
+    onSpin: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -54,6 +55,7 @@ fun TagCloud(
     var dragging by remember { mutableStateOf(false) }
     var lastDx by remember { mutableStateOf(0f) }
     var lastDy by remember { mutableStateOf(0f) }
+    var spinning by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
     var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var nebulaKey by remember { mutableStateOf(Float.NaN) }
@@ -67,6 +69,12 @@ fun TagCloud(
             withFrameNanos { now ->
                 val dt = if (last == 0L) 0f else ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
                 last = now
+                val speedNow = velocity.getDistance()
+                val shouldSpin = !dragging && speedNow > 60f
+                if (shouldSpin != spinning) {
+                    spinning = shouldSpin
+                    onSpin(shouldSpin)
+                }
                 if (!dragging && velocity != Offset.Zero) {
                     yaw += velocity.x * dt
                     pitch += velocity.y * dt
