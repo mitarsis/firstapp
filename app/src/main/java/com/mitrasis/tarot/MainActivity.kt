@@ -671,7 +671,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             outer = current.outerTags,
             // цвет — это карта, а не слово: старший янтарный, младший циановый
             tint = if (current.outerTags.isNotEmpty())
-                channelColor(1, shift, 2) else channelColor(0, shift, current.lines.size.coerceAtLeast(1)),
+                channelColor(1, shift, 2) else Color(0xFFE8E0D2),
             outerTint = channelColor(0, shift, 2),
             modifier = Modifier
                 .fillMaxWidth()

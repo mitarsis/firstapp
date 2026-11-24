@@ -50,9 +50,12 @@ fun TagCloud(
     var pitch by remember { mutableStateOf(10f) }
     var velocity by remember { mutableStateOf(Offset.Zero) }
     var dragging by remember { mutableStateOf(false) }
+    var lastDx by remember { mutableStateOf(0f) }
+    var lastDy by remember { mutableStateOf(0f) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
     var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var nebulaKey by remember { mutableStateOf(Float.NaN) }
+    var nebulaImage by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
 
     // Инерция считается по кадрам: скорость гасится множителем, пока не упадёт до нуля
     LaunchedEffect(Unit) {
@@ -89,18 +92,24 @@ fun TagCloud(
             onDrag = { change, drag ->
                 change.consume()
                 tracker.addPosition(change.uptimeMillis, change.position)
-                yaw += drag.x * 0.38f
-                pitch += drag.y * 0.38f
+                lastDx = drag.x * 0.38f
+                lastDy = drag.y * 0.38f
+                yaw += lastDx
+                pitch += lastDy
             },
             onDragEnd = {
                 dragging = false
                 val raw = tracker.calculateVelocity()
                 // ограничиваем рывок, иначе облако улетает в бесконечность
                 val cap = 1800f
-                velocity = Offset(
-                    raw.x.coerceIn(-cap, cap) * 0.38f,
-                    raw.y.coerceIn(-cap, cap) * 0.38f
-                )
+                var vx = raw.x.coerceIn(-cap, cap) * 0.38f
+                var vy = raw.y.coerceIn(-cap, cap) * 0.38f
+                // короткий жест VelocityTracker иногда не успевает поймать — берём последний сдвиг
+                if (kotlin.math.abs(vx) < 40f && kotlin.math.abs(vy) < 40f) {
+                    vx = lastDx * 14f
+                    vy = lastDy * 14f
+                }
+                velocity = Offset(vx, vy)
             },
             onDragCancel = {
                 dragging = false
@@ -163,12 +172,13 @@ fun TagCloud(
             val keyNow = yawRad.toFloat() * 57.29578f + pitch * 0.5f
             val cached = nebulaBmp
             val stale = cached == null || cached.width != bmpW || cached.height != bmpH ||
-                kotlin.math.abs(keyNow - nebulaKey) > 1.2f
+                kotlin.math.abs(keyNow - nebulaKey) > 2.5f
             val target = if (cached != null && cached.width == bmpW && cached.height == bmpH) {
                 cached
             } else {
                 android.graphics.Bitmap.createBitmap(bmpW, bmpH, android.graphics.Bitmap.Config.ARGB_8888).also {
                     nebulaBmp = it
+                    nebulaImage = null
                 }
             }
             if (stale) nebulaKey = keyNow
@@ -216,8 +226,9 @@ fun TagCloud(
                 }
             }
 
+            val targetImage = nebulaImage ?: target.asImageBitmap().also { nebulaImage = it }
             drawImage(
-                image = target.asImageBitmap(),
+                image = targetImage,
                 srcOffset = androidx.compose.ui.unit.IntOffset.Zero,
                 srcSize = androidx.compose.ui.unit.IntSize(bmpW, bmpH),
                 dstOffset = androidx.compose.ui.unit.IntOffset.Zero,
@@ -238,7 +249,7 @@ fun TagCloud(
             // видно, что Младший говорит внутри его поля
             if (outer.isNotEmpty()) {
                 val outerRadius = radius * 1.0f
-                val outerYawRad = Math.toRadians((yaw * 0.55 + spin * 0.7).toDouble())
+                val outerYawRad = Math.toRadians((-yaw * 0.45 - spin * 0.55).toDouble())
                 val goldenOuter = PI * (1 + sqrt(5.0))
                 val outerPoints = outer.mapIndexed { index, word ->
                     val phi = acos(1 - 2 * (index + 0.5) / outer.size)
