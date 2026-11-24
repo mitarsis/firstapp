@@ -235,7 +235,7 @@ fun TagCloud(
             // Внешнее кольцо: слова Старшего, вращаются медленнее и мельче —
             // видно, что Младший говорит внутри его поля
             if (outer.isNotEmpty()) {
-                val outerRadius = radius * 0.66f
+                val outerRadius = radius * 1.0f
                 val outerYawRad = Math.toRadians((yaw * 0.55 + spin * 0.7).toDouble())
                 val goldenOuter = PI * (1 + sqrt(5.0))
                 val outerPoints = outer.mapIndexed { index, word ->
@@ -336,10 +336,12 @@ fun TagCloud(
                 typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             }
 
+            // внутренняя сфера сжата: поле Старшего должно быть снаружи
+            val innerRadius = if (outer.isEmpty()) radius else radius * 0.60f
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                val x = cx + p.first * radius
-                val y = cy + p.second * radius
+                val x = cx + p.first * innerRadius
+                val y = cy + p.second * innerRadius
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
                 paint.maskFilter = if (depth < 0.55f) {
                     // берём готовый фильтр из кеша: радиус всегда 1..5, нулевого не бывает
