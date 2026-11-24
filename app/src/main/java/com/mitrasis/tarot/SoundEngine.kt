@@ -223,10 +223,10 @@ object SoundEngine {
             val shimmer = sin(a * 3.01) * 0.14
             val ring = beating * (0.75 + 0.25 * sin(mod))
             val envelope = exp(-7.5 * t) * (1.0 - exp(-700.0 * t))
+            val sub = sin(2 * PI * (freq / 4) * t) * exp(-6.0 * t) * 0.22
             val raw = (ring + shimmer) * envelope + sub
             // лёгкий биткруш, чтобы звук остался «цифровым»
             val crushed = Math.round(raw * 24.0) / 24.0
-            val sub = sin(2 * PI * (freq / 4) * t) * exp(-6.0 * t) * 0.22
             out[i] = (crushed * 11000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
