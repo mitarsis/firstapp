@@ -143,6 +143,11 @@ fun TagCloud(
             val low = scores.minOrNull() ?: 0f
             val span = (high - low).coerceAtLeast(1e-4f)
 
+            // цвета тегов повторяют палитру слоёв карты
+            val layerColors = listOf(
+                Color(0xFFF2A93B), Color(0xFF3FC6DC), Color(0xFFA45BE8)
+            )
+
             val nebula = listOf(
                 Color(0xFF6D3BD8), Color(0xFF1FA3B8), Color(0xFFC8389B),
                 Color(0xFFE08A2B), Color(0xFF3F6FD8)
@@ -264,7 +269,7 @@ fun TagCloud(
                         val pb = outerRotated[b].first
                         val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
                         drawLine(
-                            color = Color(0xFFA45BE8).copy(alpha = 0.12f + 0.26f * depthAvg),
+                            color = Color(0xFFE8E0D2).copy(alpha = 0.12f + 0.26f * depthAvg),
                             start = Offset(cx + pa.first * outerRadius, cy + pa.second * outerRadius),
                             end = Offset(cx + pb.first * outerRadius, cy + pb.second * outerRadius),
                             strokeWidth = 1.1f
@@ -283,7 +288,7 @@ fun TagCloud(
                     outerPaint.textSize = size.minDimension * (0.040f + 0.030f * depth)
                     val alpha = (45 + 110 * depth).toInt().coerceIn(0, 255)
                     outerPaint.color = android.graphics.Color.argb(
-                        alpha,
+                        (alpha * 0.7f).toInt().coerceIn(0, 255),
                         (0xF2 * depth + 0x70 * (1 - depth)).toInt(),
                         (0xA9 * depth + 0x60 * (1 - depth)).toInt(),
                         (0x3B * depth + 0x70 * (1 - depth)).toInt()
@@ -309,7 +314,7 @@ fun TagCloud(
                     val pb = rotated[b].first
                     val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
                     drawLine(
-                        color = Color(0xFFF2A93B).copy(alpha = 0.12f + 0.26f * depthAvg),
+                        color = Color(0xFFE8E0D2).copy(alpha = 0.12f + 0.26f * depthAvg),
                         start = Offset(cx + pa.first * radius, cy + pa.second * radius),
                         end = Offset(cx + pb.first * radius, cy + pb.second * radius),
                         strokeWidth = 1.2f
