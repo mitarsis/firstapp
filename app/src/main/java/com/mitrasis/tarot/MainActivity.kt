@@ -78,6 +78,11 @@ private val ASH = Color(0xFFB9AE9A)
 
 class MainActivity : ComponentActivity() {
 
+    override fun onStop() {
+        SoundEngine.silence()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         if (isFinishing && !isChangingConfigurations) {
             DeciderHolder.close()
@@ -692,7 +697,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             outerTint = channelColor(0, shift, 2),
             expanded = current.outerTags.isNotEmpty(),
             onFling = { },
-            onSpin = { active -> SoundEngine.spin(active) },
+            onMotion = { speed -> SoundEngine.motion(speed) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)

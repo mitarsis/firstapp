@@ -46,7 +46,7 @@ fun TagCloud(
     outerTint: Color = Color(0xFFF2A93B),
     expanded: Boolean = false,
     onFling: () -> Unit = {},
-    onSpin: (Boolean) -> Unit = {},
+    onMotion: (Float) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -69,12 +69,7 @@ fun TagCloud(
             withFrameNanos { now ->
                 val dt = if (last == 0L) 0f else ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
                 last = now
-                val speedNow = velocity.getDistance()
-                val shouldSpin = !dragging && speedNow > 60f
-                if (shouldSpin != spinning) {
-                    spinning = shouldSpin
-                    onSpin(shouldSpin)
-                }
+                onMotion(velocity.getDistance())
                 if (!dragging && velocity != Offset.Zero) {
                     yaw += velocity.x * dt
                     pitch += velocity.y * dt
