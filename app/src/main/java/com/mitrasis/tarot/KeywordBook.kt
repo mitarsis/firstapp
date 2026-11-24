@@ -158,6 +158,15 @@ class KeywordBook private constructor(
                 out[root] = keywords[index] to worst[index]
                 chosen += index
             }
+            // меньше трёх слов не бывает: из двух точек созвездия не выйдет
+            if (out.size < 3) {
+                for (index in ordered) {
+                    if (out.size >= 3) break
+                    val root = keywords[index].lowercase().take(5)
+                    if (out.containsKey(root)) continue
+                    out[root] = keywords[index] to worst[index]
+                }
+            }
             return out.values.toList()
         }
 
@@ -226,8 +235,17 @@ class KeywordBook private constructor(
             .distinctBy { it.lowercase().take(5) }
             .take(3)
 
+        // если у стороны карты меньше трёх слов — добираем из её полного набора
+        val padded = if (innerWords.size >= 3) innerWords else {
+            val start = offsets[minor.first]
+            val full = (start until (start + countsLight[minor.first] + countsShadow[minor.first]))
+                .sortedByDescending { dot(centredAt(it), contentCentre) }
+                .map { keywords[it] }
+            (innerWords + full).distinctBy { it.lowercase().take(5) }.take(3)
+        }
+
         val out = LinkedHashMap<String, String>()
-        innerWords.forEach { out[it.lowercase().take(5)] = it }
+        padded.forEach { out[it.lowercase().take(5)] = it }
         val tags = out.values.toList()
         val scores = List(tags.size) { fieldScore }
         return SharedCore(tags, scores, fieldScore, domainWords)
