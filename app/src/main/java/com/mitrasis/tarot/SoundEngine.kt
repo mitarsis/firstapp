@@ -335,8 +335,7 @@ object SoundEngine {
         stopRenderer()
         runCatching {
             listOf(chimeTrack, whooshTrack, clickTrack, layerTrack, flipTrack).forEach { it?.release() }
-            clinks.forEach { it.release() }
-            clinks.clear()
+            clinks.forEach { bank -> bank.forEach { runCatching { it.release() } }; bank.clear() }
             pool?.release()
             pool = null
         }
