@@ -397,8 +397,9 @@ fun TagCloud(
                 // тег прошёл у передней границы сферы — касание
                 val z = p.third
                 val previous = lastZ[tag]
-                val speedNow = velocity.getDistance()
-                if (previous != null && previous < 0.72f && z >= 0.72f && speedNow > 40f) {
+                // автовращение тоже считается движением, иначе касания молчат
+                val speedNow = velocity.getDistance() + 120f
+                if (previous != null && previous < 0.72f && z >= 0.72f) {
                     onClink(index, speedNow)
                 }
                 lastZ[tag] = z

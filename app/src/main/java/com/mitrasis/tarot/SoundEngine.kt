@@ -142,7 +142,7 @@ object SoundEngine {
     fun clink(index: Int, speed: Float) {
         if (!enabled || clinks.isEmpty()) return
         val track = clinks[Math.floorMod(index, clinks.size)]
-        val gain = (0.15f + 0.75f * (speed / 1200f).coerceIn(0f, 1f))
+        val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f))
         runCatching {
             track.stop()
             track.reloadStaticData()
@@ -151,18 +151,31 @@ object SoundEngine {
         }
     }
 
-    /** Короткий колокольчик с быстрой атакой и стеклянным призвуком. */
+    /**
+     * Цифровой блип: короткий щелчок с падающей частотой квадрата,
+     * биткрушем и шумовым фронтом — вместо колокольчика.
+     */
     private fun bell(freq: Double): ShortArray {
-        val seconds = 0.22
+        val seconds = 0.16
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
+        var phase = 0.0
+        var state = freq.toInt()
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            val envelope = exp(-14.0 * t) * (1.0 - exp(-600.0 * t))
-            val value = sin(2 * PI * freq * t) * 0.7 +
-                sin(2 * PI * freq * 2.76 * t) * 0.22 +
-                sin(2 * PI * freq * 5.4 * t) * 0.08
-            out[i] = (value * envelope * 9000).toInt().coerceIn(-32767, 32767).toShort()
+            val progress = t / seconds
+            // частота падает вдвое за время удара
+            val sweep = freq * (1.0 - 0.7 * progress)
+            phase += 2 * PI * sweep / RATE
+            val square = if (sin(phase) >= 0) 1.0 else -1.0
+            // биткруш: 3 уровня вместо плавной волны
+            val crushed = Math.round(square * 2.0) / 2.0
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            val click = white * exp(-260.0 * t)
+            val envelope = exp(-18.0 * t)
+            val value = crushed * 0.55 * envelope + click * 0.45
+            out[i] = (value * 9500).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
