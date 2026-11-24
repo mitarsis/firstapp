@@ -289,8 +289,13 @@ fun TagCloud(
                 }
                 for ((p, word) in outerRotated) {
                     val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                    outerPaint.textSize = size.minDimension * (0.040f + 0.030f * depth)
-                    val alpha = (45 + 110 * depth).toInt().coerceIn(0, 255)
+                    // как и у внутренних: чем ближе к зрителю, тем крупнее и ярче
+                    outerPaint.textSize = size.minDimension * (0.034f + 0.052f * depth)
+                    val alpha = (40 + 165 * depth).toInt().coerceIn(0, 255)
+                    outerPaint.maskFilter = if (depth < 0.55f) {
+                        val level = (((0.55f - depth) * 6f).toInt()).coerceIn(1, 5)
+                        blurCache[level - 1]
+                    } else null
                     val argb = outerTint.toArgb()
                     outerPaint.color = android.graphics.Color.argb(
                         (alpha * 0.8f).toInt().coerceIn(0, 255),
