@@ -669,6 +669,10 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             tags = current.shared,
             scores = current.sharedScores,
             outer = current.outerTags,
+            // цвет — это карта, а не слово: старший янтарный, младший циановый
+            tint = if (current.outerTags.isNotEmpty())
+                channelColor(1, shift, 2) else channelColor(0, shift, current.lines.size.coerceAtLeast(1)),
+            outerTint = channelColor(0, shift, 2),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)

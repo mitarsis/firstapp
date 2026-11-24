@@ -42,6 +42,8 @@ fun TagCloud(
     tags: List<String>,
     scores: List<Float> = emptyList(),
     outer: List<String> = emptyList(),
+    tint: Color = Color(0xFFF2A93B),
+    outerTint: Color = Color(0xFFF2A93B),
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -289,11 +291,12 @@ fun TagCloud(
                     val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                     outerPaint.textSize = size.minDimension * (0.040f + 0.030f * depth)
                     val alpha = (45 + 110 * depth).toInt().coerceIn(0, 255)
+                    val argb = outerTint.toArgb()
                     outerPaint.color = android.graphics.Color.argb(
-                        (alpha * 0.7f).toInt().coerceIn(0, 255),
-                        (0xF2 * depth + 0x70 * (1 - depth)).toInt(),
-                        (0xA9 * depth + 0x60 * (1 - depth)).toInt(),
-                        (0x3B * depth + 0x70 * (1 - depth)).toInt()
+                        (alpha * 0.8f).toInt().coerceIn(0, 255),
+                        android.graphics.Color.red(argb),
+                        android.graphics.Color.green(argb),
+                        android.graphics.Color.blue(argb)
                     )
                     drawContext.canvas.nativeCanvas.drawText(
                         word, cx + p.first * outerRadius, cy + p.second * outerRadius, outerPaint
@@ -352,12 +355,12 @@ fun TagCloud(
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
                 val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
-                val tint = layerColors[Math.floorMod(index, layerColors.size)].toArgb()
+                val argb = tint.toArgb()
                 paint.color = android.graphics.Color.argb(
                     alpha,
-                    android.graphics.Color.red(tint),
-                    android.graphics.Color.green(tint),
-                    android.graphics.Color.blue(tint)
+                    android.graphics.Color.red(argb),
+                    android.graphics.Color.green(argb),
+                    android.graphics.Color.blue(argb)
                 )
                 drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
             }
