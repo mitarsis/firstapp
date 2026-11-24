@@ -345,6 +345,8 @@ fun TagCloud(
                 typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             }
 
+            // внутренняя сфера сжата: поле Старшего должно быть снаружи
+            val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
             // свечение вокруг тегов — каждый кадр, поэтому оно не отстаёт от текста
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
@@ -374,8 +376,6 @@ fun TagCloud(
                 )
             }
 
-            // внутренняя сфера сжата: поле Старшего должно быть снаружи
-            val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val x = cx + p.first * innerRadius
