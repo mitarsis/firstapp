@@ -111,10 +111,13 @@ object SoundEngine {
         // девять колокольчиков: тег, проходящий у зрителя, бьёт своим тоном
         // у каждого угла свой регистр: низкий, средний, ещё ниже, высокий
         // ля-минорная опора: A3, C4, E4, A4 — звучат как один инструмент
-        val bases = doubleArrayOf(220.0, 264.0, 330.0, 440.0)
+        // ля-минорная пентатоника: A C D E G по двум октавам.
+        // Угол сферы выбирает октаву, поэтому любые два звука сочетаются.
+        val ratios = doubleArrayOf(1.0, 1.2, 1.335, 1.5, 1.78, 2.0, 2.4, 2.67, 3.0)
+        val octaves = doubleArrayOf(1.0, 2.0, 0.5, 1.5)
         for (timbre in 0 until 4) {
             for (step in 0 until 9) {
-                val freq = bases[timbre] * Math.pow(1.0 + step * 0.11, 1.0)
+                val freq = 220.0 * ratios[step] * octaves[timbre]
                 clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
             }
         }
@@ -184,36 +187,28 @@ object SoundEngine {
     }
 
     /**
-     * Кибермистический блип: две расстроенные синусоиды дают биения,
-     * кольцевая модуляция — стеклянный призвук, лёгкий биткруш — цифру.
+     * Чистый стеклянный удар: короткий, с мягкой атакой, синус плюс призвук
+     * строго по гармоникам лада. Без расстройки и модуляции — ноты не спорят.
      */
     private fun bell(freq: Double, timbre: Int): ShortArray {
-        val seconds = 0.34
+        val seconds = 0.22
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
-        var a = 0.0
-        var b = 0.0
-        var mod = 0.0
+        val extra = when (timbre) {
+            0 -> 3.0     // октава + квинта
+            1 -> 2.0     // октава
+            2 -> 0.5     // суб
+            else -> 4.0  // две октавы
+        }
+        var phase = 0.0
+        var extraPhase = 0.0
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            a += 2 * PI * freq / RATE
-            b += 2 * PI * freq * 1.012 / RATE
-            mod += 2 * PI * 4.5 / RATE
-            val beating = (sin(a) + sin(b)) * 0.5
-            // у каждого угла свой характер
-            val shimmer = when (timbre) {
-                0 -> sin(a * 3.01) * 0.14                 // верх-лево: стекло
-                1 -> sin(a * 2.02) * 0.22                 // верх-право: металл
-                2 -> sin(a * 0.5) * 0.30                  // низ-лево: суб
-                else -> (sin(a * 4.03) + sin(a * 5.01)) * 0.10  // низ-право: воздух
-            }
-            val ring = beating * (0.88 + 0.12 * sin(mod))
-            val envelope = exp(-6.0 * t) * (1.0 - exp(-900.0 * t))
-            val sub = sin(2 * PI * (freq / 4) * t) * exp(-6.0 * t) * 0.22
-            val raw = (ring + shimmer) * envelope + sub
-            // лёгкий биткруш, чтобы звук остался «цифровым»
-            val crushed = Math.round(raw * 64.0) / 64.0
-            out[i] = (crushed * 11000).toInt().coerceIn(-32767, 32767).toShort()
+            phase += 2 * PI * freq / RATE
+            extraPhase += 2 * PI * freq * extra / RATE
+            val envelope = exp(-11.0 * t) * (1.0 - exp(-1500.0 * t))
+            val value = (sin(phase) * 0.85 + sin(extraPhase) * 0.12) * envelope
+            out[i] = (value * 12000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
