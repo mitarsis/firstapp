@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.SoundPool
 import android.os.Build
 import kotlin.math.PI
 import kotlin.math.exp
@@ -30,6 +31,10 @@ object SoundEngine {
     private var spinTrack: AudioTrack? = null
     private var spinLength = 0
     private var spinPlaying = false
+    private var pool: SoundPool? = null
+    private var drawId = 0
+    private var layerId = 0
+    private var modeId = 0
 
     fun init(context: Context) {
         enabled = context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
@@ -40,6 +45,19 @@ object SoundEngine {
         whooshTrack = prepare(noise(0.30))
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
         layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
+        // звуки, сгенерированные earshot и ужатые до моно 22 кГц
+        pool = SoundPool.Builder()
+            .setMaxStreams(4)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+        drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
+        layerId = runCatching { pool!!.load(context.assets.openFd("sfx/layer.wav"), 1) }.getOrDefault(0)
+        modeId = runCatching { pool!!.load(context.assets.openFd("sfx/mode.wav"), 1) }.getOrDefault(0)
         spinTrack = prepare(bells(2.4)).also { spinLength = (RATE * 2.4).toInt() }
 
     }
@@ -53,13 +71,22 @@ object SoundEngine {
         return enabled
     }
 
-    fun chime() = fire(chimeTrack)
+    fun chime() {
+        if (!enabled) return
+        if (drawId != 0) pool?.play(drawId, 0.9f, 0.9f, 1, 0, 1f) else fire(chimeTrack)
+    }
 
     fun swipe() = fire(whooshTrack)
 
-    fun tick() = fire(clickTrack)
+    fun tick() {
+        if (!enabled) return
+        if (modeId != 0) pool?.play(modeId, 0.8f, 0.8f, 1, 0, 1f) else fire(clickTrack)
+    }
 
-    fun layer() = fire(layerTrack)
+    fun layer() {
+        if (!enabled) return
+        if (layerId != 0) pool?.play(layerId, 1f, 1f, 1, 0, 1f) else fire(layerTrack)
+    }
 
     /** Перезвон, пока облако крутится: включаем на раскрутке, гасим на остановке. */
     fun spin(active: Boolean) {
@@ -83,6 +110,8 @@ object SoundEngine {
     fun release() {
         runCatching {
             listOf(chimeTrack, whooshTrack, clickTrack, layerTrack, spinTrack).forEach { it?.release() }
+            pool?.release()
+            pool = null
         }
         initialised = false
     }
