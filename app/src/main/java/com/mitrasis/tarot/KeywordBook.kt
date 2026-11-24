@@ -204,25 +204,52 @@ class KeywordBook private constructor(
             ?: return SharedCore(emptyList(), emptyList(), 0f)
         val fieldScore = dot(centredAt(domainPick), domainCentre)
 
-        // содержание: слово Младшего, уместное в этом поле
-        // шаг второй: сначала отсев по Старшему
+        // содержание: каждое значение Младшего ПРЕОБРАЗУЕТСЯ в сторону поля,
+        // а не отсеивается. Сдвигаем вектор тега к домену и берём ближайшее
+        // настоящее слово — «победа» в поле разорения становится «падением».
         val minorRange = rangeOf(minor.first, minor.second)
-        val fieldScores = minorRange.map { dot(centredAt(it), domainCentre) }.sorted()
-        val threshold = fieldScores[fieldScores.size / 2]
-        //
-        // шаг третий: из оставшихся берём самое характерное для самой карты
-        val ranked = minorRange
-            .filter { dot(centredAt(it), domainCentre) >= threshold }
-            .map { index -> Triple(index, dot(centredAt(index), contentCentre), dot(centredAt(index), domainCentre)) }
-            .sortedByDescending { it.second }
+        val majorRoots = rangeOf(major.first, major.second)
+            .map { keywords[it].lowercase().take(5) }
+            .toSet()
+        val ordered = minorRange.sortedByDescending { dot(centredAt(it), contentCentre) }
+
         val out = LinkedHashMap<String, String>()
-        out[keywords[domainPick].lowercase().take(5)] = keywords[domainPick]
-        for ((index, _, _) in ranked) {
-            val root = keywords[index].lowercase().take(5)
-            if (out.containsKey(root)) continue
-            out[root] = keywords[index]
+        val domainRoot = keywords[domainPick].lowercase().take(5)
+        out[domainRoot] = keywords[domainPick]
+        val usedRoots = mutableSetOf<String>()
+        val shift = 0.55f
+
+        for (source in ordered) {
             if (out.size >= limit) break
+            val sourceRoot = keywords[source].lowercase().take(5)
+            if (sourceRoot in usedRoots) continue
+
+            val base = centredAt(source)
+            val mixed = FloatArray(dimension) { d -> base[d] * (1f - shift) + domainCentre[d] * shift }
+            var norm = 0f
+            for (d in 0 until dimension) norm += mixed[d] * mixed[d]
+            norm = kotlin.math.sqrt(norm) + 1e-9f
+            for (d in 0 until dimension) mixed[d] /= norm
+
+            var bestIndex = -1
+            var bestScore = -Float.MAX_VALUE
+            for (candidate in vectors.indices) {
+                val candidateRoot = keywords[candidate].lowercase().take(5)
+                if (candidateRoot == sourceRoot) continue
+                if (candidateRoot in majorRoots) continue
+                if (candidateRoot in usedRoots) continue
+                if (candidateRoot == domainRoot) continue
+                val score = dot(centredAt(candidate), mixed)
+                if (score > bestScore) {
+                    bestScore = score
+                    bestIndex = candidate
+                }
+            }
+            if (bestIndex < 0) continue
+            usedRoots += keywords[bestIndex].lowercase().take(5)
+            out[keywords[bestIndex].lowercase().take(5)] = keywords[bestIndex]
         }
+
         val tags = out.values.toList()
         val scores = List(tags.size) { fieldScore }
         return SharedCore(tags, scores, fieldScore)

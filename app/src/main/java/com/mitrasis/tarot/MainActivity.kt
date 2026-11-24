@@ -77,6 +77,7 @@ private val FOIL = Color(0xFFC9A26B)
 private val ASH = Color(0xFFB9AE9A)
 
 class MainActivity : ComponentActivity() {
+
     override fun onDestroy() {
         if (isFinishing && !isChangingConfigurations) {
             DeciderHolder.close()
@@ -86,6 +87,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // полный экран: контент под системными панелями, а сами панели скрыты
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
         setContent {
             TarotTheme {
                 var modeLayers by remember { mutableStateOf(3) }
