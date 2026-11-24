@@ -291,11 +291,11 @@ fun TagCloud(
                     val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                     // как и у внутренних: чем ближе к зрителю, тем крупнее и ярче
                     outerPaint.textSize = size.minDimension * (0.034f + 0.052f * depth)
-                    val alpha = (40 + 165 * depth).toInt().coerceIn(0, 255)
+                    val alpha = (95 + 160 * depth).toInt().coerceIn(0, 255)
                     outerPaint.maskFilter = null
                     val argb = outerTint.toArgb()
                     outerPaint.color = android.graphics.Color.argb(
-                        (alpha * 0.8f).toInt().coerceIn(0, 255),
+                        alpha,
                         android.graphics.Color.red(argb),
                         android.graphics.Color.green(argb),
                         android.graphics.Color.blue(argb)

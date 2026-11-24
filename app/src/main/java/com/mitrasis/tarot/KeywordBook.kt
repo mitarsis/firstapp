@@ -229,8 +229,15 @@ class KeywordBook private constructor(
             .distinctBy { it.lowercase().take(5) }
             .take(5)
 
-        val innerWords = rangeOf(minor.first, minor.second)
-            .sortedByDescending { dot(centredAt(it), contentCentre) }
+        val question = centred(questionVector)
+        val innerRange = rangeOf(minor.first, minor.second)
+        // шаг 1: отсев по полю — остаётся половина, самая близкая к Старшему
+        val fieldThreshold = innerRange.map { dot(centredAt(it), domainCentre) }.sorted()
+            .let { it[it.size / 2] }
+        // шаг 2: из оставшихся берём то, что ближе к вопросу
+        val innerWords = innerRange
+            .filter { dot(centredAt(it), domainCentre) >= fieldThreshold }
+            .sortedByDescending { dot(centredAt(it), question) }
             .map { keywords[it] }
             .distinctBy { it.lowercase().take(5) }
             .take(3)
