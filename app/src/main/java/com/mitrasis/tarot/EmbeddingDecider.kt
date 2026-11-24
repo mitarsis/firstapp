@@ -117,7 +117,8 @@ class EmbeddingDecider(private val ctx: Context) : CardDecider, AutoCloseable {
             lines = entries.map { it.first },
             shared = shared,
             sharedScores = core.scores,
-            agreement = core.agreement
+            agreement = core.agreement,
+            outerTags = core.outer
         )
     }
 

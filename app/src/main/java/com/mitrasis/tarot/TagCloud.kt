@@ -38,7 +38,12 @@ import kotlin.math.sqrt
  * каждое облако света привязано к положению тега, его глубине и его цвету.
  */
 @Composable
-fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Modifier = Modifier) {
+fun TagCloud(
+    tags: List<String>,
+    scores: List<Float> = emptyList(),
+    outer: List<String> = emptyList(),
+    modifier: Modifier = Modifier
+) {
     var yaw by remember { mutableStateOf(-20f) }
     var pitch by remember { mutableStateOf(10f) }
     var velocity by remember { mutableStateOf(Offset.Zero) }
@@ -218,6 +223,52 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     else -> "sans-serif-light"
                 }
                 return android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
+            }
+
+            // Внешнее кольцо: слова Старшего, вращаются медленнее и мельче —
+            // видно, что Младший говорит внутри его поля
+            if (outer.isNotEmpty()) {
+                val outerRadius = radius * 0.66f
+                val outerYawRad = Math.toRadians((yaw * 0.55 + spin * 0.7).toDouble())
+                val goldenOuter = PI * (1 + sqrt(5.0))
+                val outerPoints = outer.mapIndexed { index, word ->
+                    val phi = acos(1 - 2 * (index + 0.5) / outer.size)
+                    val theta = goldenOuter * (index + 0.5)
+                    Triple(
+                        (sin(phi) * cos(theta)).toFloat(),
+                        cos(phi).toFloat(),
+                        (sin(phi) * sin(theta)).toFloat()
+                    ) to word
+                }
+                val outerRotated = outerPoints.map { (p, word) ->
+                    val px = p.first.toDouble(); val py = p.second.toDouble(); val pz = p.third.toDouble()
+                    val x1 = px * cos(outerYawRad) + pz * sin(outerYawRad)
+                    val z1 = -px * sin(outerYawRad) + pz * cos(outerYawRad)
+                    val y2 = py * cos(pitchRad) - z1 * sin(pitchRad)
+                    val z2 = py * sin(pitchRad) + z1 * cos(pitchRad)
+                    Triple(x1.toFloat(), y2.toFloat(), z2.toFloat()) to word
+                }.sortedBy { it.first.third }
+
+                val outerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    isSubpixelText = true
+                    isLinearText = true
+                    typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+                }
+                for ((p, word) in outerRotated) {
+                    val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
+                    outerPaint.textSize = size.minDimension * (0.040f + 0.030f * depth)
+                    val alpha = (45 + 110 * depth).toInt().coerceIn(0, 255)
+                    outerPaint.color = android.graphics.Color.argb(
+                        alpha,
+                        (0xF2 * depth + 0x70 * (1 - depth)).toInt(),
+                        (0xA9 * depth + 0x60 * (1 - depth)).toInt(),
+                        (0x3B * depth + 0x70 * (1 - depth)).toInt()
+                    )
+                    drawContext.canvas.nativeCanvas.drawText(
+                        word, cx + p.first * outerRadius, cy + p.second * outerRadius, outerPaint
+                    )
+                }
             }
 
             // созвездие: каждый тег связан с двумя ближайшими на сфере

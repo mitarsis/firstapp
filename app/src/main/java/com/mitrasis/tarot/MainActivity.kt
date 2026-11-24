@@ -667,6 +667,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
         TagCloud(
             tags = current.shared,
             scores = current.sharedScores,
+            outer = current.outerTags,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
