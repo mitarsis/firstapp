@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -93,7 +94,7 @@ fun TagCloud(
     )
 
     Box(modifier.pointerInput(tags, outer) {
-        androidx.compose.foundation.gestures.detectTapGestures { offset ->
+        detectTapGestures { offset ->
             // ищем ближайшее слово к точке касания
             val cx = size.width / 2f
             val cy = size.height / 2f
