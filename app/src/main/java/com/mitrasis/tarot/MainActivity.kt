@@ -528,7 +528,7 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                     parallax = if (focusLayer >= 0) 0f to 0f else (tilt.first * 0.3f) to (tilt.second * 0.3f),
                     channelShift = shift,
                     agreement = shown.agreement,
-                    onGlitch = { SoundEngine.glitch() },
+
                     modifier = Modifier.fillMaxSize()
                 )
                 }

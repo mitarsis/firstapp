@@ -29,7 +29,6 @@ object SoundEngine {
     private var clickTrack: AudioTrack? = null
     private var layerTrack: AudioTrack? = null
     private var flipTrack: AudioTrack? = null
-    private var glitchTrack: AudioTrack? = null
     private var pool: SoundPool? = null
     private var drawId = 0
     private val clinks = Array(4) { ArrayList<AudioTrack>() }
@@ -96,7 +95,6 @@ object SoundEngine {
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
         layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
         flipTrack = prepare(riffle())
-        glitchTrack = prepare(crackle())
         // звуки, сгенерированные earshot и ужатые до моно 22 кГц
         pool = SoundPool.Builder()
             .setMaxStreams(4)
@@ -109,9 +107,11 @@ object SoundEngine {
             .build()
         drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
         // девять колокольчиков: тег, проходящий у зрителя, бьёт своим тоном
+        // у каждого угла свой регистр: низкий, средний, ещё ниже, высокий
+        val bases = doubleArrayOf(288.0, 432.0, 180.0, 640.0)
         for (timbre in 0 until 4) {
             for (step in 0 until 9) {
-                val freq = 288.0 * Math.pow(1.0 + step * 0.16, 1.0)
+                val freq = bases[timbre] * Math.pow(1.0 + step * 0.11, 1.0)
                 clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
             }
         }
@@ -137,93 +137,6 @@ object SoundEngine {
     }
 
     fun flip() = fire(flipTrack)
-
-    private var lastGlitch = 0L
-
-    /** Сбой изображения: короткий цифровой треск, не чаще двух раз в секунду. */
-    fun glitch() {
-        if (!enabled) return
-        val now = System.currentTimeMillis()
-        if (now - lastGlitch < 450) return
-        lastGlitch = now
-        fire(glitchTrack)
-    }
-
-    /** Треск глитча: рваный шум с провалами, как сбой передачи. */
-    private fun crackle(): ShortArray {
-        val seconds = 0.22
-        val count = (RATE * seconds).toInt()
-        val out = ShortArray(count)
-        var state = 90210
-        var hold = 0.0
-        for (i in 0 until count) {
-            val t = i.toDouble() / RATE
-            if (i % 96 == 0) {
-                state = state * 1103515245 + 12345
-                hold = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            }
-            val gate = if ((i / 96) % 3 == 0) 1.0 else 0.15
-            val envelope = exp(-7.0 * t)
-            out[i] = (hold * gate * envelope * 9000).toInt().coerceIn(-32767, 32767).toShort()
-        }
-        return out
-    }
-
-    /** Шелест переворота: шум с быстрым спадом и низким «хлопком» в конце. */
-    private fun riffle(): ShortArray {
-        val seconds = 0.34
-        val count = (RATE * seconds).toInt()
-        val out = ShortArray(count)
-        var state = 5150
-        var band = 0.0
-        for (i in 0 until count) {
-            val t = i.toDouble() / RATE
-            state = state * 1103515245 + 12345
-            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            band = band * 0.55 + white * 0.45
-            val envelope = exp(-9.0 * t) * (1.0 - exp(-400.0 * t))
-            val thump = sin(2 * PI * 90.0 * t) * exp(-30.0 * t) * 0.5
-            out[i] = ((band * 0.7 * envelope + thump) * 8000).toInt().coerceIn(-32767, 32767).toShort()
-        }
-        return out
-    }
-
-    fun layer() {
-        if (!enabled) return
-        fire(layerTrack)
-    }
-
-    /**
-     * Ответ на вопрос: холодный кристаллический удар. Короткий шумовой фронт,
-     * затем три расстроенных тона в малой секунде — тревожно и без «вздоха».
-     */
-    private fun portal(): ShortArray {
-        val seconds = 1.1
-        val count = (RATE * seconds).toInt()
-        val out = ShortArray(count)
-        val f1 = 196.0
-        val f2 = 207.65
-        val f3 = 392.0
-        var p1 = 0.0
-        var p2 = 0.0
-        var p3 = 0.0
-        var state = 4242
-        for (i in 0 until count) {
-            val t = i.toDouble() / RATE
-            p1 += 2 * PI * f1 / RATE
-            p2 += 2 * PI * f2 / RATE
-            p3 += 2 * PI * f3 / RATE
-            state = state * 1103515245 + 12345
-            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            val body = sin(p1) * 0.45 + sin(p2) * 0.35 + sin(p3) * 0.18
-            val envelope = exp(-3.4 * t)
-            val strike = white * exp(-120.0 * t) * 0.6
-            val sub = sin(2 * PI * 49.0 * t) * exp(-8.0 * t) * 0.25
-            val value = (body * envelope + strike + sub) * 0.75
-            out[i] = (value * 9000).toInt().coerceIn(-32767, 32767).toShort()
-        }
-        return out
-    }
 
     /** Касание: тег прошёл у передней границы сферы. */
     fun clink(index: Int, speed: Float, sector: Int = 0) {
