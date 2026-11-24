@@ -287,6 +287,55 @@ object SoundEngine {
     }.getOrNull()
 
     /** Аккорд из синусов с экспоненциальным затуханием. */
+    /**
+     * Ответ на вопрос: холодный кристаллический удар. Короткий шумовой фронт,
+     * затем три расстроенных тона в малой секунде — тревожно, без «вздоха».
+     */
+    private fun portal(): ShortArray {
+        val seconds = 1.1
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        var p1 = 0.0
+        var p2 = 0.0
+        var p3 = 0.0
+        var state = 4242
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            p1 += 2 * PI * 196.0 / RATE
+            p2 += 2 * PI * 207.65 / RATE
+            p3 += 2 * PI * 392.0 / RATE
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            val body = sin(p1) * 0.45 + sin(p2) * 0.35 + sin(p3) * 0.18
+            val envelope = exp(-3.4 * t)
+            val strike = white * exp(-120.0 * t) * 0.6
+            val sub = sin(2 * PI * 49.0 * t) * exp(-8.0 * t) * 0.25
+            out[i] = ((body * envelope + strike + sub) * 0.75 * 9000)
+                .toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
+
+    /** Шелест переворота: шум с быстрым спадом и низким «хлопком» в конце. */
+    private fun riffle(): ShortArray {
+        val seconds = 0.34
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        var state = 5150
+        var band = 0.0
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            band = band * 0.55 + white * 0.45
+            val envelope = exp(-9.0 * t) * (1.0 - exp(-400.0 * t))
+            val thump = sin(2 * PI * 90.0 * t) * exp(-30.0 * t) * 0.5
+            out[i] = ((band * 0.7 * envelope + thump) * 8000)
+                .toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
+
     private fun tone(partials: List<Pair<Double, Double>>, seconds: Double): ShortArray {
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
