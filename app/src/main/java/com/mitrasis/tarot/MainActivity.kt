@@ -528,6 +528,7 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                     parallax = if (focusLayer >= 0) 0f to 0f else (tilt.first * 0.3f) to (tilt.second * 0.3f),
                     channelShift = shift,
                     agreement = shown.agreement,
+                    onGlitch = { SoundEngine.glitch() },
                     modifier = Modifier.fillMaxSize()
                 )
                 }
@@ -722,7 +723,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             expanded = current.outerTags.isNotEmpty(),
             onFling = { },
             onMotion = { speed -> SoundEngine.motion(speed) },
-            onClink = { index, speed -> SoundEngine.clink(index, speed) },
+            onClink = { index, speed, sector -> SoundEngine.clink(index, speed, sector) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)

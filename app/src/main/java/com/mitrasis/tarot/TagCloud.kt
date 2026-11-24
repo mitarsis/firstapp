@@ -47,7 +47,7 @@ fun TagCloud(
     expanded: Boolean = false,
     onFling: () -> Unit = {},
     onMotion: (Float) -> Unit = {},
-    onClink: (Int, Float) -> Unit = { _, _ -> },
+    onClink: (Int, Float, Int) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -400,10 +400,12 @@ fun TagCloud(
                 // автовращение тоже считается движением, иначе касания молчат
                 val speedNow = velocity.getDistance() + 120f
                 // касание спереди и сзади: тег задевает оба края сферы
+                // угол сферы задаёт тембр: верх-лево, верх-право, низ-лево, низ-право
+                val sector = (if (x < cx) 0 else 1) + (if (y < cy) 0 else 2)
                 if (previous != null && previous < 0.72f && z >= 0.72f) {
-                    onClink(index, speedNow)
+                    onClink(index, speedNow, sector)
                 } else if (previous != null && previous > -0.72f && z <= -0.72f) {
-                    onClink(index + 4, speedNow * 0.6f)
+                    onClink(index + 4, speedNow * 0.6f, sector)
                 }
                 lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])

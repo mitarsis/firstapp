@@ -29,9 +29,10 @@ object SoundEngine {
     private var clickTrack: AudioTrack? = null
     private var layerTrack: AudioTrack? = null
     private var flipTrack: AudioTrack? = null
+    private var glitchTrack: AudioTrack? = null
     private var pool: SoundPool? = null
     private var drawId = 0
-    private val clinks = ArrayList<AudioTrack>()
+    private val clinks = Array(4) { ArrayList<AudioTrack>() }
     private const val BLOCK = 256
     @Volatile private var motionSpeed = 0f
     @Volatile private var rendererRunning = false
@@ -95,6 +96,7 @@ object SoundEngine {
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
         layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
         flipTrack = prepare(riffle())
+        glitchTrack = prepare(crackle())
         // звуки, сгенерированные earshot и ужатые до моно 22 кГц
         pool = SoundPool.Builder()
             .setMaxStreams(4)
@@ -107,9 +109,11 @@ object SoundEngine {
             .build()
         drawId = runCatching { pool!!.load(context.assets.openFd("sfx/draw.wav"), 1) }.getOrDefault(0)
         // девять колокольчиков: тег, проходящий у зрителя, бьёт своим тоном
-        for (step in 0 until 9) {
-            val freq = 288.0 * Math.pow(1.0 + step * 0.16, 1.0)
-            clinks.add(prepare(bell(freq)) ?: continue)
+        for (timbre in 0 until 4) {
+            for (step in 0 until 9) {
+                val freq = 288.0 * Math.pow(1.0 + step * 0.16, 1.0)
+                clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
+            }
         }
 
     }
@@ -133,6 +137,37 @@ object SoundEngine {
     }
 
     fun flip() = fire(flipTrack)
+
+    private var lastGlitch = 0L
+
+    /** Сбой изображения: короткий цифровой треск, не чаще двух раз в секунду. */
+    fun glitch() {
+        if (!enabled) return
+        val now = System.currentTimeMillis()
+        if (now - lastGlitch < 450) return
+        lastGlitch = now
+        fire(glitchTrack)
+    }
+
+    /** Треск глитча: рваный шум с провалами, как сбой передачи. */
+    private fun crackle(): ShortArray {
+        val seconds = 0.22
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        var state = 90210
+        var hold = 0.0
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            if (i % 96 == 0) {
+                state = state * 1103515245 + 12345
+                hold = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            }
+            val gate = if ((i / 96) % 3 == 0) 1.0 else 0.15
+            val envelope = exp(-7.0 * t)
+            out[i] = (hold * gate * envelope * 9000).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
 
     /** Шелест переворота: шум с быстрым спадом и низким «хлопком» в конце. */
     private fun riffle(): ShortArray {
@@ -191,9 +226,11 @@ object SoundEngine {
     }
 
     /** Касание: тег прошёл у передней границы сферы. */
-    fun clink(index: Int, speed: Float) {
-        if (!enabled || clinks.isEmpty()) return
-        val track = clinks[Math.floorMod(index, clinks.size)]
+    fun clink(index: Int, speed: Float, sector: Int = 0) {
+        if (!enabled) return
+        val bank = clinks[Math.floorMod(sector, clinks.size)]
+        if (bank.isEmpty()) return
+        val track = bank[Math.floorMod(index, bank.size)]
         val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f))
         runCatching {
             track.stop()
@@ -207,7 +244,7 @@ object SoundEngine {
      * Кибермистический блип: две расстроенные синусоиды дают биения,
      * кольцевая модуляция — стеклянный призвук, лёгкий биткруш — цифру.
      */
-    private fun bell(freq: Double): ShortArray {
+    private fun bell(freq: Double, timbre: Int): ShortArray {
         val seconds = 0.34
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
@@ -220,7 +257,13 @@ object SoundEngine {
             b += 2 * PI * freq * 1.055 / RATE
             mod += 2 * PI * 4.5 / RATE
             val beating = (sin(a) + sin(b)) * 0.5
-            val shimmer = sin(a * 3.01) * 0.14
+            // у каждого угла свой характер
+            val shimmer = when (timbre) {
+                0 -> sin(a * 3.01) * 0.14                 // верх-лево: стекло
+                1 -> sin(a * 2.02) * 0.22                 // верх-право: металл
+                2 -> sin(a * 0.5) * 0.30                  // низ-лево: суб
+                else -> (sin(a * 4.03) + sin(a * 5.01)) * 0.10  // низ-право: воздух
+            }
             val ring = beating * (0.75 + 0.25 * sin(mod))
             val envelope = exp(-7.5 * t) * (1.0 - exp(-700.0 * t))
             val sub = sin(2 * PI * (freq / 4) * t) * exp(-6.0 * t) * 0.22

@@ -242,6 +242,7 @@ fun CardStack(
     parallax: Pair<Float, Float> = 0f to 0f,
     channelShift: Float = 0f,
     agreement: Float = 0f,
+    onGlitch: () -> Unit = {},
     tinted: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -372,6 +373,7 @@ fun CardStack(
                     val tick = (phase * 2.2f).toInt()
                     val dice = kotlin.random.Random(tick * 7919 + index * 131 + strip).nextInt(520)
                     if (dice == 0) {
+                        onGlitch()
                         wave += (if ((strip + tick) % 2 == 0) 1f else -1f) * dstW * 0.05f
                     }
                     drawImage(
