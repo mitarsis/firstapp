@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.PI
@@ -185,7 +186,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     val cloudRadius = radius * (0.60f + 0.12f * i)
                     val bx = cx + (cos(angle) * radius * 0.30).toFloat()
                     val by = cy + (sin(angle * 0.7) * radius * 0.26).toFloat()
-                    glow(bx, by, cloudRadius, nebula[i % nebula.size].value.toInt(), 0.13f * breathe)
+                    glow(bx, by, cloudRadius, nebula[i % nebula.size].toArgb(), 0.13f * breathe)
                 }
 
                 // свет вокруг тегов
@@ -197,7 +198,7 @@ fun TagCloud(tags: List<String>, scores: List<Float> = emptyList(), modifier: Mo
                     val by = cy + p.second * radius * 0.85f
                     val weightOf = scores.getOrNull(order[tag] ?: -1)
                     val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
-                    glow(bx, by, tagRadius, tint.value.toInt(), 0.07f + 0.12f * depth + 0.08f * importance)
+                    glow(bx, by, tagRadius, tint.toArgb(), 0.07f + 0.12f * depth + 0.08f * importance)
                 }
             }
 
