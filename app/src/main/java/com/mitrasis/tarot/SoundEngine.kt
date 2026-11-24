@@ -180,44 +180,56 @@ object SoundEngine {
 
 
     /**
-     * Перезвон: несколько колокольчиков по пентатонике с разными моментами
-     * удара и затуханиями. Петля бесшовная — всё стихает до конца буфера.
+     * Перезвон без мелодии: много коротких высоких ударов со случайной высотой
+     * плюс воздушный шум. Петля бесшовная — всё стихает до конца буфера.
      */
     private fun bells(seconds: Double): ShortArray {
         val count = (RATE * seconds).toInt()
         val out = DoubleArray(count)
-        val scale = doubleArrayOf(523.25, 587.33, 698.46, 783.99, 1046.5, 1174.66)
         var state = 24680
         fun rnd(): Double {
             state = state * 1103515245 + 12345
             return ((state ushr 16) and 0x7FFF) / 32767.0
         }
-        // восемь ударов, разнесённых по времени
-        repeat(9) { hit ->
-            val start = (rnd() * 0.55 + hit * 0.24) * RATE
-            val freq = scale[(rnd() * scale.size).toInt().coerceIn(0, scale.size - 1)]
-            val decay = 0.5 + rnd() * 0.45
-            val amp = 0.16 + rnd() * 0.10
-            val startIndex = start.toInt()
-            for (i in 0 until (RATE * decay).toInt()) {
+
+        // сорок коротких искр: без гаммы, только высокие случайные частоты
+        repeat(40) {
+            val start = rnd() * (seconds - 0.4)
+            val freq = 1400.0 + rnd() * 2400.0
+            val decay = 0.10 + rnd() * 0.16
+            val amp = 0.10 + rnd() * 0.12
+            val startIndex = (start * RATE).toInt()
+            val length = (decay * RATE).toInt()
+            for (i in 0 until length) {
                 val index = startIndex + i
                 if (index >= count) break
                 val t = i.toDouble() / RATE
-                val envelope = exp(-4.0 * t / decay) * (1.0 - exp(-120.0 * t))
+                val envelope = exp(-5.5 * t / decay) * (1.0 - exp(-400.0 * t))
                 out[index] += sin(2 * PI * freq * t) * envelope * amp
-                out[index] += sin(2 * PI * freq * 2.01 * t) * envelope * amp * 0.25
+                out[index] += sin(2 * PI * freq * 1.51 * t) * envelope * amp * 0.3
             }
         }
-        // края сводим к нулю, чтобы петля не щёлкала
-        val fade = (RATE * 0.05).toInt()
+
+        // воздух: очень тихий шум, срезанный в высокую полосу
+        var prev = 0.0
+        for (i in 0 until count) {
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            prev = prev * 0.65 + white * 0.35
+            out[i] += prev * 0.012
+        }
+
+        // края к нулю, петля без щелчка
+        val fade = (RATE * 0.08).toInt()
         for (i in 0 until fade) {
             val k = i.toDouble() / fade
             out[i] *= k
             out[count - 1 - i] *= k
         }
+
         val result = ShortArray(count)
         for (i in 0 until count) {
-            result[i] = (out[i] * 9000).toInt().coerceIn(-32767, 32767).toShort()
+            result[i] = (out[i] * 11000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return result
     }
