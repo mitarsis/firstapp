@@ -37,9 +37,9 @@ import kotlin.math.sqrt
  * Облако тегов на сфере плюс туманность, которая из них же и вырастает:
  * каждое облако света привязано к положению тега, его глубине и его цвету.
  */
-@Composable
 private fun voiceOf(tag: String): Int = Math.floorMod(tag.hashCode(), 3)
 
+@Composable
 fun TagCloud(
     tags: List<String>,
     scores: List<Float> = emptyList(),
