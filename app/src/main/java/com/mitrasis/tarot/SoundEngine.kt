@@ -126,6 +126,39 @@ object SoundEngine {
 
     fun isEnabled(): Boolean = enabled
 
+    /** Прослушка: простой тон → богатый тембр → с эхом. Чтобы услышать разницу. */
+    fun demo() {
+        if (!enabled) return
+        Thread {
+            val plain = prepare(simpleTone(660.0, 0.32))
+            val rich = prepare(bell(660.0, 0))
+            if (plain == null || rich == null) return@Thread
+            listOf(plain, rich, rich).forEach { track ->
+                runCatching {
+                    track.stop()
+                    track.reloadStaticData()
+                    track.setVolume(0.9f)
+                    track.play()
+                }
+                Thread.sleep(520)
+            }
+            Thread.sleep(400)
+            runCatching { plain.release() }
+        }.start()
+    }
+
+    /** Голый синус — для сравнения «до». */
+    private fun simpleTone(freq: Double, seconds: Double): ShortArray {
+        val count = (RATE * seconds).toInt()
+        val out = ShortArray(count)
+        for (i in 0 until count) {
+            val t = i.toDouble() / RATE
+            out[i] = (sin(2 * PI * freq * t) * exp(-9.0 * t) * 11000)
+                .toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
+
     fun flip(context: Context): Boolean {
         enabled = !enabled
         context.getSharedPreferences("tarot", Context.MODE_PRIVATE)
