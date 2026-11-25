@@ -121,10 +121,13 @@ object SoundEngine {
         )
         // каждая карта — свой голос: A, C, E (ступени 0, 2, 4)
         val voiceSteps = intArrayOf(0, 2, 4)
+        // угол задаёт ноту, голос карты — регистр: ×1, ×1.5, ×2.
+        // Так три карты звучат в разных октавах и не сливаются.
+        val voiceFactor = doubleArrayOf(1.0, 1.5, 2.0)
         for (timbre in 0 until 4) {
             for (step in 0 until 3) {
-                val idx = (timbre * 2 + step) % penta.size
-                val freq = 330.0 * penta[idx]
+                val idx = (timbre * 2) % penta.size
+                val freq = 330.0 * penta[idx] * voiceFactor[step]
                 clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
             }
         }
