@@ -139,7 +139,7 @@ object SoundEngine {
                         AudioFormat.Builder()
                             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                             .setSampleRate(RATE)
-                            .setChannels(1)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                             .build()
                     )
                     .setBufferSizeInBytes(capacity * 2)
