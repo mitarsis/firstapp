@@ -723,7 +723,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
             expanded = current.outerTags.isNotEmpty(),
             onFling = { },
             onMotion = { speed -> SoundEngine.motion(speed) },
-            onClink = { index, speed, sector -> SoundEngine.clink(index, speed, sector) },
+            onClink = { index, speed, sector, volume -> SoundEngine.clink(index, speed, sector, volume) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)

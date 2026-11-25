@@ -47,7 +47,7 @@ fun TagCloud(
     expanded: Boolean = false,
     onFling: () -> Unit = {},
     onMotion: (Float) -> Unit = {},
-    onClink: (Int, Float, Int) -> Unit = { _, _, _ -> },
+    onClink: (Int, Float, Int, Float) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -298,8 +298,9 @@ fun TagCloud(
                 }
                 for ((p, word) in outerRotated) {
                     val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
+                    val sectorOuter = (if (p.first < 0f) 0 else 1) + (if (p.second < 0f) 0 else 2)
                     // как и у внутренних: чем ближе к зрителю, тем крупнее и ярче
-                    outerPaint.textSize = size.minDimension * (0.034f + 0.052f * depth)
+                    outerPaint.textSize = size.minDimension * (0.048f + 0.062f * depth)
                     val alpha = (95 + 160 * depth).toInt().coerceIn(0, 255)
                     outerPaint.maskFilter = null
                     val argb = outerTint.toArgb()
@@ -312,6 +313,18 @@ fun TagCloud(
                     drawContext.canvas.nativeCanvas.drawText(
                         word, cx + p.first * outerRadius, cy + p.second * outerRadius, outerPaint
                     )
+                    // касание внешнего кольца: тише и на ступень ниже
+                    val oKey = "o:$word"
+                    val oPrev = lastZ[oKey]
+                    val userSpeedNow = velocity.getDistance()
+                    if (userSpeedNow > 25f && oPrev != null) {
+                        if (oPrev < 0.72f && p.third >= 0.72f) {
+                            onClink(Math.floorMod(word.hashCode(), 9), userSpeedNow + 120f, sectorOuter, 0.55f)
+                        } else if (oPrev > -0.72f && p.third <= -0.72f) {
+                            onClink(Math.floorMod(word.hashCode() + 4, 9), userSpeedNow * 0.7f + 80f, sectorOuter, 0.4f)
+                        }
+                    }
+                    lastZ[oKey] = p.third
                 }
             }
 
@@ -415,9 +428,9 @@ fun TagCloud(
                 val userSpeed = velocity.getDistance()
                 if (userSpeed > 25f && previous != null && previous < 0.72f && z >= 0.72f) {
                     // нота закреплена за словом, поэтому карта звучит узнаваемо
-                    onClink(Math.floorMod(tag.hashCode(), 9), speedNow, sector)
+                    onClink(Math.floorMod(tag.hashCode(), 9), speedNow, sector, 1f)
                 } else if (userSpeed > 25f && previous != null && previous > -0.72f && z <= -0.72f) {
-                    onClink(Math.floorMod(tag.hashCode() + 4, 9), speedNow * 0.6f, sector)
+                    onClink(Math.floorMod(tag.hashCode() + 4, 9), speedNow * 0.6f, sector, 0.6f)
                 }
                 lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])

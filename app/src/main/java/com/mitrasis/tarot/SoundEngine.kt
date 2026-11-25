@@ -171,12 +171,12 @@ object SoundEngine {
     }
 
     /** Касание: тег прошёл у передней границы сферы. */
-    fun clink(index: Int, speed: Float, sector: Int = 0) {
+    fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f) {
         if (!enabled) return
         val bank = clinks[Math.floorMod(sector, clinks.size)]
         if (bank.isEmpty()) return
         val track = bank[Math.floorMod(index, bank.size)]
-        val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f))
+        val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f)) * volume.coerceIn(0f, 1f)
         haptic((5 + 9f * (speed / 1600f).coerceIn(0f, 1f)).toLong())
         runCatching {
             track.stop()
