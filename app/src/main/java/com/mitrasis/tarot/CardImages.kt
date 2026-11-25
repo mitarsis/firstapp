@@ -306,14 +306,19 @@ fun CardStack(
         }
 
         clipPath(clip) {
-            images.forEachIndexed { index, image ->
-                if (image == null) return@forEachIndexed
+            // передний план ходит по кругу вместе с переливом цвета:
+            // та карта, чей цвет сейчас «главный», рисуется последней
+            val front = Math.floorMod(channelShift.toInt(), images.size.coerceAtLeast(1))
+            val drawOrder = (images.indices).sortedBy { Math.floorMod(it - front, images.size.coerceAtLeast(1)) }
+            drawOrder.forEach { index ->
+                val image = images[index] ?: return@forEach
+                if (image == null) return@forEach
                 val base = (alphas.getOrElse(index) { 0f } * if (cards.size > 1) 1.20f else 1f).coerceAtMost(1f)
                 // слой вступает со сдвигом: 0, 0.35, 0.7 от общего прогресса
                 val layerAppear = ((appear.value - index * 0.22f) / 0.55f).coerceIn(0f, 1f)
                 val layerAlpha = base * layerAppear
-                if (layerAlpha <= 0.001f) return@forEachIndexed
-                if (layerAlpha <= 0.01f) return@forEachIndexed
+                if (layerAlpha <= 0.001f) return@forEach
+                if (layerAlpha <= 0.01f) return@forEach
 
                 // все слои одного размера: различаются цветом и прозрачностью,
                 // а не масштабом — иначе третья карта выглядит сдвинутой
