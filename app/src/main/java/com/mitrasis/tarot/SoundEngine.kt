@@ -127,21 +127,23 @@ object SoundEngine {
 
     fun isEnabled(): Boolean = enabled
 
-    /** Прослушка: голый тон, затем два звука облака — чтобы услышать разницу. */
+    /** Прослушка: пять ударов подряд по возрастанию, с вибрацией на каждом. */
     fun demo() {
         if (!enabled) return
-        haptic(30)
         Thread {
-            val plain = prepare(simpleTone(440.0, 0.5))
-            val rich = clinks[0].firstOrNull()
-            val high = clinks[1].getOrNull(4)
-            plain?.let { fire(it) }
-            Thread.sleep(700)
-            rich?.let { fire(it) }
-            Thread.sleep(700)
-            high?.let { fire(it) }
-            Thread.sleep(500)
-            runCatching { plain?.release() }
+            val sequence = listOf(
+                clinks[0].getOrNull(0),
+                clinks[0].getOrNull(2),
+                clinks[1].getOrNull(4),
+                clinks[3].getOrNull(0),
+                clinks[3].getOrNull(8)
+            ).filterNotNull()
+            for ((step, track) in sequence.withIndex()) {
+                fire(track)
+                haptic(12)
+                Thread.sleep(450)
+                if (step == sequence.lastIndex) Thread.sleep(300)
+            }
         }.start()
     }
 
