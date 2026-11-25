@@ -95,7 +95,7 @@ object SoundEngine {
         chimeTrack = prepare(portal())
         whooshTrack = prepare(noise(0.30))
         clickTrack = prepare(tone(listOf(880.0 to 0.5), 0.08))
-        layerTrack = prepare(tone(listOf(523.25 to 0.5, 784.0 to 0.28), 0.5))
+        layerTrack = prepare(tone(listOf(523.25 to 0.5, 659.25 to 0.30), 0.5))
         flipTrack = prepare(riffle())
         // звуки, сгенерированные earshot и ужатые до моно 22 кГц
         pool = SoundPool.Builder()
@@ -119,6 +119,8 @@ object SoundEngine {
             1.0, 1.122, 1.189, 1.335, 1.498, 1.682, 1.888,
             2.0, 2.245, 2.378, 2.67, 2.997
         )
+        // каждая карта — свой голос: A, C, E (ступени 0, 2, 4)
+        val voiceSteps = intArrayOf(0, 2, 4)
         for (timbre in 0 until 4) {
             for (step in 0 until 3) {
                 val idx = (timbre * 2 + step) % penta.size
@@ -207,7 +209,7 @@ object SoundEngine {
     }
 
     /** Касание: тег прошёл у передней границы сферы. */
-    fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f) {
+    fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f, pan: Float = 0f) {
         if (!enabled) return
         val bank = clinks[Math.floorMod(sector, clinks.size)]
         if (bank.isEmpty()) return
@@ -218,14 +220,11 @@ object SoundEngine {
             if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
             track.reloadStaticData()
             track.setVolume(gain)
-            // лёгкая панорама: левые углы звучат левее
-            val pan = when (Math.floorMod(sector, 4)) {
-                0 -> 0.35f to 0.65f
-                1 -> 0.65f to 0.35f
-                2 -> 0.45f to 0.55f
-                else -> 0.55f to 0.45f
-            }
-            track.setStereoVolume(pan.first * gain, pan.second * gain)
+            // панорама непрерывная: слово левее — звук левее
+            val place = pan.coerceIn(-1f, 1f)
+            val left = ((1f - place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
+            val right = ((1f + place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
+            track.setStereoVolume(left, right)
             track.play()
         }
     }
@@ -397,9 +396,10 @@ object SoundEngine {
         var state = 4242
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            p1 += 2 * PI * 196.0 / RATE
-            p2 += 2 * PI * 207.65 / RATE
-            p3 += 2 * PI * 392.0 / RATE
+            // дорийские ступени A–D–E вместо хроматической пары
+            p1 += 2 * PI * 220.0 / RATE
+            p2 += 2 * PI * 293.66 / RATE
+            p3 += 2 * PI * 329.63 / RATE
             state = state * 1103515245 + 12345
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
             val body = sin(p1) * 0.45 + sin(p2) * 0.35 + sin(p3) * 0.18
