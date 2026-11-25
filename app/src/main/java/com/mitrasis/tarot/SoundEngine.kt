@@ -126,24 +126,21 @@ object SoundEngine {
 
     fun isEnabled(): Boolean = enabled
 
-    /** Прослушка: простой тон → богатый тембр → с эхом. Чтобы услышать разницу. */
+    /** Прослушка: голый тон, затем два звука облака — чтобы услышать разницу. */
     fun demo() {
         if (!enabled) return
+        haptic(30)
         Thread {
-            val plain = prepare(simpleTone(660.0, 0.32))
-            val rich = prepare(bell(660.0, 0))
-            if (plain == null || rich == null) return@Thread
-            listOf(plain, rich, rich).forEach { track ->
-                runCatching {
-                    track.stop()
-                    track.reloadStaticData()
-                    track.setVolume(0.9f)
-                    track.play()
-                }
-                Thread.sleep(520)
-            }
-            Thread.sleep(400)
-            runCatching { plain.release() }
+            val plain = prepare(simpleTone(440.0, 0.5))
+            val rich = clinks[0].firstOrNull()
+            val high = clinks[1].getOrNull(4)
+            plain?.let { fire(it) }
+            Thread.sleep(700)
+            rich?.let { fire(it) }
+            Thread.sleep(700)
+            high?.let { fire(it) }
+            Thread.sleep(500)
+            runCatching { plain?.release() }
         }.start()
     }
 
