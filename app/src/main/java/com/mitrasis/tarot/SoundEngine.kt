@@ -212,7 +212,7 @@ object SoundEngine {
         val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f)) * volume.coerceIn(0f, 1f)
         haptic((5 + 9f * (speed / 1600f).coerceIn(0f, 1f)).toLong())
         runCatching {
-            track.stop()
+            if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
             track.reloadStaticData()
             track.setVolume(gain)
             // лёгкая панорама: левые углы звучат левее
@@ -351,11 +351,10 @@ object SoundEngine {
 
     private fun fire(track: AudioTrack?) {
         if (!enabled || track == null) return
-        runCatching {
-            track.stop()
-            track.reloadStaticData()
-            track.play()
-        }
+        // stop() на свежей дорожке бросает исключение — из-за этого play() не вызывался
+        runCatching { if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop() }
+        runCatching { track.reloadStaticData() }
+        runCatching { track.play() }
     }
 
     private fun prepare(samples: ShortArray): AudioTrack? = runCatching {
