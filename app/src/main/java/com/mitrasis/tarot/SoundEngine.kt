@@ -182,35 +182,71 @@ object SoundEngine {
             track.stop()
             track.reloadStaticData()
             track.setVolume(gain)
+            // лёгкая панорама: левые углы звучат левее
+            val pan = when (Math.floorMod(sector, 4)) {
+                0 -> 0.35f to 0.65f
+                1 -> 0.65f to 0.35f
+                2 -> 0.45f to 0.55f
+                else -> 0.55f to 0.45f
+            }
+            track.setStereoVolume(pan.first * gain, pan.second * gain)
             track.play()
         }
     }
 
     /**
-     * Чистый стеклянный удар: короткий, с мягкой атакой, синус плюс призвук
-     * строго по гармоникам лада. Без расстройки и модуляции — ноты не спорят.
+     * Объёмный удар: негармонические призвуки как у настоящего колокола,
+     * шумовая атака, лёгкое расщепление и короткое эхо — чтобы не было плоско.
      */
     private fun bell(freq: Double, timbre: Int): ShortArray {
-        val seconds = 0.22
+        val seconds = 0.42
         val count = (RATE * seconds).toInt()
-        val out = ShortArray(count)
-        val extra = when (timbre) {
-            0 -> 3.0     // октава + квинта
-            1 -> 2.0     // октава
-            2 -> 0.5     // суб
-            else -> 4.0  // две октавы
+        val dry = DoubleArray(count)
+        // партиалы колокола: не кратные, поэтому звук «металлический», а не писк
+        val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01, 4.16, 5.43)
+        val weights = doubleArrayOf(0.85, 0.30, 0.22, 0.16, 0.10, 0.06)
+        val octave = when (timbre) {
+            0 -> 1.0
+            1 -> 2.0
+            2 -> 0.5
+            else -> 1.5
         }
-        var phase = 0.0
-        var extraPhase = 0.0
+        var state = 2024 + freq.toInt()
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            phase += 2 * PI * freq / RATE
-            extraPhase += 2 * PI * freq * extra / RATE
-            val envelope = exp(-11.0 * t) * (1.0 - exp(-1500.0 * t))
-            val value = (sin(phase) * 0.85 + sin(extraPhase) * 0.12) * envelope
-            out[i] = (value * 12000).toInt().coerceIn(-32767, 32767).toShort()
+            var value = 0.0
+            for (k in partials.indices) {
+                val f = freq * octave * partials[k]
+                if (f > 12000) continue
+                value += sin(2 * PI * f * t + k) * weights[k] * exp(-(6.0 + k * 2.5) * t)
+            }
+            // расщепление: второй голос чуть выше — стеклянное биение
+            value += sin(2 * PI * freq * octave * 1.003 * t) * 0.25 * exp(-7.0 * t)
+            // шумовая атака молоточка
+            state = state * 1103515245 + 12345
+            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
+            value += white * exp(-90.0 * t) * 0.28
+            dry[i] = value * (1.0 - exp(-1500.0 * t))
+        }
+        // короткое эхо: две задержки дают ощущение объёма
+        val wet = dry.copyOf()
+        applyEcho(wet, (RATE * 0.031).toInt(), 0.30)
+        applyEcho(wet, (RATE * 0.067).toInt(), 0.18)
+        val out = ShortArray(count)
+        var peak = 0.0
+        for (v in wet) if (kotlin.math.abs(v) > peak) peak = kotlin.math.abs(v)
+        val norm = if (peak > 0.001) 0.85 / peak else 1.0
+        for (i in 0 until count) {
+            out[i] = (wet[i] * norm * 9000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
+    }
+
+    private fun applyEcho(buffer: DoubleArray, delay: Int, feedback: Double) {
+        if (delay <= 0) return
+        for (i in delay until buffer.size) {
+            buffer[i] += buffer[i - delay] * feedback
+        }
     }
 
     /** Живой звук движения: плотность и яркость зависят от скорости вращения. */
