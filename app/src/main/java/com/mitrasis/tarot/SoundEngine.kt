@@ -235,7 +235,7 @@ object SoundEngine {
         val dry = DoubleArray(count)
         // партиалы колокола: не кратные, поэтому звук «металлический», а не писк
         val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01, 4.16, 5.43)
-        val weights = doubleArrayOf(0.55, 0.42, 0.38, 0.30, 0.22, 0.14)
+        val weights = doubleArrayOf(0.40, 0.48, 0.44, 0.36, 0.26, 0.18)
         val octave = when (timbre) {
             0 -> 1.0
             1 -> 2.0
@@ -249,14 +249,14 @@ object SoundEngine {
             for (k in partials.indices) {
                 val f = freq * octave * partials[k]
                 if (f > 12000) continue
-                value += sin(2 * PI * f * t + k) * weights[k] * exp(-(6.0 + k * 2.5) * t)
+                value += sin(2 * PI * f * t + k) * weights[k] * exp(-(2.4 + k * 1.6) * t)
             }
             // расщепление: второй голос чуть выше — стеклянное биение
             value += sin(2 * PI * freq * octave * 1.003 * t) * 0.25 * exp(-7.0 * t)
             // шумовая атака молоточка
             state = state * 1103515245 + 12345
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            value += white * exp(-90.0 * t) * 0.28
+            value += white * exp(-220.0 * t) * 0.05
             dry[i] = value * (1.0 - exp(-1500.0 * t))
         }
         // короткое эхо: две задержки дают ощущение объёма
