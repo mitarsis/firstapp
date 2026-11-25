@@ -32,7 +32,15 @@ object SoundEngine {
     private var flipTrack: AudioTrack? = null
     private var pool: SoundPool? = null
     private var drawId = 0
-    private val clinks = Array(4) { ArrayList<AudioTrack>() }
+    private val clinkTracks = arrayOfNulls<AudioTrack>(4)
+    private val pcmCache = HashMap<Int, ShortArray>()
+    private val melodyStep = IntArray(3)
+
+    /** Дорийский лад от ля: A B C D E F♯ G по двум октавам. */
+    private val PENTA = doubleArrayOf(
+        1.0, 1.122, 1.189, 1.335, 1.498, 1.682, 1.888,
+        2.0, 2.245, 2.378, 2.67, 2.997
+    )
     private const val BLOCK = 256
     @Volatile private var motionSpeed = 0f
     @Volatile private var rendererRunning = false
@@ -115,21 +123,29 @@ object SoundEngine {
         // Угол сферы выбирает октаву, поэтому любые два звука сочетаются.
         // дорийский лад от ля: A B C D E F# G, затем октава и дальше.
         // Полутонов меньше, чем в обычном миноре, поэтому светлее и «стариннее».
-        val penta = doubleArrayOf(
-            1.0, 1.122, 1.189, 1.335, 1.498, 1.682, 1.888,
-            2.0, 2.245, 2.378, 2.67, 2.997
-        )
-        // каждая карта — свой голос: A, C, E (ступени 0, 2, 4)
-        val voiceSteps = intArrayOf(0, 2, 4)
-        // угол задаёт ноту, голос карты — регистр: ×1, ×1.5, ×2.
-        // Так три карты звучат в разных октавах и не сливаются.
-        val voiceFactor = doubleArrayOf(1.0, 1.5, 2.0)
-        for (timbre in 0 until 4) {
-            for (step in 0 until 3) {
-                val idx = (timbre * 2) % penta.size
-                val freq = 330.0 * penta[idx] * voiceFactor[step]
-                clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
-            }
+        // по одной дорожке на угол: звук рендерится под каждое касание,
+        // поэтому нота может быть любой — без банка из 12 записей
+        val capacity = (RATE * 0.5).toInt()
+        for (sector in 0 until 4) {
+            clinkTracks[sector] = runCatching {
+                AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_GAME)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(RATE)
+                            .setChannels(1)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(capacity * 2)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build()
+            }.getOrNull()
         }
     }
 
@@ -139,19 +155,11 @@ object SoundEngine {
     fun demo() {
         if (!enabled) return
         Thread {
-            val sequence = listOf(
-                clinks[0].getOrNull(0),
-                clinks[0].getOrNull(1),
-                clinks[0].getOrNull(2),
-                clinks[1].getOrNull(2),
-                clinks[3].getOrNull(2)
-            ).filterNotNull()
-            for ((step, track) in sequence.withIndex()) {
-                fire(track)
-                haptic(12)
-                Thread.sleep(450)
-                if (step == sequence.lastIndex) Thread.sleep(300)
+            for (step in 0 until 6) {
+                clink(step % 3, 700f, step % 4, 0.9f, 0f)
+                Thread.sleep(340)
             }
+            Thread.sleep(300)
         }.start()
     }
 
@@ -214,22 +222,30 @@ object SoundEngine {
     /** Касание: тег прошёл у передней границы сферы. */
     fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f, pan: Float = 0f) {
         if (!enabled) return
-        val bank = clinks[Math.floorMod(sector, clinks.size)]
-        if (bank.isEmpty()) return
-        val track = bank[Math.floorMod(index, bank.size)]
+        val safeSector = Math.floorMod(sector, 4)
+        val voice = Math.floorMod(index, 3)
+        val track = clinkTracks[safeSector] ?: return
+
+        // мелодия: каждый следующий удар этого голоса идёт на ступень выше по ладу
+        val step = melodyStep[voice]
+        melodyStep[voice] = (step + 1) % PENTA.size
+        val register = doubleArrayOf(1.0, 1.5, 2.0)[voice]
+        val freq = 330.0 * PENTA[step] * register
+
+        val key = (voice * 100) + step
+        val samples = pcmCache.getOrPut(key) { bell(freq, safeSector) }
+
         val gain = (0.45f + 0.55f * (speed / 1600f).coerceIn(0f, 1f)) * volume.coerceIn(0f, 1f)
         haptic((5 + 9f * (speed / 1600f).coerceIn(0f, 1f)).toLong())
-        runCatching {
-            if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
-            track.reloadStaticData()
-            track.setVolume(gain)
-            // панорама непрерывная: слово левее — звук левее
-            val place = pan.coerceIn(-1f, 1f)
-            val left = ((1f - place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
-            val right = ((1f + place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
-            track.setStereoVolume(left, right)
-            track.play()
-        }
+
+        runCatching { if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop() }
+        runCatching { track.reloadStaticData() }
+        runCatching { track.write(samples, 0, samples.size) }
+        val place = pan.coerceIn(-1f, 1f)
+        val left = ((1f - place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
+        val right = ((1f + place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
+        runCatching { track.setStereoVolume(left, right) }
+        runCatching { track.play() }
     }
 
     /**
@@ -347,7 +363,8 @@ object SoundEngine {
         stopRenderer()
         runCatching {
             listOf(chimeTrack, whooshTrack, clickTrack, layerTrack, flipTrack).forEach { it?.release() }
-            clinks.forEach { bank -> bank.forEach { runCatching { it.release() } }; bank.clear() }
+            clinkTracks.forEach { runCatching { it?.release() } }
+            pcmCache.clear()
             pool?.release()
             pool = null
         }
