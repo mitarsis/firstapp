@@ -113,18 +113,16 @@ object SoundEngine {
         // ля-минорная опора: A3, C4, E4, A4 — звучат как один инструмент
         // ля-минорная пентатоника: A C D E G по двум октавам.
         // Угол сферы выбирает октаву, поэтому любые два звука сочетаются.
-        // три ступени — ступени ля-минорного аккорда: A, C, E.
-        // Любая пара с любым углом даёт consonance, а не трение.
-        val ratios = doubleArrayOf(1.0, 1.2, 1.5)
-        // база выше: ниже 250 Гц телефон уже «стучит», а не звенит
-        val octaves = doubleArrayOf(1.0, 2.0, 1.5, 3.0)
+        // ля-минорная пентатоника A C D E G по двум октавам:
+        // угол сдвигает окно, поэтому 12 звуков не повторяются и все в ладу
+        val penta = doubleArrayOf(1.0, 1.2, 1.335, 1.5, 1.78, 2.0, 2.4, 2.67, 3.0)
         for (timbre in 0 until 4) {
             for (step in 0 until 3) {
-                val freq = 330.0 * ratios[step] * octaves[timbre]
+                val idx = (timbre * 2 + step) % penta.size
+                val freq = 330.0 * penta[idx]
                 clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
             }
         }
-
     }
 
     fun isEnabled(): Boolean = enabled
