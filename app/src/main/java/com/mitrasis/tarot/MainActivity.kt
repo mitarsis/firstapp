@@ -616,7 +616,12 @@ fun TarotApp(layers: Int = 3, onLayersChange: (Int) -> Unit = {}) {
                 text = if (soundOn) "звук вкл" else "звук выкл",
                 style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp),
                 color = ASH.copy(alpha = if (soundOn) 0.8f else 0.4f),
-                modifier = Modifier.clickable { soundOn = SoundEngine.flip(context) }
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { soundOn = SoundEngine.flip(context) },
+                        onLongPress = { SoundEngine.demo() }
+                    )
+                }
             )
             Text(
                 text = "домен",
