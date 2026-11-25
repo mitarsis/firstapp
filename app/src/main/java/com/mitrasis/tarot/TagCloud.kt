@@ -59,6 +59,7 @@ fun TagCloud(
     var lastDx by remember { mutableStateOf(0f) }
     var lastDy by remember { mutableStateOf(0f) }
     val lastZ = remember { HashMap<String, Float>() }
+    val lastXY = remember { HashMap<String, Pair<Float, Float>>() }
     var spinning by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
     var nebulaBmp by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -284,7 +285,10 @@ fun TagCloud(
                         val pb = outerRotated[b].first
                         val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
                         drawLine(
-                            color = Color(0xFFE8E0D2).copy(alpha = 0.12f + 0.26f * depthAvg),
+                            color = Color(0xFFE8E0D2).copy(
+                            alpha = (0.12f + 0.26f * depthAvg) *
+                                (0.75f + 0.25f * sin(phase + depthAvg * 3f))
+                        ),
                             start = Offset(cx + pa.first * outerRadius, cy + pa.second * outerRadius),
                             end = Offset(cx + pb.first * outerRadius, cy + pb.second * outerRadius),
                             strokeWidth = 1.1f
@@ -345,7 +349,10 @@ fun TagCloud(
                     val pb = rotated[b].first
                     val depthAvg = ((pa.third + pb.third) / 2f + 1f) / 2f
                     drawLine(
-                        color = Color(0xFFE8E0D2).copy(alpha = 0.12f + 0.26f * depthAvg),
+                        color = Color(0xFFE8E0D2).copy(
+                            alpha = (0.12f + 0.26f * depthAvg) *
+                                (0.75f + 0.25f * sin(phase + depthAvg * 3f))
+                        ),
                         start = Offset(cx + pa.first * radius, cy + pa.second * radius),
                         end = Offset(cx + pb.first * radius, cy + pb.second * radius),
                         strokeWidth = 1.2f
@@ -445,6 +452,18 @@ fun TagCloud(
                     android.graphics.Color.green(argb),
                     android.graphics.Color.blue(argb)
                 )
+                // след: слово быстро идёт — за ним тянется короткая линия
+                val prevPos = lastXY[tag]
+                val moveSpeed = velocity.getDistance()
+                if (prevPos != null && moveSpeed > 120f) {
+                    drawLine(
+                        color = Color(0xFFF2A93B).copy(alpha = (0.05f + 0.10f * depth)),
+                        start = Offset(prevPos.first, prevPos.second),
+                        end = Offset(x, y),
+                        strokeWidth = 1.4f
+                    )
+                }
+                lastXY[tag] = x to y
                 drawContext.canvas.nativeCanvas.drawText(tag, x, y, paint)
             }
             } catch (t: Throwable) {
