@@ -113,11 +113,12 @@ object SoundEngine {
         // ля-минорная опора: A3, C4, E4, A4 — звучат как один инструмент
         // ля-минорная пентатоника: A C D E G по двум октавам.
         // Угол сферы выбирает октаву, поэтому любые два звука сочетаются.
-        val ratios = doubleArrayOf(1.0, 1.2, 1.335, 1.5, 1.78, 2.0, 2.4, 2.67, 3.0)
+        // три ступени на угол: 12 дорожек вместо 36 — системный лимит AudioTrack
+        val ratios = doubleArrayOf(1.0, 1.5, 2.25)
         // база выше: ниже 250 Гц телефон уже «стучит», а не звенит
         val octaves = doubleArrayOf(1.0, 2.0, 1.5, 3.0)
         for (timbre in 0 until 4) {
-            for (step in 0 until 9) {
+            for (step in 0 until 3) {
                 val freq = 330.0 * ratios[step] * octaves[timbre]
                 clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
             }
@@ -133,10 +134,10 @@ object SoundEngine {
         Thread {
             val sequence = listOf(
                 clinks[0].getOrNull(0),
+                clinks[0].getOrNull(1),
                 clinks[0].getOrNull(2),
-                clinks[1].getOrNull(4),
-                clinks[3].getOrNull(0),
-                clinks[3].getOrNull(8)
+                clinks[1].getOrNull(2),
+                clinks[3].getOrNull(2)
             ).filterNotNull()
             for ((step, track) in sequence.withIndex()) {
                 fire(track)

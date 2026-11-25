@@ -319,9 +319,9 @@ fun TagCloud(
                     val userSpeedNow = velocity.getDistance()
                     if (userSpeedNow > 25f && oPrev != null) {
                         if (oPrev < 0.72f && p.third >= 0.72f) {
-                            onClink(Math.floorMod(word.hashCode(), 9), userSpeedNow + 120f, sectorOuter, 0.55f)
+                            onClink(Math.floorMod(word.hashCode(), 3), userSpeedNow + 120f, sectorOuter, 0.55f)
                         } else if (oPrev > -0.72f && p.third <= -0.72f) {
-                            onClink(Math.floorMod(word.hashCode() + 4, 9), userSpeedNow * 0.7f + 80f, sectorOuter, 0.4f)
+                            onClink(Math.floorMod(word.hashCode() + 1, 3), userSpeedNow * 0.7f + 80f, sectorOuter, 0.4f)
                         }
                     }
                     lastZ[oKey] = p.third
