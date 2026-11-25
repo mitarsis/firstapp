@@ -287,7 +287,7 @@ fun TagCloud(
                         drawLine(
                             color = Color(0xFFE8E0D2).copy(
                             alpha = (0.12f + 0.26f * depthAvg) *
-                                (0.75f + 0.25f * sin(phase + depthAvg * 3f))
+                                (0.75f + 0.25f * sin(spin * PI.toFloat() / 180f + depthAvg * 3f))
                         ),
                             start = Offset(cx + pa.first * outerRadius, cy + pa.second * outerRadius),
                             end = Offset(cx + pb.first * outerRadius, cy + pb.second * outerRadius),
@@ -351,7 +351,7 @@ fun TagCloud(
                     drawLine(
                         color = Color(0xFFE8E0D2).copy(
                             alpha = (0.12f + 0.26f * depthAvg) *
-                                (0.75f + 0.25f * sin(phase + depthAvg * 3f))
+                                (0.75f + 0.25f * sin(spin * PI.toFloat() / 180f + depthAvg * 3f))
                         ),
                         start = Offset(cx + pa.first * radius, cy + pa.second * radius),
                         end = Offset(cx + pb.first * radius, cy + pb.second * radius),
