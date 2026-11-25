@@ -43,6 +43,7 @@ private fun voiceOf(tag: String): Int = Math.floorMod(tag.hashCode(), 3)
 fun TagCloud(
     tags: List<String>,
     scores: List<Float> = emptyList(),
+    voices: List<Int> = emptyList(),
     outer: List<String> = emptyList(),
     tint: Color = Color(0xFFF2A93B),
     outerTint: Color = Color(0xFFF2A93B),
@@ -325,9 +326,9 @@ fun TagCloud(
                     val userSpeedNow = velocity.getDistance()
                     if (userSpeedNow > 25f && oPrev != null) {
                         if (oPrev < 0.72f && p.third >= 0.72f) {
-                            onClink(voiceOf(word), userSpeedNow + 120f, sectorOuter, 0.35f, (p.first).coerceIn(-1f, 1f))
+                            onClink(0, userSpeedNow + 120f, sectorOuter, 0.35f, (p.first).coerceIn(-1f, 1f))
                         } else if (oPrev > -0.72f && p.third <= -0.72f) {
-                            onClink(voiceOf(word), userSpeedNow * 0.7f + 80f, sectorOuter, 0.25f, (p.first).coerceIn(-1f, 1f))
+                            onClink(0, userSpeedNow * 0.7f + 80f, sectorOuter, 0.25f, (p.first).coerceIn(-1f, 1f))
                         }
                     }
                     lastZ[oKey] = p.third
@@ -437,9 +438,9 @@ fun TagCloud(
                 val userSpeed = velocity.getDistance()
                 if (userSpeed > 25f && previous != null && previous < 0.72f && z >= 0.72f) {
                     // нота закреплена за словом, поэтому карта звучит узнаваемо
-                    onClink(voiceOf(tag), speedNow, sector, 0.45f + 0.55f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
+                    onClink(voices.getOrElse(tags.indexOf(tag)) { voiceOf(tag) }, speedNow, sector, 0.45f + 0.55f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
                 } else if (userSpeed > 25f && previous != null && previous > -0.72f && z <= -0.72f) {
-                    onClink(voiceOf(tag), speedNow * 0.6f, sector, 0.3f + 0.35f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
+                    onClink(voices.getOrElse(tags.indexOf(tag)) { voiceOf(tag) }, speedNow * 0.6f, sector, 0.3f + 0.35f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
                 }
                 lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])

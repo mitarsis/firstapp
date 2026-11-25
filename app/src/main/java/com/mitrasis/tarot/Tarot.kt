@@ -34,7 +34,8 @@ data class CardAnswer(
     val shared: List<String> = emptyList(),
     val sharedScores: List<Float> = emptyList(),
     val agreement: Float = 0f,
-    val outerTags: List<String> = emptyList()
+    val outerTags: List<String> = emptyList(),
+    val sharedVoices: List<Int> = emptyList()
 )
 
 object Deck {

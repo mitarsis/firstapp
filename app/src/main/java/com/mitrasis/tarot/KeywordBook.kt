@@ -71,7 +71,8 @@ class KeywordBook private constructor(
         val tags: List<String>,
         val scores: List<Float>,
         val agreement: Float,
-        val outer: List<String> = emptyList()
+        val outer: List<String> = emptyList(),
+        val voices: List<Int> = emptyList()
     )
 
     private val MAJOR_CARDS = 22
@@ -174,7 +175,21 @@ class KeywordBook private constructor(
         if (result.size < 3) result = choose(0.20f)
         // согласие: насколько высоко худшее совпадение у лучших тегов
         val agreement = if (result.isEmpty()) 0f else worst.max()
-        return SharedCore(result.map { it.first }, result.map { it.second }, agreement)
+        // голос каждого тега — та карта, к чьему центру он ближе
+        val voices = result.map { (word, _) ->
+            val root = word.lowercase().take(5)
+            var best = 0
+            var bestScore = -2f
+            centres.forEachIndexed { index, centre ->
+                val tagIndex = keywords.indexOfFirst { it.lowercase().take(5) == root }
+                if (tagIndex >= 0) {
+                    val score = dot(centredAt(tagIndex), centre)
+                    if (score > bestScore) { bestScore = score; best = index }
+                }
+            }
+            best
+        }
+        return SharedCore(result.map { it.first }, result.map { it.second }, agreement, emptyList(), voices)
     }
 
 
@@ -263,7 +278,8 @@ class KeywordBook private constructor(
         padded.forEach { out[it.lowercase().take(5)] = it }
         val tags = out.values.toList()
         val scores = List(tags.size) { fieldScore }
-        return SharedCore(tags, scores, fieldScore, domainWords)
+        // Младший звучит своим голосом (1), поле — голосом Старшего (0)
+        return SharedCore(tags, scores, fieldScore, domainWords, List(tags.size) { 1 })
     }
 
     /** Убираем общее направление корпуса: иначе выигрывают «никакие» слова. */

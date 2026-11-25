@@ -721,6 +721,7 @@ private fun AnswerLabels(answer: CardAnswer?, focusLayer: Int, shift: Float = 0f
         TagCloud(
             tags = current.shared,
             scores = current.sharedScores,
+            voices = current.sharedVoices,
             outer = current.outerTags,
             // цвет — это карта, а не слово: старший янтарный, младший циановый
             tint = if (current.outerTags.isNotEmpty())
