@@ -225,13 +225,11 @@ fun channelColor(index: Int, shift: Float, total: Int): Color {
     val position = (((index + shift) % size) + size) % size
     val base = position.toInt()
     val fraction = position - base
-    val raw = androidx.compose.ui.graphics.lerp(
+    return androidx.compose.ui.graphics.lerp(
         palette[base % size],
         palette[(base + 1) % size],
         fraction
     )
-    // мягче: цвет тянем к тёплому нейтральному, чтобы слои не спорили
-    return androidx.compose.ui.graphics.lerp(raw, Color(0xFFC2B6A4), 0.22f)
 }
 
 @Composable
@@ -355,7 +353,7 @@ fun CardStack(
                 )
 
                 // киберпанк: расщепление каналов — циан влево, маджента вправо
-                val split = dstW * 0.0022f
+                val split = dstW * 0.004f
                 drawImage(
                     image = image,
                     srcOffset = IntOffset.Zero,
@@ -388,7 +386,7 @@ fun CardStack(
                     var wave = sin(phase + t * 6.0f + index * 0.9f) * dstW * 0.018f * weight * lensScale
                     // редкий цифровой сбой: полоса уезжает на несколько пикселей
                     val tick = (phase * 2.2f).toInt()
-                    val dice = kotlin.random.Random(tick * 7919 + index * 131 + strip).nextInt(900)
+                    val dice = kotlin.random.Random(tick * 7919 + index * 131 + strip).nextInt(520)
                     if (dice == 0) {
                         onGlitch()
                         wave += (if ((strip + tick) % 2 == 0) 1f else -1f) * dstW * 0.05f
