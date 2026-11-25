@@ -114,10 +114,11 @@ object SoundEngine {
         // ля-минорная пентатоника: A C D E G по двум октавам.
         // Угол сферы выбирает октаву, поэтому любые два звука сочетаются.
         val ratios = doubleArrayOf(1.0, 1.2, 1.335, 1.5, 1.78, 2.0, 2.4, 2.67, 3.0)
-        val octaves = doubleArrayOf(1.0, 2.0, 0.5, 1.5)
+        // база выше: ниже 250 Гц телефон уже «стучит», а не звенит
+        val octaves = doubleArrayOf(1.0, 2.0, 1.5, 3.0)
         for (timbre in 0 until 4) {
             for (step in 0 until 9) {
-                val freq = 220.0 * ratios[step] * octaves[timbre]
+                val freq = 330.0 * ratios[step] * octaves[timbre]
                 clinks[timbre].add(prepare(bell(freq, timbre)) ?: continue)
             }
         }
@@ -234,7 +235,7 @@ object SoundEngine {
         val dry = DoubleArray(count)
         // партиалы колокола: не кратные, поэтому звук «металлический», а не писк
         val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01, 4.16, 5.43)
-        val weights = doubleArrayOf(0.85, 0.30, 0.22, 0.16, 0.10, 0.06)
+        val weights = doubleArrayOf(0.55, 0.42, 0.38, 0.30, 0.22, 0.14)
         val octave = when (timbre) {
             0 -> 1.0
             1 -> 2.0
