@@ -211,7 +211,7 @@ object SoundEngine {
         val bank = clinks[Math.floorMod(sector, clinks.size)]
         if (bank.isEmpty()) return
         val track = bank[Math.floorMod(index, bank.size)]
-        val gain = (0.22f + 0.70f * (speed / 1600f).coerceIn(0f, 1f)) * volume.coerceIn(0f, 1f)
+        val gain = (0.45f + 0.55f * (speed / 1600f).coerceIn(0f, 1f)) * volume.coerceIn(0f, 1f)
         haptic((5 + 9f * (speed / 1600f).coerceIn(0f, 1f)).toLong())
         runCatching {
             if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
@@ -272,7 +272,7 @@ object SoundEngine {
         for (v in wet) if (kotlin.math.abs(v) > peak) peak = kotlin.math.abs(v)
         val norm = if (peak > 0.001) 0.85 / peak else 1.0
         for (i in 0 until count) {
-            out[i] = (wet[i] * norm * 9000).toInt().coerceIn(-32767, 32767).toShort()
+            out[i] = (wet[i] * norm * 15000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
