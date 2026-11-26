@@ -229,7 +229,7 @@ object SoundEngine {
         // на быстром вращении касания идут чаще, чем ухо терпит:
         // держим минимальный интервал, иначе звучит как перемотка
         val now = System.currentTimeMillis()
-        val minGap = if (speed > 900f) 110L else 70L
+        val minGap = if (speed > 900f) 320L else 240L
         if (now - lastClinkAt < minGap) return
         lastClinkAt = now
         val safeSector = Math.floorMod(sector, 4)
@@ -245,6 +245,7 @@ object SoundEngine {
         val freq = 220.0 * PENTA[step] * register
 
         val key = (voice * 100) + step
+        if (pcmCache.size > 12) pcmCache.clear()
         val samples = pcmCache.getOrPut(key) { bell(freq, safeSector) }
 
         val gain = (0.45f + 0.55f * (speed / 1600f).coerceIn(0f, 1f)) * volume.coerceIn(0f, 1f)
@@ -261,46 +262,33 @@ object SoundEngine {
     }
 
     /**
-     * Удар, а не нота: короткая шумовая атака, низкий «деревянный» щелчок,
-     * быстрое затухание. Тон остаётся, но живёт миллисекунды и не поёт.
+     * Поющая чаша: медленная атака, негармонические обертоны и долгий звон
+     * с биениями. Не удар, а «пение» металла.
      */
     private fun bell(freq: Double, timbre: Int): ShortArray {
-        val seconds = 0.26
+        val seconds = 1.8
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
         val dry = DoubleArray(count)
-        val octave = when (timbre) {
-            0 -> 1.0
-            1 -> 1.0
-            2 -> 1.0
-            else -> 1.0
-        }
-        var phase = 0.0
-        var fifthPhase = 0.0
-        var state = 2024 + freq.toInt()
+        // обертоны чаши: негармонические, у каждого свой спад
+        val ratios = doubleArrayOf(1.0, 2.71, 5.15, 8.42)
+        val weights = doubleArrayOf(0.55, 0.28, 0.16, 0.07)
+        val decays = doubleArrayOf(1.5, 2.4, 3.4, 5.0)
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            phase += 2 * PI * freq * octave / RATE
-            fifthPhase += 2 * PI * freq * octave * 1.4983 / RATE
-            state = state * 1103515245 + 12345
-            val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-
-            // удар: атака + короткое тело + низкий щелчок
-            // металл: негармонические обертоны с быстрым спадом — «дзинь», а не «дон»
-            val metal = sin(2 * PI * freq * 2.42 * t) * exp(-22.0 * t) * 0.26 +
-                sin(2 * PI * freq * 3.61 * t) * exp(-30.0 * t) * 0.16 +
-                sin(2 * PI * freq * 5.11 * t) * exp(-42.0 * t) * 0.10
-            val attack = white * exp(-240.0 * t) * 0.30
-            val body = sin(phase) * exp(-16.0 * t) * 0.45
-            val fifth = sin(fifthPhase) * exp(-26.0 * t) * 0.18
-            val thump = sin(2 * PI * 62.0 * t) * exp(-38.0 * t) * 0.28
-            dry[i] = attack + body + fifth + thump + metal
+            val attack = 1.0 - exp(-45.0 * t)
+            var value = 0.0
+            for (k in ratios.indices) {
+                val f = freq * ratios[k]
+                if (f > 9000) continue
+                value += sin(2 * PI * f * t + k) * weights[k] * exp(-decays[k] * t)
+            }
+            // биения: два чуть расстроенных голоса дают «дыхание» чаши
+            value += sin(2 * PI * freq * 1.004 * t) * 0.22 * exp(-1.6 * t)
+            dry[i] = value * attack
         }
-        // эхо возвращаем: металл без помещения звучит сухо и резко
-        applyEcho(dry, (RATE * 0.037).toInt(), 0.26)
-        applyEcho(dry, (RATE * 0.083).toInt(), 0.15)
         for (i in dry.indices) {
-            out[i] = (dry[i] * 12500).toInt().coerceIn(-32767, 32767).toShort()
+            out[i] = (dry[i] * 9000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
