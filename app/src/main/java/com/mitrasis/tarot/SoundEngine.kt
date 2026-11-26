@@ -235,7 +235,8 @@ object SoundEngine {
 
         // мелодия: каждый следующий удар этого голоса идёт на ступень выше по ладу
         val step = melodyStep[voice]
-        melodyStep[voice] = (step + 1) % PENTA.size
+        // держимся первой октавы лада: выше начинается резкость
+        melodyStep[voice] = (step + 1) % 7
         // ниже и ближе: база 220, регистры в пределах терции–квинты
         val register = doubleArrayOf(0.75, 1.0, 1.25)[voice]
         val freq = 220.0 * PENTA[step] * register
@@ -265,8 +266,8 @@ object SoundEngine {
         val count = (RATE * seconds).toInt()
         val dry = DoubleArray(count)
         // партиалы колокола: не кратные, поэтому звук «металлический», а не писк
-        val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01, 4.16, 5.43)
-        val weights = doubleArrayOf(0.62, 0.46, 0.30, 0.18, 0.10, 0.05)
+        val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01)
+        val weights = doubleArrayOf(0.70, 0.44, 0.24, 0.12)
         val octave = when (timbre) {
             0 -> 1.0
             1 -> 2.0
@@ -292,6 +293,14 @@ object SoundEngine {
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
             value += white * exp(-220.0 * t) * 0.05
             dry[i] = value * (1.0 - exp(-1500.0 * t))
+        }
+        // низкочастотный фильтр: срезаем всё выше ~2.2 кГц, чтобы не кололо
+        val cutoff = 2200.0
+        val a = 1.0 - exp(-2.0 * PI * cutoff / RATE)
+        var lp = 0.0
+        for (i in dry.indices) {
+            lp += a * (dry[i] - lp)
+            dry[i] = lp
         }
         // короткое эхо: две задержки дают ощущение объёма
         val wet = dry.copyOf()
