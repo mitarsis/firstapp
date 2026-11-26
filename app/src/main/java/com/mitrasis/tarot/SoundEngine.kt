@@ -35,6 +35,7 @@ object SoundEngine {
     private val clinkTracks = arrayOfNulls<AudioTrack>(4)
     private val pcmCache = HashMap<Int, ShortArray>()
     private val melodyStep = IntArray(3)
+    private var lastClinkAt = 0L
 
     /** Дорийский лад от ля: A B C D E F♯ G по двум октавам. */
     private val PENTA = doubleArrayOf(
@@ -222,6 +223,12 @@ object SoundEngine {
     /** Касание: тег прошёл у передней границы сферы. */
     fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f, pan: Float = 0f) {
         if (!enabled) return
+        // на быстром вращении касания идут чаще, чем ухо терпит:
+        // держим минимальный интервал, иначе звучит как перемотка
+        val now = System.currentTimeMillis()
+        val minGap = if (speed > 900f) 130L else 85L
+        if (now - lastClinkAt < minGap) return
+        lastClinkAt = now
         val safeSector = Math.floorMod(sector, 4)
         val voice = Math.floorMod(index, 3)
         val track = clinkTracks[safeSector] ?: return
