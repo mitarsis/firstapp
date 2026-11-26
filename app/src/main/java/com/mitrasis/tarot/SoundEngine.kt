@@ -37,10 +37,13 @@ object SoundEngine {
     private val melodyStep = IntArray(3)
     private var lastClinkAt = 0L
 
-    /** Дорийский лад от ля: A B C D E F♯ G по двум октавам. */
+    /**
+     * Фригийский лад от ля: A B♭ C D E F G.
+     * Малая секунда во второй ступени даёт тревогу и «журчание» — трагический лад.
+     */
     private val PENTA = doubleArrayOf(
-        1.0, 1.122, 1.189, 1.335, 1.498, 1.682, 1.888,
-        2.0, 2.245, 2.378, 2.67, 2.997
+        1.0, 1.0595, 1.189, 1.335, 1.498, 1.682, 1.888,
+        2.0, 2.119, 2.378, 2.67, 2.997
     )
     private const val BLOCK = 256
     @Volatile private var motionSpeed = 0f
@@ -238,7 +241,7 @@ object SoundEngine {
         // держимся первой октавы лада: выше начинается резкость
         melodyStep[voice] = (step + 1) % 7
         // ниже и ближе: база 220, регистры в пределах терции–квинты
-        val register = doubleArrayOf(0.75, 1.0, 1.25)[voice]
+        val register = doubleArrayOf(0.6, 0.8, 1.0)[voice]
         val freq = 220.0 * PENTA[step] * register
 
         val key = (voice * 100) + step
@@ -304,8 +307,9 @@ object SoundEngine {
         }
         // короткое эхо: две задержки дают ощущение объёма
         val wet = dry.copyOf()
-        applyEcho(wet, (RATE * 0.031).toInt(), 0.30)
-        applyEcho(wet, (RATE * 0.067).toInt(), 0.18)
+        applyEcho(wet, (RATE * 0.031).toInt(), 0.38)
+        applyEcho(wet, (RATE * 0.067).toInt(), 0.24)
+        applyEcho(wet, (RATE * 0.149).toInt(), 0.16)
         val out = ShortArray(count)
         var peak = 0.0
         for (v in wet) if (kotlin.math.abs(v) > peak) peak = kotlin.math.abs(v)
@@ -436,16 +440,17 @@ object SoundEngine {
         var state = 4242
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            // дорийские ступени A–D–E вместо хроматической пары
+            // A, D и тритон E♭ — тревожное созвучие, плюс низкий дрон
             p1 += 2 * PI * 220.0 / RATE
             p2 += 2 * PI * 293.66 / RATE
-            p3 += 2 * PI * 329.63 / RATE
+            p3 += 2 * PI * 311.13 / RATE
             state = state * 1103515245 + 12345
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
             val body = sin(p1) * 0.45 + sin(p2) * 0.35 + sin(p3) * 0.18
             val envelope = exp(-3.4 * t)
             val strike = white * exp(-120.0 * t) * 0.6
-            val sub = sin(2 * PI * 49.0 * t) * exp(-8.0 * t) * 0.25
+            val drone = sin(2 * PI * 55.0 * t) * (0.15 + 0.05 * sin(2 * PI * 0.7 * t))
+            val sub = sin(2 * PI * 49.0 * t) * exp(-8.0 * t) * 0.25 + drone * 0.5
             out[i] = ((body * envelope + strike + sub) * 0.75 * 9000)
                 .toInt().coerceIn(-32767, 32767).toShort()
         }
