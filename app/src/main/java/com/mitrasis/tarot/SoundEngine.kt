@@ -236,8 +236,9 @@ object SoundEngine {
         // мелодия: каждый следующий удар этого голоса идёт на ступень выше по ладу
         val step = melodyStep[voice]
         melodyStep[voice] = (step + 1) % PENTA.size
-        val register = doubleArrayOf(1.0, 1.5, 2.0)[voice]
-        val freq = 330.0 * PENTA[step] * register
+        // ниже и ближе: база 220, регистры в пределах терции–квинты
+        val register = doubleArrayOf(0.75, 1.0, 1.25)[voice]
+        val freq = 220.0 * PENTA[step] * register
 
         val key = (voice * 100) + step
         val samples = pcmCache.getOrPut(key) { bell(freq, safeSector) }
@@ -265,7 +266,7 @@ object SoundEngine {
         val dry = DoubleArray(count)
         // партиалы колокола: не кратные, поэтому звук «металлический», а не писк
         val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01, 4.16, 5.43)
-        val weights = doubleArrayOf(0.40, 0.48, 0.44, 0.36, 0.26, 0.18)
+        val weights = doubleArrayOf(0.62, 0.46, 0.30, 0.18, 0.10, 0.05)
         val octave = when (timbre) {
             0 -> 1.0
             1 -> 2.0
@@ -281,6 +282,9 @@ object SoundEngine {
                 if (f > 12000) continue
                 value += sin(2 * PI * f * t + k) * weights[k] * exp(-(2.4 + k * 1.6) * t)
             }
+            // гармония: к ноте добавляем квинту и октаву — звучит как аккорд
+            value += sin(2 * PI * freq * octave * 1.4983 * t) * 0.34 * exp(-4.2 * t)
+            value += sin(2 * PI * freq * octave * 2.0 * t) * 0.20 * exp(-5.0 * t)
             // расщепление: второй голос чуть выше — стеклянное биение
             value += sin(2 * PI * freq * octave * 1.003 * t) * 0.25 * exp(-7.0 * t)
             // шумовая атака молоточка
