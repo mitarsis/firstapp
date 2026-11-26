@@ -285,11 +285,15 @@ object SoundEngine {
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
 
             // удар: атака + короткое тело + низкий щелчок
+            // металл: негармонические обертоны с быстрым спадом — «дзинь», а не «дон»
+            val metal = sin(2 * PI * freq * 2.42 * t) * exp(-22.0 * t) * 0.26 +
+                sin(2 * PI * freq * 3.61 * t) * exp(-30.0 * t) * 0.16 +
+                sin(2 * PI * freq * 5.11 * t) * exp(-42.0 * t) * 0.10
             val attack = white * exp(-240.0 * t) * 0.30
-            val body = sin(phase) * exp(-16.0 * t) * 0.55
-            val fifth = sin(fifthPhase) * exp(-26.0 * t) * 0.22
-            val thump = sin(2 * PI * 62.0 * t) * exp(-38.0 * t) * 0.35
-            out[i] = ((attack + body + fifth + thump) * 13000)
+            val body = sin(phase) * exp(-16.0 * t) * 0.45
+            val fifth = sin(fifthPhase) * exp(-26.0 * t) * 0.18
+            val thump = sin(2 * PI * 62.0 * t) * exp(-38.0 * t) * 0.28
+            out[i] = ((attack + body + fifth + thump + metal) * 12500)
                 .toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
