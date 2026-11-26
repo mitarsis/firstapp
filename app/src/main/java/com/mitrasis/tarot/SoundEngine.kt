@@ -265,9 +265,10 @@ object SoundEngine {
      * быстрое затухание. Тон остаётся, но живёт миллисекунды и не поёт.
      */
     private fun bell(freq: Double, timbre: Int): ShortArray {
-        val seconds = 0.20
+        val seconds = 0.26
         val count = (RATE * seconds).toInt()
         val out = ShortArray(count)
+        val dry = DoubleArray(count)
         val octave = when (timbre) {
             0 -> 1.0
             1 -> 1.0
@@ -293,8 +294,13 @@ object SoundEngine {
             val body = sin(phase) * exp(-16.0 * t) * 0.45
             val fifth = sin(fifthPhase) * exp(-26.0 * t) * 0.18
             val thump = sin(2 * PI * 62.0 * t) * exp(-38.0 * t) * 0.28
-            out[i] = ((attack + body + fifth + thump + metal) * 12500)
-                .toInt().coerceIn(-32767, 32767).toShort()
+            dry[i] = attack + body + fifth + thump + metal
+        }
+        // эхо возвращаем: металл без помещения звучит сухо и резко
+        applyEcho(dry, (RATE * 0.037).toInt(), 0.26)
+        applyEcho(dry, (RATE * 0.083).toInt(), 0.15)
+        for (i in dry.indices) {
+            out[i] = (dry[i] * 12500).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
