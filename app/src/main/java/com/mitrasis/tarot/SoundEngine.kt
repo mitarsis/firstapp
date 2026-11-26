@@ -229,7 +229,7 @@ object SoundEngine {
         // на быстром вращении касания идут чаще, чем ухо терпит:
         // держим минимальный интервал, иначе звучит как перемотка
         val now = System.currentTimeMillis()
-        val minGap = if (speed > 900f) 130L else 85L
+        val minGap = if (speed > 900f) 110L else 70L
         if (now - lastClinkAt < minGap) return
         lastClinkAt = now
         val safeSector = Math.floorMod(sector, 4)
@@ -261,61 +261,36 @@ object SoundEngine {
     }
 
     /**
-     * Объёмный удар: негармонические призвуки как у настоящего колокола,
-     * шумовая атака, лёгкое расщепление и короткое эхо — чтобы не было плоско.
+     * Удар, а не нота: короткая шумовая атака, низкий «деревянный» щелчок,
+     * быстрое затухание. Тон остаётся, но живёт миллисекунды и не поёт.
      */
     private fun bell(freq: Double, timbre: Int): ShortArray {
-        val seconds = 0.42
+        val seconds = 0.20
         val count = (RATE * seconds).toInt()
-        val dry = DoubleArray(count)
-        // партиалы колокола: не кратные, поэтому звук «металлический», а не писк
-        val partials = doubleArrayOf(1.0, 2.0, 2.42, 3.01)
-        val weights = doubleArrayOf(0.70, 0.44, 0.24, 0.12)
+        val out = ShortArray(count)
         val octave = when (timbre) {
             0 -> 1.0
-            1 -> 2.0
-            2 -> 0.5
-            else -> 1.5
+            1 -> 1.0
+            2 -> 1.0
+            else -> 1.0
         }
+        var phase = 0.0
+        var fifthPhase = 0.0
         var state = 2024 + freq.toInt()
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            var value = 0.0
-            for (k in partials.indices) {
-                val f = freq * octave * partials[k]
-                if (f > 12000) continue
-                value += sin(2 * PI * f * t + k) * weights[k] * exp(-(2.4 + k * 1.6) * t)
-            }
-            // гармония: к ноте добавляем квинту и октаву — звучит как аккорд
-            value += sin(2 * PI * freq * octave * 1.4983 * t) * 0.34 * exp(-4.2 * t)
-            value += sin(2 * PI * freq * octave * 2.0 * t) * 0.20 * exp(-5.0 * t)
-            // расщепление: второй голос чуть выше — стеклянное биение
-            value += sin(2 * PI * freq * octave * 1.003 * t) * 0.25 * exp(-7.0 * t)
-            // шумовая атака молоточка
+            phase += 2 * PI * freq * octave / RATE
+            fifthPhase += 2 * PI * freq * octave * 1.4983 / RATE
             state = state * 1103515245 + 12345
             val white = ((state ushr 16) and 0xFF) / 255.0 * 2 - 1
-            value += white * exp(-220.0 * t) * 0.05
-            dry[i] = value * (1.0 - exp(-1500.0 * t))
-        }
-        // низкочастотный фильтр: срезаем всё выше ~2.2 кГц, чтобы не кололо
-        val cutoff = 2200.0
-        val a = 1.0 - exp(-2.0 * PI * cutoff / RATE)
-        var lp = 0.0
-        for (i in dry.indices) {
-            lp += a * (dry[i] - lp)
-            dry[i] = lp
-        }
-        // короткое эхо: две задержки дают ощущение объёма
-        val wet = dry.copyOf()
-        applyEcho(wet, (RATE * 0.031).toInt(), 0.38)
-        applyEcho(wet, (RATE * 0.067).toInt(), 0.24)
-        applyEcho(wet, (RATE * 0.149).toInt(), 0.16)
-        val out = ShortArray(count)
-        var peak = 0.0
-        for (v in wet) if (kotlin.math.abs(v) > peak) peak = kotlin.math.abs(v)
-        val norm = if (peak > 0.001) 0.85 / peak else 1.0
-        for (i in 0 until count) {
-            out[i] = (wet[i] * norm * 15000).toInt().coerceIn(-32767, 32767).toShort()
+
+            // удар: атака + короткое тело + низкий щелчок
+            val attack = white * exp(-240.0 * t) * 0.30
+            val body = sin(phase) * exp(-16.0 * t) * 0.55
+            val fifth = sin(fifthPhase) * exp(-26.0 * t) * 0.22
+            val thump = sin(2 * PI * 62.0 * t) * exp(-38.0 * t) * 0.35
+            out[i] = ((attack + body + fifth + thump) * 13000)
+                .toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
