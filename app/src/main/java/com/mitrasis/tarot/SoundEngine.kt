@@ -224,17 +224,17 @@ object SoundEngine {
     }
 
     /** Касание: тег прошёл у передней границы сферы. */
-    fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f, pan: Float = 0f) {
-        if (!enabled) return
+    fun clink(index: Int, speed: Float, sector: Int = 0, volume: Float = 1f, pan: Float = 0f): Boolean {
+        if (!enabled) return false
         // на быстром вращении касания идут чаще, чем ухо терпит:
         // держим минимальный интервал, иначе звучит как перемотка
         val now = System.currentTimeMillis()
         val minGap = if (speed > 900f) 320L else 240L
-        if (now - lastClinkAt < minGap) return
+        if (now - lastClinkAt < minGap) return false
         lastClinkAt = now
         val safeSector = Math.floorMod(sector, 4)
         val voice = Math.floorMod(index, 3)
-        val track = clinkTracks[safeSector] ?: return
+        val track = clinkTracks[safeSector] ?: return false
 
         // мелодия: каждый следующий удар этого голоса идёт на ступень выше по ладу
         val step = melodyStep[voice]
@@ -258,7 +258,8 @@ object SoundEngine {
         val left = ((1f - place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
         val right = ((1f + place) * 0.5f + 0.15f).coerceIn(0f, 1f) * gain
         runCatching { track.setStereoVolume(left, right) }
-        runCatching { track.play() }
+        val started = runCatching { track.play() }.isSuccess
+        return started
     }
 
     /**

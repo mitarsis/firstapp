@@ -50,7 +50,7 @@ fun TagCloud(
     expanded: Boolean = false,
     onFling: () -> Unit = {},
     onMotion: (Float) -> Unit = {},
-    onClink: (Int, Float, Int, Float, Float) -> Unit = { _, _, _, _, _ -> },
+    onClink: (Int, Float, Int, Float, Float) -> Boolean = { _, _, _, _, _ -> false },
     modifier: Modifier = Modifier
 ) {
     var yaw by remember { mutableStateOf(-20f) }
@@ -327,9 +327,11 @@ fun TagCloud(
                     val userSpeedNow = velocity.getDistance()
                     if (userSpeedNow > 25f && oPrev != null) {
                         if (oPrev < 0.72f && p.third >= 0.72f) {
-                            onClink(0, userSpeedNow + 120f, sectorOuter, 0.35f, (p.first).coerceIn(-1f, 1f))
+                            val playedOuter = onClink(0, userSpeedNow + 120f, sectorOuter, 0.35f, (p.first).coerceIn(-1f, 1f))
+                            if (playedOuter) flashUntil["o:$word"] = System.currentTimeMillis() + 170
                         } else if (oPrev > -0.72f && p.third <= -0.72f) {
-                            onClink(0, userSpeedNow * 0.7f + 80f, sectorOuter, 0.25f, (p.first).coerceIn(-1f, 1f))
+                            val playedFar = onClink(0, userSpeedNow * 0.7f + 80f, sectorOuter, 0.25f, (p.first).coerceIn(-1f, 1f))
+                            if (playedFar) flashUntil["o:" + word] = System.currentTimeMillis() + 170
                         }
                     }
                     lastZ[oKey] = p.third
@@ -444,9 +446,12 @@ fun TagCloud(
                 val userSpeed = velocity.getDistance()
                 if (userSpeed > 25f && previous != null && previous < 0.72f && z >= 0.72f) {
                     // нота закреплена за словом, поэтому карта звучит узнаваемо
-                    onClink(voices.getOrElse(tags.indexOf(tag)) { voiceOf(tag) }, speedNow, sector, 0.45f + 0.55f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
+                    val played = onClink(voices.getOrElse(tags.indexOf(tag)) { voiceOf(tag) }, speedNow, sector, 0.45f + 0.55f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
+                    if (played) flashUntil[tag] = System.currentTimeMillis() + 170
                 } else if (userSpeed > 25f && previous != null && previous > -0.72f && z <= -0.72f) {
-                    onClink(voices.getOrElse(tags.indexOf(tag)) { voiceOf(tag) }, speedNow * 0.6f, sector, 0.3f + 0.35f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
+                    val playedBack = onClink(voices.getOrElse(tags.indexOf(tag)) { voiceOf(tag) }, speedNow * 0.6f, sector, 0.3f + 0.35f * depth, ((x - cx) / innerRadius).coerceIn(-1f, 1f))
+                    if (playedBack) flashUntil[tag] = System.currentTimeMillis() + 170
+                    if (playedBack) flashUntil[tag] = System.currentTimeMillis() + 170
                 }
                 lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])
