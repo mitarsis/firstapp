@@ -69,7 +69,7 @@ fun TagCloud(
     var nebulaImage by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     val indexMap = remember(tags) { tags.withIndex().associate { it.value to it.index } }
 
-    // спрайт свечения: рисуется один раз, дальше только масштабируется
+    // спрайт свечения рисуется один раз, потом только масштабируется
     val glowImage = remember {
         val n = 96
         val bmp = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888)
@@ -85,7 +85,7 @@ fun TagCloud(
         bmp.asImageBitmap()
     }
 
-    // ширины слов измеряются один раз, в кадре только умножаем
+    // ширины слов измеряются один раз
     val widthRatios = remember(tags, outer) {
         val pt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
         pt.typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
@@ -404,7 +404,7 @@ fun TagCloud(
 
             // внутренняя сфера сжата: поле Старшего должно быть снаружи
             val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
-            // свечение: готовый спрайт вместо градиента на каждый тег
+            // свечение: готовый спрайт вместо радиального градиента на каждый тег
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val radiusGlow = radius * (0.20f + 0.18f * depth)
@@ -428,21 +428,6 @@ fun TagCloud(
                 )
             }
 
-            val blurCache = Array(5) { index ->
-                android.graphics.BlurMaskFilter((index + 1).toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
-            }
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                textAlign = android.graphics.Paint.Align.CENTER
-                // без этих двух флагов Android округляет кегль и позицию до пикселя,
-                // отсюда «ступеньки» при вращении сферы
-                isSubpixelText = true
-                isLinearText = true
-                typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
-            }
-
-            // внутренняя сфера сжата: поле Старшего должно быть снаружи
-            val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
-            // свечение вокруг тегов — каждый кадр, поэтому оно не отстаёт от текста
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 val tagRadius = radius * (0.18f + 0.14f * depth)
