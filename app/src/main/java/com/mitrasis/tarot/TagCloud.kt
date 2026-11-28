@@ -60,6 +60,7 @@ fun TagCloud(
     var lastDx by remember { mutableStateOf(0f) }
     var lastDy by remember { mutableStateOf(0f) }
     val lastZ = remember { HashMap<String, Float>() }
+    val flashUntil = remember { HashMap<String, Long>() }
     val lastXY = remember { HashMap<String, Pair<Float, Float>>() }
     var spinning by remember { mutableStateOf(false) }
     val tracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
@@ -408,12 +409,17 @@ fun TagCloud(
 
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
-                // поджимаем позицию, чтобы слово целиком осталось в кадре
+                // у края слово не отскакивает, а плавно гаснет
                 val halfText = paint.measureText(tag) / 2f
                 val rawX = cx + p.first * innerRadius
-                val x = rawX.coerceIn(halfText + 4f, size.width - halfText - 4f)
+                val x = rawX
+                val edgeLimit = size.width / 2f - 8f
+                val overflow = (kotlin.math.abs(x - cx) + halfText - edgeLimit).coerceAtLeast(0f)
+                val edgeFade = (1f - overflow / (halfText + 1f)).coerceIn(0f, 1f)
                 val y = cy + p.second * innerRadius
-                paint.textSize = size.minDimension * (0.055f + 0.075f * depth)
+                val flashLeft = ((flashUntil[tag] ?: 0L) - System.currentTimeMillis()).coerceAtLeast(0L)
+                val flash = flashLeft / 170f            // 1 → 0 за 170 мс
+                paint.textSize = size.minDimension * (0.055f + 0.075f * depth) * (1f + 0.10f * flash)
                 // длинное слово не должно вылезать за экран
                 val maxWidth = size.width * 0.84f
                 val textWidth = paint.measureText(tag)
@@ -445,7 +451,7 @@ fun TagCloud(
                 lastZ[tag] = z
                 paint.typeface = if (index in scores.indices) face(scores[index])
                 else android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
-                val alpha = (60 + 195 * depth).toInt().coerceIn(0, 255)
+                val alpha = ((60 + 195 * depth) * edgeFade * (1f + 0.9f * flash)).toInt().coerceIn(0, 255)
                 val argb = tint.toArgb()
                 paint.color = android.graphics.Color.argb(
                     alpha,

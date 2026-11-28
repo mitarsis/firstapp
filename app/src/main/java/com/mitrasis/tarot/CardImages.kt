@@ -352,24 +352,6 @@ fun CardStack(
                     blendMode = BlendMode.Screen
                 )
 
-                // дальние слои мягче: несколько смещённых проходов вместо резкого края
-                if (index > 0) {
-                    for (dxs in listOf(-1.6f, 1.6f)) {
-                        drawImage(
-                            image = image,
-                            srcOffset = IntOffset.Zero,
-                            srcSize = IntSize(image.width, image.height),
-                            dstOffset = IntOffset((dx + dxs).toInt(), (dy + dxs * 0.5f).toInt()),
-                            dstSize = IntSize(dstW, dstH),
-                            alpha = layerAlpha * 0.35f,
-                            colorFilter = ColorFilter.tint(
-                                channelColor(index, channelShift, cards.size), BlendMode.SrcIn
-                            ),
-                            blendMode = BlendMode.Screen
-                        )
-                    }
-                }
-
                 // киберпанк: расщепление каналов — циан влево, маджента вправо
                 val split = dstW * 0.004f
                 drawImage(

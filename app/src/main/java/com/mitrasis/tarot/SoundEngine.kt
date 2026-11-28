@@ -271,12 +271,12 @@ object SoundEngine {
         val out = ShortArray(count)
         val dry = DoubleArray(count)
         // обертоны чаши: негармонические, у каждого свой спад
-        val ratios = doubleArrayOf(1.0, 2.71, 5.15, 8.42)
-        val weights = doubleArrayOf(0.55, 0.28, 0.16, 0.07)
-        val decays = doubleArrayOf(1.5, 2.4, 3.4, 5.0)
+        val ratios = doubleArrayOf(1.0, 1.37, 2.71, 3.86, 5.15, 8.42)
+        val weights = doubleArrayOf(0.50, 0.22, 0.26, 0.14, 0.12, 0.05)
+        val decays = doubleArrayOf(1.3, 1.9, 2.4, 3.0, 3.6, 5.2)
         for (i in 0 until count) {
             val t = i.toDouble() / RATE
-            val attack = 1.0 - exp(-45.0 * t)
+            val attack = 1.0 - exp(-32.0 * t)
             var value = 0.0
             for (k in ratios.indices) {
                 val f = freq * ratios[k]
