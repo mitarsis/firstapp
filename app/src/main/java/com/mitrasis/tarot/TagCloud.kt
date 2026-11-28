@@ -69,6 +69,30 @@ fun TagCloud(
     var nebulaImage by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     val indexMap = remember(tags) { tags.withIndex().associate { it.value to it.index } }
 
+    // спрайт свечения: рисуется один раз, дальше только масштабируется
+    val glowImage = remember {
+        val n = 96
+        val bmp = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val pt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        pt.shader = android.graphics.RadialGradient(
+            n / 2f, n / 2f, n / 2f,
+            intArrayOf(android.graphics.Color.WHITE, 0x55FFFFFF, android.graphics.Color.TRANSPARENT),
+            floatArrayOf(0f, 0.42f, 1f),
+            android.graphics.Shader.TileMode.CLAMP
+        )
+        c.drawCircle(n / 2f, n / 2f, n / 2f, pt)
+        bmp.asImageBitmap()
+    }
+
+    // ширины слов измеряются один раз, в кадре только умножаем
+    val widthRatios = remember(tags, outer) {
+        val pt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        pt.typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+        pt.textSize = 100f
+        (tags + outer).associateWith { pt.measureText(it) / 100f }
+    }
+
     // Инерция считается по кадрам: скорость гасится множителем, пока не упадёт до нуля
     LaunchedEffect(Unit) {
         var last = 0L
@@ -380,6 +404,44 @@ fun TagCloud(
 
             // внутренняя сфера сжата: поле Старшего должно быть снаружи
             val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
+            // свечение: готовый спрайт вместо градиента на каждый тег
+            for ((p, tag) in rotated) {
+                val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
+                val radiusGlow = radius * (0.20f + 0.18f * depth)
+                val gx = cx + p.first * innerRadius * 0.95f
+                val gy = cy + p.second * innerRadius * 0.95f
+                val weightOf = scores.getOrNull(indexMap[tag] ?: -1)
+                val importance = if (weightOf == null) 0.5f else ((weightOf - low) / span).coerceIn(0f, 1f)
+                val side = (radiusGlow * 2).toInt().coerceAtLeast(1)
+                drawImage(
+                    image = glowImage,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(glowImage.width, glowImage.height),
+                    dstOffset = IntOffset((gx - radiusGlow).toInt(), (gy - radiusGlow).toInt()),
+                    dstSize = IntSize(side, side),
+                    alpha = (0.12f + 0.16f * depth + 0.10f * importance).coerceIn(0f, 1f),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                        if (outer.isEmpty()) Color(0xFFE8E0D2) else tint,
+                        BlendMode.SrcIn
+                    ),
+                    blendMode = BlendMode.Screen
+                )
+            }
+
+            val blurCache = Array(5) { index ->
+                android.graphics.BlurMaskFilter((index + 1).toFloat(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+            }
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                textAlign = android.graphics.Paint.Align.CENTER
+                // без этих двух флагов Android округляет кегль и позицию до пикселя,
+                // отсюда «ступеньки» при вращении сферы
+                isSubpixelText = true
+                isLinearText = true
+                typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+            }
+
+            // внутренняя сфера сжата: поле Старшего должно быть снаружи
+            val innerRadius = if (outer.isEmpty()) radius else radius * (if (expanded) 0.66f else 0.60f)
             // свечение вокруг тегов — каждый кадр, поэтому оно не отстаёт от текста
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
@@ -414,7 +476,7 @@ fun TagCloud(
             for ((p, tag) in rotated) {
                 val depth = ((p.third + 1f) / 2f).coerceIn(0f, 1f)
                 // у края слово не отскакивает, а плавно гаснет
-                val halfText = paint.measureText(tag) / 2f
+                val halfText = ((widthRatios[tag] ?: 1f) * paint.textSize) / 2f
                 val rawX = cx + p.first * innerRadius
                 val x = rawX
                 val edgeLimit = size.width / 2f - 8f
@@ -426,7 +488,7 @@ fun TagCloud(
                 paint.textSize = size.minDimension * (0.055f + 0.075f * depth) * (1f + 0.10f * flash)
                 // длинное слово не должно вылезать за экран
                 val maxWidth = size.width * 0.84f
-                val textWidth = paint.measureText(tag)
+                val textWidth = (widthRatios[tag] ?: 1f) * paint.textSize
                 if (textWidth > maxWidth) {
                     paint.textSize = paint.textSize * (maxWidth / textWidth)
                 }

@@ -129,7 +129,7 @@ object SoundEngine {
         // Полутонов меньше, чем в обычном миноре, поэтому светлее и «стариннее».
         // по одной дорожке на угол: звук рендерится под каждое касание,
         // поэтому нота может быть любой — без банка из 12 записей
-        val capacity = (RATE * 0.5).toInt()
+        val capacity = (RATE * 2.2).toInt()
         for (sector in 0 until 4) {
             clinkTracks[sector] = runCatching {
                 AudioTrack.Builder()
@@ -289,7 +289,9 @@ object SoundEngine {
             dry[i] = value * attack
         }
         for (i in dry.indices) {
-            out[i] = (dry[i] * 9000).toInt().coerceIn(-32767, 32767).toShort()
+            // мягкое ограничение: сумма обертонов не должна врезаться в потолок
+            val limited = kotlin.math.tanh(dry[i] * 1.1)
+            out[i] = (limited * 12000).toInt().coerceIn(-32767, 32767).toShort()
         }
         return out
     }
