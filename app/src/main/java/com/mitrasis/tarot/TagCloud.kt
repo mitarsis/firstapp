@@ -309,7 +309,9 @@ fun TagCloud(
                     val sectorOuter = (if (p.first < 0f) 0 else 1) + (if (p.second < 0f) 0 else 2)
                     // как и у внутренних: чем ближе к зрителю, тем крупнее и ярче
                     outerPaint.textSize = size.minDimension * (0.048f + 0.062f * depth)
-                    val alpha = (95 + 160 * depth).toInt().coerceIn(0, 255)
+                    val outerFlashLeft = ((flashUntil["o:" + word] ?: 0L) - System.currentTimeMillis()).coerceAtLeast(0L)
+                    val outerFlash = outerFlashLeft / 170f
+                    val alpha = ((95 + 160 * depth) * (1f + 0.7f * outerFlash)).toInt().coerceIn(0, 255)
                     outerPaint.maskFilter = null
                     val argb = outerTint.toArgb()
                     outerPaint.color = android.graphics.Color.argb(
